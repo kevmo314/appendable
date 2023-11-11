@@ -2,6 +2,9 @@
 
 AppendableDB is an append-only\*, schemaless, service-less, client-facing database.
 
+Data is stored in [JSON Lines](https://jsonlines.org/) `.jsonl` format and AppendableDB
+does not touch your data, it only produces an index file.
+
 _\* Ok, it's append-preferred._
 
 ## Demonstration
