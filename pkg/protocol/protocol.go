@@ -1,0 +1,87 @@
+package protocol
+
+import "crypto/sha256"
+
+/*
+The overall index file for AppendableDB is structured as:
+
++-----------------------+
+| Version               |
++-----------------------+
+| IndexFileHeader       |
++-----------------------+
+| IndexHeader           |
++-----------------------+
+|        ...            |
++-----------------------+
+| IndexHeader           |
++-----------------------+
+| IndexRecord           |
++-----------------------+
+|        ...            |
++-----------------------+
+| IndexRecord           |
++-----------------------+
+| DataRange             |
++-----------------------+
+|        ...            |
++-----------------------+
+| DataRange             |
++-----------------------+
+*/
+
+// Version is the version of AppendableDB this library is compatible with.
+type Version byte
+
+// IndexFileHeader is the header of the index file.
+type IndexFileHeader struct {
+	// IndexLength represents the number of bytes the IndexHeaders occupy.
+	IndexLength uint64
+
+	// DataCount represents the number of data records indexed by this index
+	// file.
+	DataCount uint64
+}
+
+// IndexHeader is the header of each index record. This represents the fields
+// available in the data file.
+type IndexHeader struct {
+	FieldName string
+
+	// FieldType represents the type of data stored in the field. Note that the
+	// field data doesn't need to follow this type, but it is used to determine
+	// the TypeScript typings for the field.
+	FieldType FieldType
+
+	IndexRecordCount uint64
+}
+
+// FieldType represents the type of data stored in the field, which follows
+// JSON types excluding Object and null. Object is broken down into subfields
+// and null is not stored.
+type FieldType byte
+
+const (
+	FieldTypeUnknown FieldType = iota
+	FieldTypeString
+	FieldTypeNumber
+	FieldTypeArray
+	FieldTypeBoolean
+)
+
+type IndexRecord struct {
+	// DataRange represents the range of bytes in the data file that this index
+	// record points to.
+	DataIndex uint64
+	// FieldByteOffset represents the byte offset of the field in the data
+	// record to fetch exactly the field value. That is, the field value is
+	// stored at DataRange.StartByteOffset + FieldByteOffset.
+	FieldStartByteOffset uint32
+	FieldEndByteOffset   uint32
+}
+
+type DataRange struct {
+	StartByteOffset uint64
+	EndByteOffset   uint64
+	Hash            [sha256.Size]byte
+}

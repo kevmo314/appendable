@@ -2,10 +2,23 @@
 
 AppendableDB is an append-only\*, schemaless, service-less, client-facing database.
 
+It's `jq` over HTTP, using HTTP Range requests to minimize over-the-wire data transfer.
+
 Data is stored in [JSON Lines](https://jsonlines.org/) `.jsonl` format and AppendableDB
-does not touch your data, it only produces an index file.
+does not touch your data: it only produces an index file.
 
 _\* Ok, it's append-preferred._
+
+## Motivation
+
+A smart friend of mine said
+
+> _The problem with databases is that everybody cares about a different killer feature_
+
+AppendableDB's primary goals are
+
+- Cost-optimized serving
+- Speed-optimized incremental index updating
 
 ## Demonstration
 
@@ -77,6 +90,12 @@ A schema file is not required to use AppendableDB, however if you wish to ensure
 your data follows certain types, pass a JSON Schema file with `-s schema.json` and
 AppendableDB will throw an error instead of inferring the type from the data. This
 can be useful for detecting consistency issues or enforcing field restrictions.
+
+A word of caution, if you add a non-nullable field to your JSON schema, this will cause
+all your previous data to be invalidated requiring an index regeneration. To avoid this,
+pass `--imply-nullable` to indicate that previous data is ok to be null but new data
+should validate. Be aware that this has implications on the generated types, in particular
+your client will see the field as nullable despite the schema saying non-nullable.
 
 ### Generated types
 
