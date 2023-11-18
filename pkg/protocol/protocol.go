@@ -1,7 +1,5 @@
 package protocol
 
-import "crypto/sha256"
-
 /*
 The overall index file for AppendableDB is structured as:
 
@@ -83,5 +81,5 @@ type IndexRecord struct {
 type DataRange struct {
 	StartByteOffset uint64
 	EndByteOffset   uint64
-	Hash            [sha256.Size]byte
+	Checksum        uint64
 }

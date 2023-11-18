@@ -65,19 +65,4 @@ func TestEncoding(t *testing.T) {
 			t.Errorf("expected %v, got %v", s, s2)
 		}
 	})
-
-	t.Run("sha256 hash encoding", func(t *testing.T) {
-		h := [32]byte{1}
-		buf := &bytes.Buffer{}
-		if err := WriteSHA256Hash(buf, h); err != nil {
-			t.Fatal(err)
-		}
-		h2, err := ReadSHA256Hash(buf)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if h != h2 {
-			t.Errorf("expected %v, got %v", h, h2)
-		}
-	})
 }

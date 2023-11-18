@@ -1,7 +1,6 @@
 package encoding
 
 import (
-	"crypto/sha256"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -33,11 +32,6 @@ func WriteString(w io.Writer, s string) error {
 		return err
 	}
 	_, err := w.Write([]byte(s))
-	return err
-}
-
-func WriteSHA256Hash(w io.Writer, h [sha256.Size]byte) error {
-	_, err := w.Write(h[:])
 	return err
 }
 
@@ -75,12 +69,4 @@ func ReadString(r io.Reader) (string, error) {
 		return "", err
 	}
 	return string(b), nil
-}
-
-func ReadSHA256Hash(r io.Reader) ([sha256.Size]byte, error) {
-	var h [sha256.Size]byte
-	if _, err := io.ReadFull(r, h[:]); err != nil {
-		return [sha256.Size]byte{}, err
-	}
-	return h, nil
 }

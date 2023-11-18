@@ -1,12 +1,14 @@
 package appendable
 
 import (
+	"bufio"
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 
+	"github.com/cespare/xxhash/v2"
 	"github.com/google/btree"
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
@@ -47,30 +49,28 @@ func fieldType(data any) protocol.FieldType {
 	}
 }
 
-func (i *IndexFile) findIndex(name string, value any) *Index {
+func (i *IndexFile) findIndex(name string, value any) int {
 	// find the index for the field
-	var index *Index
-	for _, idx := range i.Indexes {
-		if idx.FieldName == name {
-			index = &idx
+	match := -1
+	for j := range i.Indexes {
+		if i.Indexes[j].FieldName == name {
+			match = j
 			break
 		}
 	}
-
 	// if the index doesn't exist, create it
-	if index == nil {
-		index = &Index{
+	if match == -1 {
+		i.Indexes = append(i.Indexes, Index{
 			FieldName:    name,
 			FieldType:    fieldType(value),
 			IndexRecords: btree.NewG[protocol.IndexRecord](2, i.less),
-		}
-		i.Indexes = append(i.Indexes, *index)
-	} else if index.FieldType != fieldType(value) {
+		})
+		return len(i.Indexes) - 1
+	} else if i.Indexes[match].FieldType != fieldType(value) {
 		// update the field type if necessary
-		index.FieldType = protocol.FieldTypeUnknown
+		i.Indexes[match].FieldType = protocol.FieldTypeUnknown
 	}
-
-	return index
+	return match
 
 }
 
@@ -95,11 +95,8 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 
 			switch value := value.(type) {
 			case string, int, int8, int16, int32, int64, float32, float64, bool:
-				// write the field to the index
-				index := i.findIndex(key, value)
-
 				// find the correct spot to insert the index record
-				index.IndexRecords.ReplaceOrInsert(protocol.IndexRecord{
+				i.Indexes[i.findIndex(strings.Join(append(path, key), "."), value)].IndexRecords.ReplaceOrInsert(protocol.IndexRecord{
 					DataIndex:            dataIndex,
 					FieldStartByteOffset: uint32(fieldOffset),
 					FieldEndByteOffset:   uint32(dec.InputOffset()) - 1,
@@ -107,7 +104,7 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 
 			case json.Token:
 				switch value {
-				case '[':
+				case json.Delim('['):
 					// arrays are not indexed yet because we need to incorporate
 					// subindexing into the specification. however, we have to
 					// skip tokens until we reach the end of the array.
@@ -119,9 +116,9 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 						}
 
 						switch t {
-						case '[':
+						case json.Delim('['):
 							depth++
-						case ']':
+						case json.Delim(']'):
 							depth--
 						}
 
@@ -129,12 +126,12 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 							break
 						}
 					}
-				case '{':
+				case json.Delim('{'):
 					if err := i.handleObject(dec, append(path, key), dataIndex); err != nil {
 						return err
 					}
 					// read the }
-					if t, err := dec.Token(); err != nil || t != '}' {
+					if t, err := dec.Token(); err != nil || t != json.Delim('}') {
 						return fmt.Errorf("expected '}', got '%v'", t)
 					}
 				default:
@@ -154,14 +151,9 @@ func (i *IndexFile) AppendDataRow(r io.Reader) (map[string]any, error) {
 	// create a new json decoder
 	dec := json.NewDecoder(io.TeeReader(r, w))
 
-	t, err := dec.Token()
-	if err != nil {
-		return nil, fmt.Errorf("failed to read token: %w", err)
-	}
-
 	// if the first token is not {, then return an error
-	if t != '{' {
-		return nil, fmt.Errorf("expected '{', got '%v' (only json objects are supported at the root)", t)
+	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
+		return nil, fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 	}
 
 	if err := i.handleObject(dec, []string{}, uint64(len(i.DataRanges))); err != nil {
@@ -169,12 +161,9 @@ func (i *IndexFile) AppendDataRow(r io.Reader) (map[string]any, error) {
 	}
 
 	// the next token must be a }
-	if t, err := dec.Token(); err != nil || t != '}' {
+	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
 		return nil, fmt.Errorf("expected '}', got '%v'", t)
 	}
-
-	// compute the integrity checksum
-	checksum := sha256.Sum256(w.Bytes())
 
 	// append a data range
 	var start uint64
@@ -184,8 +173,18 @@ func (i *IndexFile) AppendDataRow(r io.Reader) (map[string]any, error) {
 	i.DataRanges = append(i.DataRanges, protocol.DataRange{
 		StartByteOffset: start,
 		EndByteOffset:   start + uint64(w.Len()) - 1,
-		Hash:            checksum,
+		Checksum:        xxhash.Sum64(w.Bytes()),
 	})
 
 	return nil, nil
+}
+
+func (i *IndexFile) Validate(r io.Reader) int {
+	s := bufio.NewScanner(r)
+	for j := 0; j < len(i.DataRanges) && s.Scan(); j++ {
+		if xxhash.Sum64(s.Bytes()) != i.DataRanges[j].Checksum {
+			return j
+		}
+	}
+	return len(i.DataRanges)
 }

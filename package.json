@@ -1,0 +1,19 @@
+{
+  "name": "appendable",
+  "version": "1.0.0",
+  "description": "AppendableDB is an append-only\\*, schemaless, service-less, client-facing database.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kevmo314/appendable.git"
+  },
+  "author": "Kevin Wang <kevmo314@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kevmo314/appendable/issues"
+  },
+  "homepage": "https://github.com/kevmo314/appendable#readme"
+}

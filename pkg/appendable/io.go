@@ -85,7 +85,7 @@ func ReadIndexFile(r io.Reader, f *IndexFile) error {
 			if dr.EndByteOffset, err = encoding.ReadUint64(r); err != nil {
 				return fmt.Errorf("failed to read data range: %w", err)
 			}
-			if dr.Hash, err = encoding.ReadSHA256Hash(r); err != nil {
+			if dr.Checksum, err = encoding.ReadUint64(r); err != nil {
 				return fmt.Errorf("failed to read data range: %w", err)
 			}
 			f.DataRanges[i] = dr
@@ -159,7 +159,7 @@ func WriteIndexFile(w io.Writer, f *IndexFile) error {
 		if err := encoding.WriteUint64(w, dataRange.EndByteOffset); err != nil {
 			return fmt.Errorf("failed to write data range: %w", err)
 		}
-		if err := encoding.WriteSHA256Hash(w, dataRange.Hash); err != nil {
+		if err := encoding.WriteUint64(w, dataRange.Checksum); err != nil {
 			return fmt.Errorf("failed to write data range: %w", err)
 		}
 	}
