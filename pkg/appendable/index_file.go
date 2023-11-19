@@ -1,14 +1,11 @@
 package appendable
 
 import (
-	"bufio"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
 
-	"github.com/cespare/xxhash/v2"
 	"github.com/google/btree"
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
@@ -24,7 +21,8 @@ type IndexFile struct {
 
 	DataRanges []protocol.DataRange
 
-	less btree.LessFunc[protocol.IndexRecord]
+	data io.ReadSeeker
+	tail int
 }
 
 // Index is a representation of a single index.
@@ -59,14 +57,15 @@ func (i *IndexFile) findIndex(name string, value any) int {
 		}
 	}
 	// if the index doesn't exist, create it
+	ft := fieldType(value)
 	if match == -1 {
 		i.Indexes = append(i.Indexes, Index{
 			FieldName:    name,
-			FieldType:    fieldType(value),
-			IndexRecords: btree.NewG[protocol.IndexRecord](2, i.less),
+			FieldType:    ft,
+			IndexRecords: btree.NewG[protocol.IndexRecord](2, ft.LessFn(i.data)),
 		})
 		return len(i.Indexes) - 1
-	} else if i.Indexes[match].FieldType != fieldType(value) {
+	} else if i.Indexes[match].FieldType != ft {
 		// update the field type if necessary
 		i.Indexes[match].FieldType = protocol.FieldTypeUnknown
 	}
@@ -75,32 +74,38 @@ func (i *IndexFile) findIndex(name string, value any) int {
 }
 
 func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uint64) error {
+	var dataOffset uint32
+	if dataIndex > 0 {
+		dataOffset = uint32(i.DataRanges[dataIndex-1].EndByteOffset + 1)
+	}
+
 	// while the next token is not }, read the key
 	for dec.More() {
 		key, err := dec.Token()
 		if err != nil {
-			return fmt.Errorf("failed to read token: %w", err)
+			return fmt.Errorf("failed to read token at index %d: %w", dataIndex, err)
 		}
 
 		// key must be a string
 		if key, ok := key.(string); !ok {
 			return fmt.Errorf("expected string key, got '%v'", key)
 		} else {
-			fieldOffset := dec.InputOffset()
+			fieldOffset := dec.InputOffset() + 1 // skip the :
 
 			value, err := dec.Token()
 			if err != nil {
-				return fmt.Errorf("failed to read token: %w", err)
+				return fmt.Errorf("failed to read token 2: %w", err)
 			}
 
 			switch value := value.(type) {
 			case string, int, int8, int16, int32, int64, float32, float64, bool:
 				// find the correct spot to insert the index record
-				i.Indexes[i.findIndex(strings.Join(append(path, key), "."), value)].IndexRecords.ReplaceOrInsert(protocol.IndexRecord{
+				record := protocol.IndexRecord{
 					DataIndex:            dataIndex,
-					FieldStartByteOffset: uint32(fieldOffset),
-					FieldEndByteOffset:   uint32(dec.InputOffset()) - 1,
-				})
+					FieldStartByteOffset: dataOffset + uint32(fieldOffset),
+					FieldEndByteOffset:   dataOffset + uint32(dec.InputOffset()) - 1,
+				}
+				i.Indexes[i.findIndex(strings.Join(append(path, key), "."), value)].IndexRecords.ReplaceOrInsert(record)
 
 			case json.Token:
 				switch value {
@@ -112,7 +117,7 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 					for {
 						t, err := dec.Token()
 						if err != nil {
-							return fmt.Errorf("failed to read token: %w", err)
+							return fmt.Errorf("failed to read token 3: %w", err)
 						}
 
 						switch t {
@@ -143,48 +148,4 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 		}
 	}
 	return nil
-}
-
-func (i *IndexFile) AppendDataRow(r io.Reader) (map[string]any, error) {
-	w := &bytes.Buffer{}
-
-	// create a new json decoder
-	dec := json.NewDecoder(io.TeeReader(r, w))
-
-	// if the first token is not {, then return an error
-	if t, err := dec.Token(); err != nil || t != json.Delim('{') {
-		return nil, fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
-	}
-
-	if err := i.handleObject(dec, []string{}, uint64(len(i.DataRanges))); err != nil {
-		return nil, err
-	}
-
-	// the next token must be a }
-	if t, err := dec.Token(); err != nil || t != json.Delim('}') {
-		return nil, fmt.Errorf("expected '}', got '%v'", t)
-	}
-
-	// append a data range
-	var start uint64
-	if len(i.DataRanges) > 0 {
-		start = i.DataRanges[len(i.DataRanges)-1].EndByteOffset + 1
-	}
-	i.DataRanges = append(i.DataRanges, protocol.DataRange{
-		StartByteOffset: start,
-		EndByteOffset:   start + uint64(w.Len()) - 1,
-		Checksum:        xxhash.Sum64(w.Bytes()),
-	})
-
-	return nil, nil
-}
-
-func (i *IndexFile) Validate(r io.Reader) int {
-	s := bufio.NewScanner(r)
-	for j := 0; j < len(i.DataRanges) && s.Scan(); j++ {
-		if xxhash.Sum64(s.Bytes()) != i.DataRanges[j].Checksum {
-			return j
-		}
-	}
-	return len(i.DataRanges)
 }

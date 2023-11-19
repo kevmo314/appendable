@@ -1,45 +1,46 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
+
+	"github.com/kevmo314/appendable/pkg/appendable"
 )
 
-func usage() {
-	fmt.Printf("Usage: %s [-i <index filename>] <data filename>\n", os.Args[0])
-	fmt.Println("Options:")
-	fmt.Println("\t-i <index filename> - specify the existing index of the file to be opened, writing to stdout")
-	fmt.Println("\t-I <index filename> - specify the existing index of the file to be opened, mutating it in-place if it exists")
-	os.Exit(1)
-}
-
 func main() {
-	if len(os.Args) < 2 {
-		usage()
+	// index := flag.String("i", "", "Specify the existing index of the file to be opened, writing to stdout")
+	flag.Usage = func() {
+		fmt.Printf("Usage: %s [-i index] [-I index] filename\n", os.Args[0])
+		flag.PrintDefaults()
+		os.Exit(1)
 	}
+	flag.Parse()
 
-	var index string
-	var filename string
+	args := flag.Args()
 
-	if len(os.Args) == 2 {
-		filename = os.Args[1]
-	} else if len(os.Args) == 4 {
-		if os.Args[1] != "-i" {
-			usage()
-		}
-		filename = os.Args[3]
-		index = os.Args[2]
-	} else {
-		usage()
+	if len(args) != 1 {
+		flag.Usage()
 	}
 
 	// Open the file
-	file, err := os.Open(filename)
+	file, err := os.Open(args[0])
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		panic(err)
 	}
 
 	// Open the index file
+	indexFile, err := appendable.NewIndexFile(file)
+	if err != nil {
+		panic(err)
+	}
 
+	// Write the index file
+	of, err := os.Create(args[0] + ".index")
+	if err != nil {
+		panic(err)
+	}
+	if err := appendable.Serialize(of, indexFile); err != nil {
+		panic(err)
+	}
 }

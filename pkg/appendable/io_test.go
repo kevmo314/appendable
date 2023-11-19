@@ -14,7 +14,7 @@ import (
 func TestReadIndex(t *testing.T) {
 	t.Run("empty index file", func(t *testing.T) {
 		i := &IndexFile{}
-		if err := ReadIndexFile(strings.NewReader(""), i); !errors.Is(err, io.EOF) {
+		if err := ReadIndexFile(i, strings.NewReader("")); !errors.Is(err, io.EOF) {
 			t.Errorf("expected EOF, got %v", err)
 		}
 	})
@@ -39,13 +39,13 @@ func TestWriteIndex(t *testing.T) {
 			},
 		}
 		buf := &bytes.Buffer{}
-		if err := WriteIndexFile(buf, i); err != nil {
+		if err := Serialize(buf, i); err != nil {
 			t.Fatal(err)
 		}
 
 		// deserialize the index file
 		j := &IndexFile{}
-		if err := ReadIndexFile(buf, j); err != nil {
+		if err := ReadIndexFile(j, bytes.NewReader(buf.Bytes())); err != nil {
 			t.Fatal(err)
 		}
 
