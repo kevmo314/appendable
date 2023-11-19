@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"strings"
 
 	"github.com/google/btree"
@@ -59,14 +60,16 @@ func (i *IndexFile) findIndex(name string, value any) int {
 	// if the index doesn't exist, create it
 	ft := fieldType(value)
 	if match == -1 {
-		i.Indexes = append(i.Indexes, Index{
-			FieldName:    name,
-			FieldType:    ft,
-			IndexRecords: btree.NewG[protocol.IndexRecord](2, ft.LessFn(i.data)),
-		})
+		index := Index{
+			FieldName: name,
+			FieldType: ft,
+		}
+		index.IndexRecords = btree.NewG[protocol.IndexRecord](2, index.LessFn(i.data))
+		i.Indexes = append(i.Indexes, index)
 		return len(i.Indexes) - 1
 	} else if i.Indexes[match].FieldType != ft {
 		// update the field type if necessary
+		log.Printf("updating field type")
 		i.Indexes[match].FieldType = protocol.FieldTypeUnknown
 	}
 	return match
@@ -105,7 +108,8 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 					FieldStartByteOffset: dataOffset + uint32(fieldOffset),
 					FieldEndByteOffset:   dataOffset + uint32(dec.InputOffset()) - 1,
 				}
-				i.Indexes[i.findIndex(strings.Join(append(path, key), "."), value)].IndexRecords.ReplaceOrInsert(record)
+				index := i.findIndex(strings.Join(append(path, key), "."), value)
+				i.Indexes[index].IndexRecords.ReplaceOrInsert(record)
 
 			case json.Token:
 				switch value {
@@ -132,6 +136,14 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 						}
 					}
 				case json.Delim('{'):
+					// find the index to set the field type to unknown.
+					name := strings.Join(append(path, key), ".")
+					for j := range i.Indexes {
+						if i.Indexes[j].FieldName == name {
+							i.Indexes[j].FieldType = protocol.FieldTypeUnknown
+							break
+						}
+					}
 					if err := i.handleObject(dec, append(path, key), dataIndex); err != nil {
 						return err
 					}
@@ -148,4 +160,53 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 		}
 	}
 	return nil
+}
+
+func fieldRank(token json.Token) int {
+	switch token.(type) {
+	case nil:
+		return 1
+	case bool:
+		return 2
+	case int, int8, int16, int32, int64, float32, float64:
+		return 3
+	case string:
+		return 4
+	default:
+		panic("unknown type")
+	}
+}
+
+func (i *Index) LessFn(r io.ReadSeeker) btree.LessFunc[protocol.IndexRecord] {
+	return func(a, b protocol.IndexRecord) bool {
+		if a.DataIndex == b.DataIndex {
+			// short circuit for the same data index
+			return false
+		}
+		at, err := a.Token(r)
+		if err != nil {
+			panic(err)
+		}
+		bt, err := b.Token(r)
+		if err != nil {
+			panic(err)
+		}
+		atr := fieldRank(at)
+		btr := fieldRank(bt)
+		if atr != btr {
+			return atr < btr
+		}
+		switch at.(type) {
+		case nil:
+			return false
+		case bool:
+			return !at.(bool) && bt.(bool)
+		case int, int8, int16, int32, int64, float32, float64:
+			return at.(float64) < bt.(float64)
+		case string:
+			return strings.Compare(at.(string), bt.(string)) < 0
+		default:
+			panic("unknown type")
+		}
+	}
 }

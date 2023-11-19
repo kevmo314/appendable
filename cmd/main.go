@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := appendable.Serialize(of, indexFile); err != nil {
+	if err := indexFile.Serialize(of); err != nil {
 		panic(err)
 	}
 }

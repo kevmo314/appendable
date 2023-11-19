@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/google/btree"
@@ -52,23 +51,23 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 		br := 0
 		recordCounts := []uint64{}
 		for br < int(ifh.IndexLength) {
-			var i Index
-			if i.FieldName, err = encoding.ReadString(r); err != nil {
+			var index Index
+			if index.FieldName, err = encoding.ReadString(r); err != nil {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
 			ft, err := encoding.ReadByte(r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
-			i.FieldType = protocol.FieldType(ft)
+			index.FieldType = protocol.FieldType(ft)
 			recordCount, err := encoding.ReadUint64(r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
 			recordCounts = append(recordCounts, recordCount)
-			i.IndexRecords = btree.NewG[protocol.IndexRecord](2, i.FieldType.LessFn(data))
-			f.Indexes = append(f.Indexes, i)
-			br += encoding.SizeString(i.FieldName) + binary.Size(ft) + binary.Size(uint64(0))
+			index.IndexRecords = btree.NewG[protocol.IndexRecord](2, index.LessFn(data))
+			f.Indexes = append(f.Indexes, index)
+			br += encoding.SizeString(index.FieldName) + binary.Size(ft) + binary.Size(uint64(0))
 		}
 		if br != int(ifh.IndexLength) {
 			return nil, fmt.Errorf("expected to read %d bytes, read %d bytes", ifh.IndexLength, br)
@@ -101,7 +100,6 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 			if dr.EndByteOffset, err = encoding.ReadUint64(r); err != nil {
 				return nil, fmt.Errorf("failed to read data range: %w", err)
 			}
-			start = dr.EndByteOffset + 1
 			if dr.Checksum, err = encoding.ReadUint64(r); err != nil {
 				return nil, fmt.Errorf("failed to read data range: %w", err)
 			}
@@ -112,7 +110,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				return nil, fmt.Errorf("failed to seek data file: %w", err)
 			}
 			buf := &bytes.Buffer{}
-			if _, err := io.CopyN(buf, data, int64(dr.EndByteOffset-start+1)); err != nil {
+			if _, err := io.CopyN(buf, data, int64(dr.EndByteOffset-start)); err != nil {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
 
@@ -120,6 +118,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 			if xxhash.Sum64(buf.Bytes()) != dr.Checksum {
 				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), dr.Checksum)
 			}
+			start = dr.EndByteOffset + 1
 		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", version)
@@ -138,7 +137,6 @@ func (f *IndexFile) Synchronize() error {
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)
 	for i := 0; scanner.Scan(); i++ {
-		log.Printf("%v", i)
 		line := scanner.Bytes()
 
 		// create a new json decoder
@@ -172,7 +170,7 @@ func (f *IndexFile) Synchronize() error {
 	return nil
 }
 
-func Serialize(w io.Writer, f *IndexFile) error {
+func (f *IndexFile) Serialize(w io.Writer) error {
 	// write the version
 	if err := encoding.WriteByte(w, byte(f.Version)); err != nil {
 		return fmt.Errorf("failed to write version: %w", err)
