@@ -2,6 +2,9 @@
 
 Appendable is an append-only\*, schemaless, service-less database.
 
+Appendable doesn't require a conventional server, instead it generates an index
+file that you can host on your favorite static hosting site.
+
 Appendable currently supports data files in the following formats:
 
 - [x] [JSON Lines](https://jsonlines.org/) `.jsonl`
@@ -22,8 +25,11 @@ A smart friend of mine once said
 
 Appendable's primary goals are
 
-- Cost-optimized serving
-- Speed-optimized (O(1)) index updating for appends
+- Cost-optimized serving. Leverage your favorite static content host instead of
+  maintaining and provisioning resources for a dedicated database server.
+- Speed-optimized (O(1)) index updating for appends. Index file updates are
+  fast and deterministic, making them suitable for real-time and streaming data
+  updates.
 
 ## Demonstration
 
