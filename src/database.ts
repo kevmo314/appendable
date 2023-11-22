@@ -1,5 +1,5 @@
 import { DataFile } from "./data-file";
-import { IndexFile } from "./index-file";
+import { IndexFile, VersionedIndexFile } from "./index-file";
 
 type Schema = {
   [key: string]: {};
@@ -32,11 +32,18 @@ type Query<T extends Schema> = {
 export class Database<T extends Schema> {
   private constructor(
     private dataFile: DataFile,
-    private indexFile: IndexFile
+    private indexFile: VersionedIndexFile<T>
   ) {}
 
-  static forDataFileAndIndexFile(dataFile: DataFile, indexFile: IndexFile) {
+  static forDataFileAndIndexFile<T = any>(
+    dataFile: DataFile,
+    indexFile: VersionedIndexFile<T>
+  ) {
     return new Database(dataFile, indexFile);
+  }
+
+  async fields() {
+    return await this.indexFile.indexHeaders();
   }
 
   private async evaluate(where: WhereNode<T>) {

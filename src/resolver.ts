@@ -1,4 +1,4 @@
 export type RangeResolver = (
-  start: number | bigint,
-  end: number | bigint
+  start: number,
+  end: number
 ) => Promise<ArrayBuffer>;

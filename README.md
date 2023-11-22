@@ -1,33 +1,38 @@
-# AppendableDB
+# Appendable
 
-AppendableDB is an append-only\*, schemaless, service-less, client-facing database.
+Appendable is an append-only\*, schemaless, service-less database.
 
-It's `jq` over HTTP, using HTTP Range requests to minimize over-the-wire data transfer.
+Appendable currently supports data files in the following formats:
 
-Data is stored in [JSON Lines](https://jsonlines.org/) `.jsonl` format and AppendableDB
-does not touch your data: it only produces an index file.
+- [x] [JSON Lines](https://jsonlines.org/) `.jsonl`
+- [ ] Parquet
+- [ ] CSV
+- [ ] TSV
+- [ ] RecordIO
+
+with more formats coming soon.
 
 _\* Ok, it's append-preferred._
 
 ## Motivation
 
-A smart friend of mine said
+A smart friend of mine once said
 
 > _The problem with databases is that everybody cares about a different killer feature_
 
-AppendableDB's primary goals are
+Appendable's primary goals are
 
 - Cost-optimized serving
-- Speed-optimized incremental index updating
+- Speed-optimized (O(1)) index updating for appends
 
 ## Demonstration
 
 Check out this repository's GitHub pages for an example querying the server.
 
 ```ts
-import AppendableDB from "appendable";
+import Appendable from "appendable";
 
-const db = AppendableDB.init("data.jsonl", "index.dat");
+const db = Appendable.init("data.jsonl", "index.dat");
 
 const results = await db
   .where("timestamp", ">=", "2023-11-01T00:00:00Z")
@@ -46,7 +51,7 @@ First, you'll need to build an index file. This can be done with Docker
 
 ### With Docker (preferred)
 
-Store your data as `data.jsonl` and run `docker run appendabledb > index.dat`.
+Store your data as `data.jsonl` and run `docker run Appendable > index.dat`.
 
 To serve your database,
 
@@ -54,7 +59,7 @@ To serve your database,
 
 ### Real-time updates
 
-AppendableDB indexes are intended to be very cheap to produce incrementally. It is so
+Appendable indexes are intended to be very cheap to produce incrementally. It is so
 cheap that it is not unreasonable to generate the index on demand. That is, you can
 run a server such that `index.dat` produces the output from running
 `./appendable -i index.dat` and cache the latest version on your CDN. Couple this with
@@ -62,9 +67,9 @@ a signalling channel to indicate that a version update has occurred to subscribe
 updates. For example,
 
 ```ts
-import AppendableDB from "appendable";
+import Appendable from "appendable";
 
-const db = AppendableDB.init("data.jsonl", "index.dat");
+const db = Appendable.init("data.jsonl", "index.dat");
 
 const unsubscribe = db
   .where("timestamp", ">=", "2023-11-01T00:00:00Z")
@@ -86,9 +91,9 @@ can be called without too much concern.
 
 ### Schemas
 
-A schema file is not required to use AppendableDB, however if you wish to ensure that
+A schema file is not required to use Appendable, however if you wish to ensure that
 your data follows certain types, pass a JSON Schema file with `-s schema.json` and
-AppendableDB will throw an error instead of inferring the type from the data. This
+Appendable will throw an error instead of inferring the type from the data. This
 can be useful for detecting consistency issues or enforcing field restrictions.
 
 A word of caution, if you add a non-nullable field to your JSON schema, this will cause
@@ -99,14 +104,14 @@ your client will see the field as nullable despite the schema saying non-nullabl
 
 ### Generated types
 
-AppendableDB can also emit TypeScript type definitions. Pass `-t output.d.ts` to produce
+Appendable can also emit TypeScript type definitions. Pass `-t output.d.ts` to produce
 an inferred type definition file to make your queries type-safe. This can be used with
 
 ```ts
-import AppendableDB from "appendable";
+import Appendable from "appendable";
 import DBTypes from 'output.d.ts';
 
-const db = AppendableDB.init<DBTypes>("data.jsonl", "index.dat");
+const db = Appendable.init<DBTypes>("data.jsonl", "index.dat");
 
 ...
 ```
@@ -122,9 +127,9 @@ a `.query()` call. If you wish to perform more advanced queries, you can do so b
 directly. For example,
 
 ```ts
-import AppendableDB from "appendable";
+import Appendable from "appendable";
 
-const db = AppendableDB.init("data.jsonl", "index.dat");
+const db = Appendable.init("data.jsonl", "index.dat");
 
 const results = await db.query({
   where: {
@@ -144,7 +149,7 @@ const results = await db.query({
 
 ### Permissioning
 
-AppendableDB does not support permissioning because it assumes that the data is publicly
+Appendable does not support permissioning because it assumes that the data is publicly
 readable. To accommodate permissions, we recomend guarding the access of your data files
 via your preferred authentication scheme. That is, create an index file for each user's
 data. For example, your static file content may look something like
@@ -162,7 +167,7 @@ Where each user has access to their own data and index file.
 
 ### Mutating existing data
 
-AppendableDB is geared towards data that is immutable, however in practice this might not
+Appendable is geared towards data that is immutable, however in practice this might not
 be ideal. In order to accommodate data mutations, a data integrity hash is maintained so
 when data is mutated, the data will be reindexed. Reindexing is O(n) in the age
 of the oldest mutation (hence why appending is O(1) for updating the index!) so mutating
@@ -175,7 +180,7 @@ version your data and index files.
 
 ### Custom `fetch()` API
 
-For convenience, AppendableDB uses the browser's `fetch()` for fetching data files if
+For convenience, Appendable uses the browser's `fetch()` for fetching data files if
 the data and index files are specified as a string. If you wish to use your own library
 or wish to add your own headers, pass a callback.
 
@@ -184,9 +189,9 @@ The callback must correctly return a byte slice representing the start and end p
 For example,
 
 ```ts
-import AppendableDB from "appendable";
+import Appendable from "appendable";
 
-const db = AppendableDB.init(
+const db = Appendable.init(
   (start: number, end: number) => {
     const response = await fetch("data.jsonl", {
       headers: { Range: `bytes=${start}-${end}` },
@@ -201,3 +206,14 @@ const db = AppendableDB.init(
   }
 );
 ```
+
+## Peanut gallery
+
+### Why not query a SQLite database with range requests?
+
+Dumping all the data into a SQLite database, hosting it, and then querying with
+something like [sql.js](https://sql.js.org/) _could_ (and probably would) work,
+but I find it particularly elegant that Appendable doesn't change the raw data.
+In other words, besides producing an index file the `jsonl` file provided stays
+untouched which means updates to the index file can lag behind data changes and
+remain valid because the database doesn't need to shuffle the data around.

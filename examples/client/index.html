@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="/dist/appendable.min.js"></script>
+    <script>
+      Appendable.init(
+        "/examples/workspace/yellow_tripdata_2023-01.jsonl",
+        "/examples/workspace/yellow_tripdata_2023-01.jsonl.index"
+      ).then((db) => {
+        db.fields().then((fields) => {
+          document.getElementById("fields").innerHTML = JSON.stringify(
+            fields,
+            (key, value) => {
+              if (typeof value === "bigint") {
+                return value.toString();
+              }
+              return value;
+            },
+            2
+          );
+        });
+
+        db.query({
+          where: {
+            operation: ">=",
+            key: "trip_distance",
+            value: 10,
+          },
+          orderBy: [
+            {
+              key: "trip_distance",
+              order: "ASC",
+            },
+          ],
+          limit: 10,
+        }).then((results) => {
+          console.log(results);
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <h1>AppendableDB - Yellow Cab Trip Data in 01/2023</h1>
+    <h2>Fields</h2>
+    <pre id="fields"></pre>
+    <h2>Ordered by trip distance</h2>
+  </body>
+</html>

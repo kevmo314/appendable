@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -40,7 +42,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if err := indexFile.Serialize(of); err != nil {
+	log.Printf("Writing index file to %s", args[0]+".index")
+	bufof := bufio.NewWriter(of)
+	if err := indexFile.Serialize(bufof); err != nil {
 		panic(err)
 	}
+	if err := bufof.Flush(); err != nil {
+		panic(err)
+	}
+	if err := of.Close(); err != nil {
+		panic(err)
+	}
+	log.Printf("Done!")
 }

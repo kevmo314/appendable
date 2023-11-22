@@ -99,7 +99,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(j.Indexes))
 		}
 
-		if j.Indexes[0].FieldType != protocol.FieldTypeUnknown {
+		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeNumber {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
 		}
 	})
@@ -173,12 +173,35 @@ func TestAppendDataRow(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
 		}
 
-		if j.Indexes[0].FieldType != protocol.FieldTypeUnknown {
+		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeObject {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
 		}
 	})
 
 	t.Run("ignores arrays", func(t *testing.T) {
+		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := &bytes.Buffer{}
+
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// check that the index file now has the additional data ranges but same number of indices
+		if len(j.Indexes) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
+		}
+	})
+
+	t.Run("ignores arrays but downgrades type", func(t *testing.T) {
 		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
 		if err != nil {
 			t.Fatal(err)
@@ -198,6 +221,37 @@ func TestAppendDataRow(t *testing.T) {
 		// check that the index file now has the additional data ranges but same number of indices
 		if len(j.Indexes) != 1 {
 			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
+		}
+
+		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeArray {
+			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
+		}
+	})
+
+	t.Run("existing index but nullable type", func(t *testing.T) {
+		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := &bytes.Buffer{}
+
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":null}\n"))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// check that the index file now has the additional data ranges but same number of indices
+		if len(j.Indexes) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 1", len(j.Indexes))
+		}
+
+		if j.Indexes[0].FieldType != protocol.FieldTypeNull|protocol.FieldTypeString {
+			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeNullableString", j.Indexes[0].FieldType)
 		}
 	})
 }

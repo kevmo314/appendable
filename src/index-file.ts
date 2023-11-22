@@ -7,24 +7,47 @@ type IndexRecords = {
 };
 
 export class IndexFile<T> {
-  static async forUrl(url: string) {
-    return await IndexFile.forResolver(async (start: number, end: number) => {
-      const response = await fetch(url, {
-        headers: { Range: `bytes=${start}-${end}` },
-      });
-      return await response.arrayBuffer();
-    });
+  static async forUrl<T = any>(url: string) {
+    return await IndexFile.forResolver<T>(
+      async (start: number, end: number) => {
+        const response = await fetch(url, {
+          headers: { Range: `bytes=${start}-${end}` },
+        });
+        return await response.arrayBuffer();
+      }
+    );
   }
 
-  static async forResolver(resolver: RangeResolver) {
+  static async forResolver<T = any>(
+    resolver: RangeResolver
+  ): Promise<VersionedIndexFile<T>> {
     const version = new DataView(await resolver(0, 0)).getUint8(0);
     switch (version) {
       case 1:
-        return new IndexFileV1(resolver);
+        return new IndexFileV1<T>(resolver);
       default:
         throw new Error("invalid version");
     }
   }
+}
+
+export interface VersionedIndexFile<T> {
+  indexFileHeader(): Promise<{
+    indexLength: number;
+    dataCount: number;
+  }>;
+  indexHeaders(): Promise<
+    {
+      fieldName: string;
+      fieldType: number;
+      indexRecordCount: bigint;
+    }[]
+  >;
+  // indexRecords(
+  //   field: keyof T,
+  //   condition: "<" | "<=" | "==" | ">=" | ">",
+  //   value: any
+  // ): Promise<IndexRecords[]>;
 }
 
 class IndexFileV1<T> {
@@ -34,7 +57,7 @@ class IndexFileV1<T> {
     const header = new DataView(await this.resolver(1, 16));
     return {
       indexLength: Number(header.getBigUint64(0)),
-      dataCount: Number(header.getBigUint64(4)),
+      dataCount: Number(header.getBigUint64(8)),
     };
   }
 
@@ -44,28 +67,31 @@ class IndexFileV1<T> {
     const data = new DataView(buffer);
     const headers: {
       fieldName: string;
-      fieldType: number;
+      fieldType: bigint;
       indexRecordCount: bigint;
     }[] = [];
     let offset = 0;
     while (offset < indexFileHeader.indexLength) {
       const fieldNameLength = data.getUint32(offset);
+      offset += 4;
       const fieldName = new TextDecoder("utf-8").decode(
-        buffer.slice(offset + 1, offset + 1 + fieldNameLength)
+        buffer.slice(offset, offset + fieldNameLength)
       );
-      const fieldType = data.getUint8(offset + 1 + fieldNameLength);
-      const indexRecordCount = data.getBigUint64(
-        offset + 1 + fieldNameLength + 1
-      );
+      offset += fieldNameLength;
+      const fieldType = data.getBigUint64(offset);
+      offset += 8;
+      const indexRecordCount = data.getBigUint64(offset);
+      offset += 8;
       headers.push({
         fieldName,
         fieldType,
         indexRecordCount,
       });
-      offset += 1 + fieldNameLength + 1 + 8;
     }
     if (offset !== indexFileHeader.indexLength) {
-      throw new Error("inaccurate header read");
+      throw new Error(
+        `Inaccurate header read, offset = ${offset} but indexFileHeader.indexLength = ${indexFileHeader.indexLength}. This could indicate that the index file is corrupt.`
+      );
     }
     return headers;
   }

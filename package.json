@@ -4,7 +4,8 @@
   "description": "AppendableDB is an append-only\\*, schemaless, service-less, client-facing database.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
+    "serve:example": "http-server"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,11 @@
   "bugs": {
     "url": "https://github.com/kevmo314/appendable/issues"
   },
-  "homepage": "https://github.com/kevmo314/appendable#readme"
+  "homepage": "https://github.com/kevmo314/appendable#readme",
+  "dependencies": {
+    "esbuild": "^0.19.7"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
 }

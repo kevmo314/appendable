@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
+	"sort"
+	"strings"
 
 	"github.com/cespare/xxhash/v2"
-	"github.com/google/btree"
 	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
@@ -55,7 +57,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 			if index.FieldName, err = encoding.ReadString(r); err != nil {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
-			ft, err := encoding.ReadByte(r)
+			ft, err := encoding.ReadUint64(r)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
@@ -65,7 +67,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				return nil, fmt.Errorf("failed to read index header: %w", err)
 			}
 			recordCounts = append(recordCounts, recordCount)
-			index.IndexRecords = btree.NewG[protocol.IndexRecord](2, index.LessFn(data))
+			index.IndexRecords = make(map[any][]protocol.IndexRecord)
 			f.Indexes = append(f.Indexes, index)
 			br += encoding.SizeString(index.FieldName) + binary.Size(ft) + binary.Size(uint64(0))
 		}
@@ -77,7 +79,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 		for i, index := range f.Indexes {
 			for j := 0; j < int(recordCounts[i]); j++ {
 				var ir protocol.IndexRecord
-				if ir.DataIndex, err = encoding.ReadUint64(r); err != nil {
+				if ir.DataNumber, err = encoding.ReadUint64(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
 				if ir.FieldStartByteOffset, err = encoding.ReadUint32(r); err != nil {
@@ -86,8 +88,17 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				if ir.FieldEndByteOffset, err = encoding.ReadUint32(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
-				if _, removed := index.IndexRecords.ReplaceOrInsert(ir); removed {
-					return nil, fmt.Errorf("duplicate index record found")
+
+				value, err := ir.Token(data)
+				if err != nil {
+					return nil, fmt.Errorf("failed to read index record: %w", err)
+				}
+
+				switch value.(type) {
+				case nil, bool, int, int8, int16, int32, int64, float32, float64, string:
+					index.IndexRecords[value] = append(index.IndexRecords[value], ir)
+				default:
+					return nil, fmt.Errorf("unsupported type: %T", value)
 				}
 			}
 		}
@@ -137,6 +148,8 @@ func (f *IndexFile) Synchronize() error {
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)
 	for i := 0; scanner.Scan(); i++ {
+		log.Printf("%v", i)
+
 		line := scanner.Bytes()
 
 		// create a new json decoder
@@ -148,7 +161,7 @@ func (f *IndexFile) Synchronize() error {
 		}
 
 		if err := f.handleObject(dec, []string{}, uint64(len(f.DataRanges))); err != nil {
-			return err
+			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
 		// the next token must be a }
@@ -168,6 +181,21 @@ func (f *IndexFile) Synchronize() error {
 		f.DataRanges = append(f.DataRanges, dataRange)
 	}
 	return nil
+}
+
+func fieldRank(token json.Token) int {
+	switch token.(type) {
+	case nil:
+		return 1
+	case bool:
+		return 2
+	case int, int8, int16, int32, int64, float32, float64:
+		return 3
+	case string:
+		return 4
+	default:
+		panic("unknown type")
+	}
 }
 
 func (f *IndexFile) Serialize(w io.Writer) error {
@@ -197,10 +225,15 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 		if err := encoding.WriteString(w, index.FieldName); err != nil {
 			return fmt.Errorf("failed to write index field name: %w", err)
 		}
-		if err := encoding.WriteByte(w, byte(index.FieldType)); err != nil {
+		if err := encoding.WriteUint64(w, uint64(index.FieldType)); err != nil {
 			return fmt.Errorf("failed to write index field type: %w", err)
 		}
-		if err := encoding.WriteUint64(w, uint64(index.IndexRecords.Len())); err != nil {
+		// total the number of index records
+		count := 0
+		for _, records := range index.IndexRecords {
+			count += len(records)
+		}
+		if err := encoding.WriteUint64(w, uint64(count)); err != nil {
 			return fmt.Errorf("failed to write index record count: %w", err)
 		}
 	}
@@ -208,18 +241,44 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 	// write the index records
 	for _, index := range f.Indexes {
 		var err error
-		index.IndexRecords.Ascend(func(item protocol.IndexRecord) bool {
-			if err = encoding.WriteUint64(w, item.DataIndex); err != nil {
-				return false
+		keys := make([]any, len(index.IndexRecords))
+		i := 0
+		for key := range index.IndexRecords {
+			keys[i] = key
+			i++
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			at, bt := keys[i], keys[j]
+			if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
+				return atr < btr
 			}
-			if err = encoding.WriteUint32(w, item.FieldStartByteOffset); err != nil {
+			switch at.(type) {
+			case nil:
 				return false
+			case bool:
+				return !at.(bool) && bt.(bool)
+			case int, int8, int16, int32, int64, float32, float64:
+				return at.(float64) < bt.(float64)
+			case string:
+				return strings.Compare(at.(string), bt.(string)) < 0
+			default:
+				panic("unknown type")
 			}
-			if err = encoding.WriteUint32(w, item.FieldEndByteOffset); err != nil {
-				return false
-			}
-			return true
 		})
+		// iterate in key-ascending order
+		for _, key := range keys {
+			for _, item := range index.IndexRecords[key] {
+				if err = encoding.WriteUint64(w, item.DataNumber); err != nil {
+					return fmt.Errorf("failed to write index record: %w", err)
+				}
+				if err = encoding.WriteUint32(w, item.FieldStartByteOffset); err != nil {
+					return fmt.Errorf("failed to write index record: %w", err)
+				}
+				if err = encoding.WriteUint32(w, item.FieldEndByteOffset); err != nil {
+					return fmt.Errorf("failed to write index record: %w", err)
+				}
+			}
+		}
 		if err != nil {
 			return fmt.Errorf("failed to write index record: %w", err)
 		}

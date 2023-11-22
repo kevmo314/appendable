@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 )
 
 /*
@@ -63,20 +64,49 @@ type IndexHeader struct {
 // FieldType represents the type of data stored in the field, which follows
 // JSON types excluding Object and null. Object is broken down into subfields
 // and null is not stored.
-type FieldType byte
+//
+// FieldType is left as a uint64 to avoid shooting ourselves in the foot if we
+// want to support more types in the future via other file formats.
+type FieldType uint64
 
 const (
-	FieldTypeUnknown FieldType = iota
-	FieldTypeString
+	FieldTypeString FieldType = (1 << iota)
 	FieldTypeNumber
+	FieldTypeObject
 	FieldTypeArray
 	FieldTypeBoolean
+	FieldTypeNull
 )
 
+func (t FieldType) TypescriptType() string {
+	components := []string{}
+	if t&FieldTypeString != 0 {
+		components = append(components, "string")
+	}
+	if t&FieldTypeNumber != 0 {
+		components = append(components, "number")
+	}
+	if t&FieldTypeObject != 0 {
+		components = append(components, "Record")
+	}
+	if t&FieldTypeArray != 0 {
+		components = append(components, "any[]")
+	}
+	if t&FieldTypeBoolean != 0 {
+		components = append(components, "boolean")
+	}
+	if t&FieldTypeNull != 0 {
+		components = append(components, "null")
+	}
+	if len(components) == 0 {
+		return "unknown"
+	}
+	return strings.Join(components, " | ")
+}
+
 type IndexRecord struct {
-	// DataRange represents the range of bytes in the data file that this index
-	// record points to.
-	DataIndex uint64
+	// DataNumber refers to the row number of the data record in the data file.
+	DataNumber uint64
 	// FieldByteOffset represents the byte offset of the field in the data
 	// record to fetch exactly the field value. That is, the field value is
 	// stored at DataRange.StartByteOffset + FieldByteOffset.
