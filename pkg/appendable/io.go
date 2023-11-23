@@ -101,40 +101,41 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 		}
 
 		// read the data ranges
-		f.DataRanges = make([]protocol.DataRange, ifh.DataCount)
+		f.EndByteOffsets = make([]uint64, ifh.DataCount)
+		f.Checksums = make([]uint64, ifh.DataCount)
+		for i := 0; i < int(ifh.DataCount); i++ {
+			if f.EndByteOffsets[i], err = encoding.ReadUint64(r); err != nil {
+				return nil, fmt.Errorf("failed to read data range: %w", err)
+			}
+		}
 		start := uint64(0)
 		for i := 0; i < int(ifh.DataCount); i++ {
-			var dr protocol.DataRange
-			if dr.EndByteOffset, err = encoding.ReadUint64(r); err != nil {
+			if f.Checksums[i], err = encoding.ReadUint64(r); err != nil {
 				return nil, fmt.Errorf("failed to read data range: %w", err)
 			}
-			if dr.Checksum, err = encoding.ReadUint64(r); err != nil {
-				return nil, fmt.Errorf("failed to read data range: %w", err)
-			}
-			f.DataRanges[i] = dr
 
 			// read the range from the data file to verify the checksum
 			if _, err := data.Seek(int64(start), io.SeekStart); err != nil {
 				return nil, fmt.Errorf("failed to seek data file: %w", err)
 			}
 			buf := &bytes.Buffer{}
-			if _, err := io.CopyN(buf, data, int64(dr.EndByteOffset-start)); err != nil {
+			if _, err := io.CopyN(buf, data, int64(f.EndByteOffsets[i]-start)); err != nil {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
 
 			// verify the checksum
-			if xxhash.Sum64(buf.Bytes()) != dr.Checksum {
-				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), dr.Checksum)
+			if xxhash.Sum64(buf.Bytes()) != f.Checksums[i] {
+				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), f.Checksums[i])
 			}
-			start = dr.EndByteOffset + 1
+			start = f.EndByteOffsets[i] + 1
 		}
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", version)
 	}
 
 	// we've deserialized the underlying file, seek to the end of the last data range to prepare for appending
-	if len(f.DataRanges) > 0 {
-		if _, err := data.Seek(int64(f.DataRanges[len(f.DataRanges)-1].EndByteOffset+1), io.SeekStart); err != nil {
+	if len(f.EndByteOffsets) > 0 {
+		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]+1), io.SeekStart); err != nil {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
@@ -152,12 +153,14 @@ func (f *IndexFile) Synchronize() error {
 		// create a new json decoder
 		dec := json.NewDecoder(bytes.NewReader(line))
 
+		existingCount := len(f.EndByteOffsets)
+
 		// if the first token is not {, then return an error
 		if t, err := dec.Token(); err != nil || t != json.Delim('{') {
 			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 		}
 
-		if err := f.handleObject(dec, []string{}, uint64(len(f.DataRanges))); err != nil {
+		if err := f.handleObject(dec, []string{}, uint64(existingCount)); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
@@ -168,14 +171,11 @@ func (f *IndexFile) Synchronize() error {
 
 		// append a data range
 		var start uint64
-		if len(f.DataRanges) > 0 {
-			start = f.DataRanges[len(f.DataRanges)-1].EndByteOffset + 1
+		if len(f.EndByteOffsets) > 0 {
+			start = f.EndByteOffsets[existingCount-1] + 1
 		}
-		dataRange := protocol.DataRange{
-			EndByteOffset: start + uint64(len(line)), // include the newline, so don't subtract 1. recall this is inclusive.
-			Checksum:      xxhash.Sum64(line),
-		}
-		f.DataRanges = append(f.DataRanges, dataRange)
+		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line)))
+		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 	}
 	return nil
 }
@@ -201,7 +201,7 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 		return fmt.Errorf("failed to write version: %w", err)
 	}
 
-	dataCount := uint64(len(f.DataRanges))
+	dataCount := uint64(len(f.EndByteOffsets))
 	indexLength := 0
 	for _, index := range f.Indexes {
 		indexLength += encoding.SizeString(index.FieldName)
@@ -279,11 +279,13 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 	}
 
 	// write the data ranges
-	for _, dataRange := range f.DataRanges {
-		if err := encoding.WriteUint64(w, dataRange.EndByteOffset); err != nil {
+	for _, offset := range f.EndByteOffsets {
+		if err := encoding.WriteUint64(w, offset); err != nil {
 			return fmt.Errorf("failed to write data range: %w", err)
 		}
-		if err := encoding.WriteUint64(w, dataRange.Checksum); err != nil {
+	}
+	for _, checksum := range f.Checksums {
+		if err := encoding.WriteUint64(w, checksum); err != nil {
 			return fmt.Errorf("failed to write data range: %w", err)
 		}
 	}

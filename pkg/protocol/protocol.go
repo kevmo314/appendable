@@ -27,11 +27,17 @@ The overall index file for AppendableDB is structured as:
 +-----------------------+
 | IndexRecord           |
 +-----------------------+
-| DataRange             |
+| EndByteOffset         |
 +-----------------------+
 |        ...            |
 +-----------------------+
-| DataRange             |
+| EndByteOffset         |
++-----------------------+
+| Checksum              |
++-----------------------+
+|        ...            |
++-----------------------+
+| Checksum              |
 +-----------------------+
 */
 
@@ -129,12 +135,4 @@ func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {
 		return nil, fmt.Errorf("failed to seek to original offset: %w", err)
 	}
 	return token, nil
-}
-
-type DataRange struct {
-	// EndByteOffset represents the end byte offset of the data record in the
-	// data file. We choose to not use the length here to make it easier to
-	// randomly access data records.
-	EndByteOffset uint64
-	Checksum      uint64
 }

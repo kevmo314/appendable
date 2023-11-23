@@ -18,7 +18,8 @@ type IndexFile struct {
 	// There is exactly one IndexHeader for each field in the data file.
 	Indexes []Index
 
-	DataRanges []protocol.DataRange
+	EndByteOffsets []uint64
+	Checksums      []uint64
 
 	data io.ReadSeeker
 	tail int
@@ -76,7 +77,7 @@ func (i *IndexFile) findIndex(name string, value any) int {
 func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uint64) error {
 	var dataOffset uint64
 	if dataIndex > 0 {
-		dataOffset = i.DataRanges[dataIndex-1].EndByteOffset + 1
+		dataOffset = i.EndByteOffsets[dataIndex-1] + 1
 	}
 
 	// while the next token is not }, read the key

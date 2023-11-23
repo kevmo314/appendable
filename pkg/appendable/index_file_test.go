@@ -31,18 +31,18 @@ func TestAppendDataRow(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(i.Indexes))
 		}
 
-		if len(j.DataRanges) != 2 {
+		if len(j.EndByteOffsets) != 2 {
 			t.Errorf("got len(i.DataRanges) = %d, want 2", len(i.Indexes))
 		}
 
 		// check that the first data range is untouched despite being incorrect
-		if j.DataRanges[0].EndByteOffset != uint64(len("{\"test\":\"test1\"}")) {
-			t.Errorf("got i.DataRanges[0].EndByteOffset = %d, want %d", j.DataRanges[0].EndByteOffset, uint64(len("{\"test\":\"test1\"}")))
+		if j.EndByteOffsets[0] != uint64(len("{\"test\":\"test1\"}")) {
+			t.Errorf("got i.DataRanges[0].EndByteOffset = %d, want %d", j.EndByteOffsets[0], uint64(len("{\"test\":\"test1\"}")))
 		}
 
 		// check that the second data range has properly set offsets
-		if j.DataRanges[1].EndByteOffset != uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}")) {
-			t.Errorf("got i.DataRanges[1].EndByteOffset = %d, want %d", j.DataRanges[1].EndByteOffset, uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}")))
+		if j.EndByteOffsets[1] != uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}")) {
+			t.Errorf("got i.DataRanges[1].EndByteOffset = %d, want %d", j.EndByteOffsets[1], uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}")))
 		}
 	})
 
