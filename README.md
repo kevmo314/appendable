@@ -53,13 +53,7 @@ console.log(results); // contains data.jsonl queried with the above query.
 
 ## Getting Started
 
-First, you'll need to build an index file. This can be done with Docker
-
-### With Docker (preferred)
-
-Store your data as `data.jsonl` and run `docker run Appendable > index.dat`.
-
-To serve your database,
+TODO: implement a mini walkthrough.
 
 ## Advanced Usage
 
@@ -223,3 +217,23 @@ but I find it particularly elegant that Appendable doesn't change the raw data.
 In other words, besides producing an index file the `jsonl` file provided stays
 untouched which means updates to the index file can lag behind data changes and
 remain valid because the database doesn't need to shuffle the data around.
+
+### My data is never append-only, what's the point of this?
+
+A lot of data isn't actually append-only but can often be restructured as if it
+were append-only. For example, creating a sequence of changelogs or deltas lets
+you see the history and evolution of a document.
+
+Of course, not all data can be structured like this but Appendable started from
+me observing that a decent chunk of my data _was_ written to an appending table
+and not mutating any existing data and that it avoided some performance issues,
+but the underlying database didn't take advantage of them. For example, with an
+append-only data file, Appendable doesn't have to worry about row locking. That
+means that there's no tail latency issues when querying and the database can be
+scaled horizontally with conventional CDNs. This isn't possible (well ok, it is
+but it's [very expensive](https://cloud.google.com/spanner)) with the usual set
+of databases.
+
+If you're not convinced, think of Appendable as more geared towards time-series
+datasets. Somewhat like a [kdb+](https://en.wikipedia.org/wiki/Kdb%2B) database
+but meant for applications instead of more specialized use cases.

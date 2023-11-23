@@ -1,11 +1,5 @@
 import { RangeResolver } from "./resolver";
 
-type IndexRecords = {
-  startByteOffset: number;
-  endByteOffset: number;
-  count: number;
-};
-
 export class IndexFile<T> {
   static async forUrl<T = any>(url: string) {
     return await IndexFile.forResolver<T>(
@@ -39,18 +33,24 @@ export interface VersionedIndexFile<T> {
   indexHeaders(): Promise<
     {
       fieldName: string;
-      fieldType: number;
+      fieldType: bigint;
       indexRecordCount: bigint;
     }[]
   >;
-  // indexRecords(
-  //   field: keyof T,
-  //   condition: "<" | "<=" | "==" | ">=" | ">",
-  //   value: any
-  // ): Promise<IndexRecords[]>;
+  indexRecord(
+    field: keyof T,
+    offset: number
+  ): Promise<{
+    dataNumber: bigint;
+    fieldStartByteOffset: number;
+    fieldEndByteOffset: number;
+  }>;
+  dataRecord(
+    offset: number
+  ): Promise<{ startByteOffset: number; endByteOffset: number }>;
 }
 
-class IndexFileV1<T> {
+class IndexFileV1<T> implements VersionedIndexFile<T> {
   constructor(private resolver: RangeResolver) {}
 
   async indexFileHeader() {
@@ -96,18 +96,78 @@ class IndexFileV1<T> {
     return headers;
   }
 
-  async indexRecords(
-    field: keyof T,
-    condition: "<" | "<=" | "==" | ">=" | ">",
-    value: any
-  ) {
+  async indexRecord(field: keyof T, offset: number) {
+    if (offset < 0) {
+      throw new Error("offset out of range");
+    }
     const headers = await this.indexHeaders();
     const header = headers.find((header) => header.fieldName === field);
     if (!header) {
       throw new Error("field not found");
     }
-    const state = {
-      startByteOffset: 1,
+    if (offset >= Number(header.indexRecordCount)) {
+      throw new Error("offset out of range");
+    }
+    const indexFileHeader = await this.indexFileHeader();
+    const start = 17 + indexFileHeader.indexLength + offset * 16;
+    const buffer = await this.resolver(start, start + 16);
+    const data = new DataView(buffer);
+
+    const dataNumber = data.getBigUint64(0);
+    const fieldStartByteOffset = data.getUint32(8);
+    const fieldEndByteOffset = data.getUint32(12);
+
+    const indexRecordsLength = headers.reduce((acc, header) => {
+      return acc + Number(header.indexRecordCount) * 16;
+    }, 0);
+
+    const dataRecordsStart =
+      17 + indexFileHeader.indexLength + indexRecordsLength;
+
+    return {
+      dataNumber,
+      fieldStartByteOffset: fieldStartByteOffset + dataRecordsStart,
+      fieldEndByteOffset: fieldEndByteOffset + dataRecordsStart,
+    };
+  }
+
+  async dataRecord(offset: number) {
+    if (offset < 0) {
+      throw new Error("offset out of range");
+    }
+    const indexFileHeader = await this.indexFileHeader();
+    if (offset >= indexFileHeader.dataCount) {
+      throw new Error("offset out of range");
+    }
+    const headers = await this.indexHeaders();
+    const indexRecordsLength = headers.reduce((acc, header) => {
+      return acc + Number(header.indexRecordCount) * 16;
+    }, 0);
+    const start = 17 + indexFileHeader.indexLength + indexRecordsLength;
+    // fetch the byte offsets. if offset is 0, we can just fetch the first 8 bytes.
+    if (offset === 0) {
+      const buffer = await this.resolver(
+        start + offset * 16,
+        start + offset * 16 + 8
+      );
+      const data = new DataView(buffer);
+      const endByteOffset = data.getBigUint64(0);
+      return {
+        startByteOffset: 0,
+        endByteOffset: Number(endByteOffset),
+      };
+    }
+
+    const buffer = await this.resolver(
+      start + (offset - 1) * 16,
+      start + offset * 16 + 8
+    );
+    const data = new DataView(buffer);
+    const startByteOffset = data.getBigUint64(0);
+    const endByteOffset = data.getBigUint64(8);
+    return {
+      startByteOffset: Number(startByteOffset),
+      endByteOffset: Number(endByteOffset),
     };
   }
 }
