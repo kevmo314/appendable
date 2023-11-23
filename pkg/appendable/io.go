@@ -79,13 +79,10 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 		for i, index := range f.Indexes {
 			for j := 0; j < int(recordCounts[i]); j++ {
 				var ir protocol.IndexRecord
-				if ir.DataNumber, err = encoding.ReadUint64(r); err != nil {
+				if ir.FieldStartByteOffset, err = encoding.ReadUint64(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
-				if ir.FieldStartByteOffset, err = encoding.ReadUint32(r); err != nil {
-					return nil, fmt.Errorf("failed to read index record: %w", err)
-				}
-				if ir.FieldEndByteOffset, err = encoding.ReadUint32(r); err != nil {
+				if ir.FieldLength, err = encoding.ReadUint32(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
 
@@ -268,13 +265,10 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 		// iterate in key-ascending order
 		for _, key := range keys {
 			for _, item := range index.IndexRecords[key] {
-				if err = encoding.WriteUint64(w, item.DataNumber); err != nil {
+				if err = encoding.WriteUint64(w, item.FieldStartByteOffset); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
-				if err = encoding.WriteUint32(w, item.FieldStartByteOffset); err != nil {
-					return fmt.Errorf("failed to write index record: %w", err)
-				}
-				if err = encoding.WriteUint32(w, item.FieldEndByteOffset); err != nil {
+				if err = encoding.WriteUint32(w, item.FieldLength); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
 			}

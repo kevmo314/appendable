@@ -105,13 +105,10 @@ func (t FieldType) TypescriptType() string {
 }
 
 type IndexRecord struct {
-	// DataNumber refers to the row number of the data record in the data file.
-	DataNumber uint64
 	// FieldByteOffset represents the byte offset of the field in the data
-	// record to fetch exactly the field value. That is, the field value is
-	// stored at DataRange.StartByteOffset + FieldByteOffset.
-	FieldStartByteOffset uint32
-	FieldEndByteOffset   uint32
+	// file to fetch exactly the field value.
+	FieldStartByteOffset uint64
+	FieldLength          uint32
 }
 
 func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {
@@ -122,7 +119,7 @@ func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {
 	if _, err := r.Seek(int64(i.FieldStartByteOffset), io.SeekStart); err != nil {
 		return nil, fmt.Errorf("failed to seek to field start byte offset: %w", err)
 	}
-	token, err := json.NewDecoder(io.LimitReader(r, int64(i.FieldEndByteOffset-i.FieldStartByteOffset+1))).Token()
+	token, err := json.NewDecoder(io.LimitReader(r, int64(i.FieldLength))).Token()
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode field: %w", err)
 	}
