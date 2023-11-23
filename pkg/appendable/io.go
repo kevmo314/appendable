@@ -82,7 +82,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				if ir.FieldStartByteOffset, err = encoding.ReadUint64(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
-				if ir.FieldLength, err = encoding.ReadUint32(r); err != nil {
+				if ir.FieldLength, err = encoding.UnpackFint16(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
 
@@ -268,7 +268,7 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 				if err = encoding.WriteUint64(w, item.FieldStartByteOffset); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
-				if err = encoding.WriteUint32(w, item.FieldLength); err != nil {
+				if err = encoding.PackFint16(w, item.FieldLength); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
 			}

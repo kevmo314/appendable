@@ -24,6 +24,10 @@ func WriteUint64(w io.Writer, u uint64) error {
 	return binary.Write(w, binary.BigEndian, u)
 }
 
+func PackFint16(w io.Writer, i int) error {
+	return binary.Write(w, binary.BigEndian, EncodeFloatingInt16(i))
+}
+
 func SizeString(s string) int {
 	return binary.Size(uint32(len(s))) + len(s)
 }
@@ -69,6 +73,14 @@ func ReadUint64(r io.Reader) (uint64, error) {
 		return 0, err
 	}
 	return u, nil
+}
+
+func UnpackFint16(r io.Reader) (int, error) {
+	var i FloatingInt16
+	if err := binary.Read(r, binary.BigEndian, &i); err != nil {
+		return 0, err
+	}
+	return DecodeFloatingInt16(i), nil
 }
 
 func ReadString(r io.Reader) (string, error) {

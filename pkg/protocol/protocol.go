@@ -108,7 +108,9 @@ type IndexRecord struct {
 	// FieldByteOffset represents the byte offset of the field in the data
 	// file to fetch exactly the field value.
 	FieldStartByteOffset uint64
-	FieldLength          uint32
+	// FieldLength is pessimistic: it is an encoded value that is at least as
+	// long as the actual field value.
+	FieldLength int
 }
 
 func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {

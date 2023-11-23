@@ -105,7 +105,7 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 				// append this record to the list of records for this value
 				tree[value] = append(tree[value], protocol.IndexRecord{
 					FieldStartByteOffset: dataOffset + uint64(fieldOffset),
-					FieldLength:          uint32(dec.InputOffset() - fieldOffset),
+					FieldLength:          int(dec.InputOffset() - fieldOffset),
 				})
 
 			case json.Token:
