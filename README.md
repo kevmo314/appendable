@@ -1,6 +1,6 @@
 # Appendable
 
-Appendable is an append-only\*, schemaless, service-less database.
+Appendable is an append-only, schemaless, service-less database.
 
 Appendable doesn't require a conventional server, instead it generates an index
 file that you can host on your favorite static hosting site.
@@ -14,8 +14,6 @@ Appendable currently supports data files in the following formats:
 - [ ] RecordIO
 
 with more formats coming soon.
-
-_\* Ok, it's append-preferred._
 
 ## Motivation
 
@@ -147,7 +145,7 @@ const results = await db.query({
 });
 ```
 
-### Permissioning
+### Permissioning and sharding
 
 Appendable does not support permissioning because it assumes that the data is publicly
 readable. To accommodate permissions, we recomend guarding the access of your data files
@@ -165,7 +163,7 @@ data. For example, your static file content may look something like
 
 Where each user has access to their own data and index file.
 
-### Mutating existing data
+### Mutability and skew
 
 Appendable is geared towards data that is immutable, however in practice this might not
 be ideal. In order to accommodate data mutations, a data integrity hash is maintained so
@@ -177,6 +175,15 @@ Mutations must be carefully performed because they will cause the previous index
 to be corrupted. Therefore, when updating the files on your server, the data and index
 files must be done atomically. This is tricky to do right, however one approach is to
 version your data and index files.
+
+When a mutation is performed, you will need to create a new version of the data
+file that includes the mutation along with the updated index file. Host the two
+separately under a different version number so clients that started by querying
+the previous version can continue to access it.
+
+Note that the performance limitations of indexing makes this intractible at any
+appreciable scale so generally speaking, it's strongly recommended to keep your
+data immutable and append-only within a data file.
 
 ### Custom `fetch()` API
 
@@ -237,3 +244,19 @@ of databases.
 If you're not convinced, think of Appendable as more geared towards time-series
 datasets. Somewhat like a [kdb+](https://en.wikipedia.org/wiki/Kdb%2B) database
 but meant for applications instead of more specialized use cases.
+
+### How do I deal with deletion requests if I can only append?
+
+It's recommended to shard your data in a way that, if you need to delete any of
+it, the entire data file and index file are deleted together. For example, data
+representing a document can be deleted by deleting the document's corresponding
+data file and and its index file.
+
+If, for example, you wish to delete records associated with a given user within
+a data file and a mutation must be performed, consult the _Mutability and skew_
+section above for the associated caveats.
+
+## Limitations
+
+- Max field size: 8793945536512 bytes
+- Max number of rows: 2^64-1

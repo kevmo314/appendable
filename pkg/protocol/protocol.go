@@ -111,9 +111,10 @@ func (t FieldType) TypescriptType() string {
 }
 
 type IndexRecord struct {
+	DataNumber uint64
 	// FieldByteOffset represents the byte offset of the field in the data
 	// file to fetch exactly the field value.
-	FieldStartByteOffset uint64
+	FieldStartByteOffset uint32
 	// FieldLength is pessimistic: it is an encoded value that is at least as
 	// long as the actual field value.
 	FieldLength int

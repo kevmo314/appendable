@@ -75,11 +75,6 @@ func (i *IndexFile) findIndex(name string, value any) int {
 }
 
 func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uint64) error {
-	var dataOffset uint64
-	if dataIndex > 0 {
-		dataOffset = i.EndByteOffsets[dataIndex-1] + 1
-	}
-
 	// while the next token is not }, read the key
 	for dec.More() {
 		key, err := dec.Token()
@@ -105,7 +100,8 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex uin
 				tree := i.Indexes[i.findIndex(name, value)].IndexRecords
 				// append this record to the list of records for this value
 				tree[value] = append(tree[value], protocol.IndexRecord{
-					FieldStartByteOffset: dataOffset + uint64(fieldOffset),
+					DataNumber:           dataIndex,
+					FieldStartByteOffset: uint32(fieldOffset),
 					FieldLength:          int(dec.InputOffset() - fieldOffset),
 				})
 
