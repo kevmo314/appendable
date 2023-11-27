@@ -1,13 +1,22 @@
-import { RangeResolver } from "./resolver";
+import { LengthIntegrityError, RangeResolver } from "./resolver";
 
-export class IndexFile<T> {
+export class IndexFile {
   static async forUrl<T = any>(url: string) {
     return await IndexFile.forResolver<T>(
-      async (start: number, end: number) => {
+      async ({ start, end, expectedLength }) => {
         const response = await fetch(url, {
           headers: { Range: `bytes=${start}-${end}` },
         });
-        return await response.arrayBuffer();
+        const totalLength = Number(
+          response.headers.get("Content-Range")!.split("/")[1]
+        );
+        if (expectedLength && totalLength !== expectedLength) {
+          throw new LengthIntegrityError();
+        }
+        return {
+          data: await response.arrayBuffer(),
+          totalLength: totalLength,
+        };
       }
     );
   }
@@ -15,10 +24,19 @@ export class IndexFile<T> {
   static async forResolver<T = any>(
     resolver: RangeResolver
   ): Promise<VersionedIndexFile<T>> {
-    const version = new DataView(await resolver(0, 0)).getUint8(0);
+    const response = await resolver({ start: 0, end: 0 });
+    const version = new DataView(response.data).getUint8(0);
     switch (version) {
       case 1:
-        return new IndexFileV1<T>(resolver);
+        return new IndexFileV1<T>(async (start, end) => {
+          return (
+            await resolver({
+              start,
+              end,
+              expectedLength: response.totalLength,
+            })
+          ).data;
+        });
       default:
         throw new Error("invalid version");
     }
@@ -47,8 +65,9 @@ export interface VersionedIndexFile<T> {
     field: keyof T,
     offset: number
   ): Promise<{
+    dataNumber: number;
     fieldStartByteOffset: number;
-    fieldEndByteOffset: number;
+    fieldLength: number;
   }>;
   dataRecord(
     offset: number
@@ -66,7 +85,11 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
     indexRecordCount: bigint;
   }[];
 
-  constructor(private resolver: RangeResolver) {}
+  private static INDEX_RECORD_SIZE = 18;
+
+  constructor(
+    private resolver: (start: number, end: number) => Promise<ArrayBuffer>
+  ) {}
 
   async indexFileHeader() {
     if (this._indexFileHeader) {
@@ -138,18 +161,26 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
     const indexFileHeader = await this.indexFileHeader();
     const indexRecordsStart = 17 + indexFileHeader.indexLength;
     const headerOffset = headers.slice(0, headerIndex).reduce((acc, header) => {
-      return acc + Number(header.indexRecordCount) * 10;
+      return (
+        acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
+      );
     }, 0);
-    const recordOffset = indexRecordsStart + headerOffset + offset * 10;
-    const buffer = await this.resolver(recordOffset, recordOffset + 10);
+    const recordOffset =
+      indexRecordsStart + headerOffset + offset * IndexFileV1.INDEX_RECORD_SIZE;
+    const buffer = await this.resolver(
+      recordOffset,
+      recordOffset + IndexFileV1.INDEX_RECORD_SIZE
+    );
     const data = new DataView(buffer);
 
-    const fieldStartByteOffset = data.getBigUint64(0);
-    const fieldLength = decodeFloatingInt16(data.getUint16(8));
+    const dataNumber = data.getBigUint64(0);
+    const fieldStartByteOffset = data.getBigUint64(8);
+    const fieldLength = decodeFloatingInt16(data.getUint16(16));
 
     return {
+      dataNumber: Number(dataNumber),
       fieldStartByteOffset: Number(fieldStartByteOffset),
-      fieldEndByteOffset: Number(fieldStartByteOffset) + fieldLength - 1, // inclusive
+      fieldLength: fieldLength,
     };
   }
 
@@ -163,7 +194,9 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
     }
     const headers = await this.indexHeaders();
     const indexRecordsLength = headers.reduce((acc, header) => {
-      return acc + Number(header.indexRecordCount) * 10;
+      return (
+        acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
+      );
     }, 0);
     const start = 17 + indexFileHeader.indexLength + indexRecordsLength;
     // fetch the byte offsets. if offset is 0, we can just fetch the first 8 bytes.

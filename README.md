@@ -130,18 +130,14 @@ import Appendable from "appendable";
 const db = Appendable.init("data.jsonl", "index.dat");
 
 const results = await db.query({
-  where: {
-    operation: "AND",
-    values: [
-      { operation: ">=", key: "timestamp", value: "2023-11-01T00:00:00Z" },
-      { operation: "<=", key: "count", value: 15 },
-    ],
-  },
+  where: [
+    { operation: ">=", key: "timestamp", value: "2023-11-01T00:00:00Z" },
+    { operation: "<=", key: "count", value: 15 },
+  ],
   orderBy: [
     { key: "count", direction: "DESC" },
     { key: "timestamp", direction: "ASC" },
   ],
-  limit: 20,
 });
 ```
 

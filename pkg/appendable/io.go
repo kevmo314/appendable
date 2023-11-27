@@ -82,7 +82,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				if ir.DataNumber, err = encoding.ReadUint64(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
-				if ir.FieldStartByteOffset, err = encoding.ReadUint32(r); err != nil {
+				if ir.FieldStartByteOffset, err = encoding.ReadUint64(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
 				if ir.FieldLength, err = encoding.UnpackFint16(r); err != nil {
@@ -122,7 +122,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 				return nil, fmt.Errorf("failed to seek data file: %w", err)
 			}
 			buf := &bytes.Buffer{}
-			if _, err := io.CopyN(buf, data, int64(f.EndByteOffsets[i]-start)); err != nil {
+			if _, err := io.CopyN(buf, data, int64(f.EndByteOffsets[i]-start-1)); err != nil {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
 
@@ -138,7 +138,7 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 
 	// we've deserialized the underlying file, seek to the end of the last data range to prepare for appending
 	if len(f.EndByteOffsets) > 0 {
-		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]+1), io.SeekStart); err != nil {
+		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]), io.SeekStart); err != nil {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
@@ -158,12 +158,20 @@ func (f *IndexFile) Synchronize() error {
 
 		existingCount := len(f.EndByteOffsets)
 
+		// append a data range
+		var start uint64
+		if len(f.EndByteOffsets) > 0 {
+			start = f.EndByteOffsets[existingCount-1]
+		}
+		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
+		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
+
 		// if the first token is not {, then return an error
 		if t, err := dec.Token(); err != nil || t != json.Delim('{') {
 			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 		}
 
-		if err := f.handleObject(dec, []string{}, uint64(existingCount)); err != nil {
+		if err := f.handleObject(dec, []string{}, uint64(existingCount), start); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
@@ -171,14 +179,6 @@ func (f *IndexFile) Synchronize() error {
 		if t, err := dec.Token(); err != nil || t != json.Delim('}') {
 			return fmt.Errorf("expected '}', got '%v'", t)
 		}
-
-		// append a data range
-		var start uint64
-		if len(f.EndByteOffsets) > 0 {
-			start = f.EndByteOffsets[existingCount-1] + 1
-		}
-		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line)))
-		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 	}
 	return nil
 }
@@ -271,7 +271,7 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 				if err = encoding.WriteUint64(w, item.DataNumber); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
-				if err = encoding.WriteUint32(w, item.FieldStartByteOffset); err != nil {
+				if err = encoding.WriteUint64(w, item.FieldStartByteOffset); err != nil {
 					return fmt.Errorf("failed to write index record: %w", err)
 				}
 				if err = encoding.PackFint16(w, item.FieldLength); err != nil {

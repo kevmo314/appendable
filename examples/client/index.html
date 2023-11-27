@@ -6,7 +6,8 @@
       Appendable.init(
         "/examples/workspace/yellow_tripdata_2023-01.jsonl",
         "/examples/workspace/yellow_tripdata_2023-01.jsonl.index"
-      ).then((db) => {
+      ).then(async (db) => {
+        // populate fields
         db.fields().then((fields) => {
           document.getElementById("fields").innerHTML = JSON.stringify(
             fields,
@@ -20,29 +21,84 @@
           );
         });
 
-        db.query({
-          where: {
-            operation: ">=",
-            key: "trip_distance",
-            value: 10,
-          },
-          orderBy: [
-            {
-              key: "trip_distance",
-              order: "ASC",
-            },
-          ],
-          limit: 10,
-        }).then((results) => {
-          console.log(results);
-        });
+        // then execute the query
+        document.getElementById("execute").onclick = () => {
+          document.getElementById("results").innerHTML = "";
+
+          const query = db.query(
+            JSON.parse(document.getElementById("query").value)
+          );
+
+          bindQuery(query);
+        };
+
+        document.getElementById("results").innerHTML = "";
+
+        const query = db.query(
+          JSON.parse(document.getElementById("query").value)
+        );
+
+        bindQuery(query);
       });
+
+      async function bindQuery(query) {
+        document.getElementById("next").disabled = true;
+
+        for (let i = 0; i < 10; i++) {
+          const result = await query.next();
+          if (result.done) {
+            return;
+          }
+          document.getElementById("results").innerHTML +=
+            JSON.stringify(result.value) + "\n";
+        }
+        while (true) {
+          document.getElementById("next").disabled = false;
+          await new Promise(
+            (resolve) => (document.getElementById("next").onclick = resolve)
+          );
+          document.getElementById("next").disabled = true;
+          const result = await query.next();
+          if (result.done) {
+            return;
+          }
+          document.getElementById("results").innerHTML +=
+            JSON.stringify(result.value) + "\n";
+        }
+      }
     </script>
   </head>
   <body>
-    <h1>AppendableDB - Yellow Cab Trip Data in 01/2023</h1>
-    <h2>Fields</h2>
-    <pre id="fields"></pre>
-    <h2>Ordered by trip distance</h2>
+    <h1>Appendable - Yellow Cab Trip Data in 01/2023</h1>
+    <div style="display: flex">
+      <div>
+        <h2>Fields</h2>
+        <pre id="fields"></pre>
+      </div>
+      <div>
+        <h2>Query</h2>
+        <textarea id="query" rows="20" cols="80">
+{
+  "where": [
+    {
+      "operation": "&gt;=",
+      "key": "trip_distance",
+      "value": 10
+    }
+  ],
+  "orderBy": [
+    {
+      "key": "trip_distance",
+      "direction": "ASC"
+    }
+  ]
+}</textarea
+        >
+        <button id="execute">Execute</button>
+        <h2>Results</h2>
+        <pre id="results"></pre>
+        <button id="next">Fetch more</button>
+      </div>
+    </div>
   </body>
 </html>

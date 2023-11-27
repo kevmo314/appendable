@@ -5,28 +5,20 @@ type Schema = {
   [key: string]: {};
 };
 
-type WhereLeafNode<T extends Schema> = {
+type WhereNode<T extends Schema> = {
   operation: "<" | "<=" | "==" | ">=" | ">";
   key: keyof T;
   value: T[typeof this.key];
 };
 
-type WhereIntermediateNode<T extends Schema> = {
-  operation: "AND" | "OR";
-  values: WhereNode<T>[];
-};
-
-type WhereNode<T extends Schema> = WhereIntermediateNode<T> | WhereLeafNode<T>;
-
 type OrderBy<T extends Schema> = {
-  key: keyof Schema;
+  key: keyof T;
   direction: "ASC" | "DESC";
 };
 
 type Query<T extends Schema> = {
-  where?: WhereNode<T>;
-  orderBy?: OrderBy<T>;
-  limit?: number;
+  where?: WhereNode<T>[];
+  orderBy?: OrderBy<T>[];
 };
 
 function parseIgnoringSuffix(x: string) {
@@ -95,88 +87,122 @@ export class Database<T extends Schema> {
     return await this.indexFile.indexHeaders();
   }
 
-  /**
-   * @param op
-   * @returns the first index record that is greater than or equal to the query value.
-   */
-  private async indexRecordsBinarySearch(key: keyof T, value: any) {
+  async *query(query: Query<T>) {
+    // verify that the query does not require a composite index
+    if (new Set((query.where ?? []).map((where) => where.key)).size > 1) {
+      throw new Error("composite indexes not supported... yet");
+    }
+    // convert each of the where nodes into a range of field values.
     const headers = await this.indexFile.indexHeaders();
-    const header = headers.find((header) => header.fieldName === key);
-    if (!header) {
-      throw new Error("field not found");
+    const fieldRanges = await Promise.all(
+      (query.where ?? []).map(async ({ key, value, operation }) => {
+        const header = headers.find((header) => header.fieldName === key);
+        if (!header) {
+          throw new Error("field not found");
+        }
+        let firstIndex = 0,
+          lastIndex = Number(header.indexRecordCount);
+        if (operation === ">" || operation === ">=" || operation === "==") {
+          let start = 0;
+          let end = Number(header.indexRecordCount);
+          while (start + 1 < end) {
+            const mid = Math.floor((start + end) / 2);
+            const indexRecord = await this.indexFile.indexRecord(key, mid);
+            const data = await this.dataFile.get(
+              indexRecord.fieldStartByteOffset,
+              indexRecord.fieldStartByteOffset + indexRecord.fieldLength
+            );
+            const dataFieldValue = parseIgnoringSuffix(data);
+            console.log(mid, dataFieldValue);
+            if (cmp(value, dataFieldValue) < 0) {
+              end = mid;
+            } else if (cmp(value, dataFieldValue) > 0) {
+              start = mid + 1;
+            } else if (operation === ">") {
+              start = mid + 1;
+            } else {
+              end = mid;
+            }
+          }
+          firstIndex = end;
+        }
+        if (operation === "<" || operation === "<=" || operation === "==") {
+          let start = 0;
+          let end = Number(header.indexRecordCount);
+          while (start + 1 < end) {
+            const mid = Math.floor((start + end) / 2);
+            const indexRecord = await this.indexFile.indexRecord(key, mid);
+            const dataFieldValue = parseIgnoringSuffix(
+              await this.dataFile.get(
+                indexRecord.fieldStartByteOffset,
+                indexRecord.fieldStartByteOffset + indexRecord.fieldLength
+              )
+            );
+            if (cmp(value, dataFieldValue) < 0) {
+              end = mid;
+            } else if (cmp(value, dataFieldValue) > 0) {
+              start = mid + 1;
+            } else if (operation === "<") {
+              end = mid;
+            } else {
+              start = mid + 1;
+            }
+          }
+          lastIndex = end;
+        }
+        return [key, [firstIndex, lastIndex]] as [keyof T, [number, number]];
+      })
+    );
+    // group the field ranges by the field name and merge them into single ranges.
+    const fieldRangeMap = new Map<keyof T, [number, number]>();
+    for (const [key, value] of fieldRanges) {
+      const existing = fieldRangeMap.get(key);
+      if (existing) {
+        fieldRangeMap.set(key, [
+          Math.max(existing[0], value[0]),
+          Math.min(existing[1], value[1]),
+        ]);
+      } else {
+        fieldRangeMap.set(key, value);
+      }
     }
-    let start = 0;
-    let end = Number(header.indexRecordCount);
-    while (start + 1 < end) {
-      const mid = Math.floor((start + end) / 2);
-      const indexRecord = await this.indexFile.indexRecord(key, mid);
-      const dataFieldValue = parseIgnoringSuffix(
-        await this.dataFile.get(
-          indexRecord.fieldStartByteOffset,
-          indexRecord.fieldEndByteOffset
-        )
+    // sort the field ranges by size.
+    const fieldRangesSorted = [...fieldRangeMap.entries()].sort(
+      (a, b) => a[1][1] - a[1][0] - (b[1][1] - b[1][0])
+    );
+    // move the order by fields to the front of the field ranges.
+    const orderByFields = (query.orderBy ?? []).map((orderBy) => orderBy.key);
+    for (const orderByField of orderByFields) {
+      const index = fieldRangesSorted.findIndex(
+        (fieldRange) => fieldRange[0] === orderByField
       );
-      if (cmp(value, dataFieldValue) < 0) {
-        end = mid;
-      } else if (cmp(value, dataFieldValue) > 0) {
-        start = mid + 1;
-      } else {
-        return indexRecord;
+      if (index >= 0) {
+        fieldRangesSorted.unshift(...fieldRangesSorted.splice(index, 1));
       }
     }
-    return await this.indexFile.indexRecord(key, start);
-  }
-
-  private async dataRecordsBinarySearch(byteOffset: number) {
-    const indexFileHeader = await this.indexFile.indexFileHeader();
-
-    let start = 0;
-    let end = indexFileHeader.dataCount;
-    // binary search to find the first data record that has an endByteOffset
-    // greater than or equal to the byteOffset.
-    console.log(byteOffset);
-    while (start + 1 < end) {
-      const mid = Math.floor((start + end) / 2);
-      const dataRecord = await this.indexFile.dataRecord(mid);
-      if (dataRecord.endByteOffset < byteOffset) {
-        start = mid + 1;
-      } else {
-        end = mid;
+    // evaluate the field ranges in order.
+    for (const [key, [start, end]] of fieldRangesSorted) {
+      // check if the iteration order should be reversed.
+      console.log(query.orderBy);
+      const orderBy = query.orderBy?.find((orderBy) => orderBy.key === key);
+      console.log(orderBy);
+      const reverse = orderBy?.direction === "DESC";
+      console.log(key, start, end, reverse);
+      const length = end - start;
+      for (let offset = 0; offset < length; offset++) {
+        const index = reverse ? end - offset - 1 : start + offset;
+        const indexRecord = await this.indexFile.indexRecord(key, index);
+        const dataRecord = await this.indexFile.dataRecord(
+          indexRecord.dataNumber
+        );
+        const dataFieldValue = parseIgnoringSuffix(
+          await this.dataFile.get(
+            dataRecord.startByteOffset,
+            dataRecord.endByteOffset
+          )
+        );
+        yield dataFieldValue;
       }
-    }
-    return await this.indexFile.dataRecord(start);
-  }
-
-  private async evaluate(where: WhereNode<T>) {
-    if (where.operation === "AND") {
-      const results = [];
-      return;
-    } else if (where.operation === "OR") {
-      return;
-    }
-    const op = where as WhereLeafNode<T>; // ts doesn't seem to pick this up automatically.
-    // simple query, hooray!
-    // evaluate the query by binary searching on the relevant index finding the
-    // first record that matches the query.
-    const indexRecord = await this.indexRecordsBinarySearch(op.key, op.value);
-    // then, binary search the data file to find the first record that contains
-    // the startByteOffset of the index record.
-    const dataRecord = await this.dataRecordsBinarySearch(
-      indexRecord.fieldStartByteOffset
-    );
-    // finally, read the data file from the startByteOffset to the endByteOffset
-    // of the data record.
-    const data = await this.dataFile.get(
-      dataRecord.startByteOffset,
-      dataRecord.endByteOffset
-    );
-    console.log(data);
-  }
-
-  query(query: Query<any>) {
-    // recursively evaluate the where condition
-    if (query.where) {
-      return this.evaluate(query.where);
     }
   }
 }
