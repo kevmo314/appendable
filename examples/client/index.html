@@ -69,7 +69,10 @@
     </script>
   </head>
   <body>
-    <h1>Appendable - NYC Green Cab Trip Data in 01/2023</h1>
+    <h1>
+      <a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
+      Green Cab Trip Data in 01/2023
+    </h1>
     <div>
       Download the raw data here:
       <a href="green_tripdata_2023-01.jsonl">JSONL</a> -
@@ -78,6 +81,16 @@
         >Source</a
       >
     </div>
+    <p>
+      Appendable is querying the JSONL and index files that GitHub pages hosts
+      <em>directly</em>. There is no server involved here!
+    </p>
+    <p>
+      Keep in mind that while the query syntax supports a lot of different
+      operations, Appendable doesn't support composite indexes yet. Therefore,
+      only one field at a time can be filtered on and that field must be used
+      for sorting.
+    </p>
     <div style="display: flex">
       <div>
         <h2>Fields</h2>

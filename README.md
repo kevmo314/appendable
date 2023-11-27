@@ -15,6 +15,10 @@ Appendable currently supports data files in the following formats:
 
 with more formats coming soon.
 
+> [!CAUTION]
+> This README is currently somewhat aspirational and many features are not implemented yet.
+> Check out the <a href="https://kevmo314.github.io/appendable/">technical demo</a> for the functionality.
+
 ## Motivation
 
 A smart friend of mine once said
@@ -31,7 +35,7 @@ Appendable's primary goals are
 
 ## Demonstration
 
-Check out this repository's GitHub pages for an example querying the server.
+Check out this repository's <a href="https://kevmo314.github.io/appendable/">GitHub pages</a> for an example querying the server.
 
 ```ts
 import Appendable from "appendable";
