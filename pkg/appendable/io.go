@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"sort"
 	"strings"
 
@@ -149,8 +148,6 @@ func (f *IndexFile) Synchronize() error {
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)
 	for i := 0; scanner.Scan(); i++ {
-		log.Printf("%v", i)
-
 		line := scanner.Bytes()
 
 		// create a new json decoder
