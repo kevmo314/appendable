@@ -1,6 +1,6 @@
 # Appendable
 
-Appendable is an append-only, schemaless, service-less database.
+Appendable is an append-only, schemaless, daemon-less database.
 
 Appendable doesn't require a conventional server, instead it generates an index
 file that you can host on your favorite static hosting site.
