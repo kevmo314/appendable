@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <script src="/appendable.min.js"></script>
+    <script src="appendable.min.js"></script>
     <script>
       Appendable.init(
-        "/green_tripdata_2023-01.jsonl",
-        "/green_tripdata_2023-01.jsonl.index"
+        "green_tripdata_2023-01.jsonl",
+        "green_tripdata_2023-01.jsonl.index"
       ).then(async (db) => {
         // populate fields
         db.fields().then((fields) => {
@@ -69,7 +69,12 @@
     </script>
   </head>
   <body>
-    <h1>Appendable - Yellow Cab Trip Data in 01/2023</h1>
+    <h1>Appendable - NYC Green Cab Trip Data in 01/2023</h1>
+    <div>
+      Download the raw data here:
+      <a href="green_tripdata_2023-01.jsonl">JSONL</a> -
+      <a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a>
+    </div>
     <div style="display: flex">
       <div>
         <h2>Fields</h2>
