@@ -15,16 +15,30 @@ import (
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
 
-func NewIndexFile(data io.ReadSeeker) (*IndexFile, error) {
+func DetermineDataHandler(filePath string) (DataHandler, error) {
+	switch {
+	case strings.HasSuffix(filePath, ".jsonl"):
+		return JSONLHandler{}, nil
+
+	default:
+		return nil, fmt.Errorf("unsupported file type for file %s", filePath)
+	}
+}
+
+type DataHandler interface {
+	Synchronize(f *IndexFile) error
+}
+
+func NewIndexFile(data io.ReadSeeker, handler DataHandler) (*IndexFile, error) {
 	f := &IndexFile{
 		Version: CurrentVersion,
 		Indexes: []Index{},
 		data:    data,
 	}
-	return f, f.Synchronize()
+	return f, handler.Synchronize(f)
 }
 
-func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
+func ReadIndexFile(r io.Reader, data io.ReadSeeker, handler DataHandler) (*IndexFile, error) {
 	f := &IndexFile{}
 
 	f.data = data
@@ -141,10 +155,13 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
-	return f, f.Synchronize()
+	return f, handler.Synchronize(f)
 }
 
-func (f *IndexFile) Synchronize() error {
+type JSONLHandler struct{}
+
+func (j JSONLHandler) Synchronize(f *IndexFile) error {
+
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)
 	for i := 0; scanner.Scan(); i++ {
