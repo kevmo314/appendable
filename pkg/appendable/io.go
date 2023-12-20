@@ -185,7 +185,7 @@ func (j JSONLHandler) Synchronize(f *IndexFile) error {
 			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 		}
 
-		if err := f.handleObject(dec, []string{}, uint64(existingCount), start); err != nil {
+		if err := f.handleJSONLObject(dec, []string{}, uint64(existingCount), start); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
