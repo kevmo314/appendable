@@ -15,30 +15,21 @@ import (
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
 
-func DetermineDataHandler(filePath string) (DataHandler, error) {
-	switch {
-	case strings.HasSuffix(filePath, ".jsonl"):
-		return JSONLHandler{}, nil
-
-	default:
-		return nil, fmt.Errorf("unsupported file type for file %s", filePath)
-	}
-}
-
 type DataHandler interface {
+	io.ReadSeeker
 	Synchronize(f *IndexFile) error
 }
 
-func NewIndexFile(data io.ReadSeeker, handler DataHandler) (*IndexFile, error) {
+func NewIndexFile(data DataHandler) (*IndexFile, error) {
 	f := &IndexFile{
 		Version: CurrentVersion,
 		Indexes: []Index{},
 		data:    data,
 	}
-	return f, handler.Synchronize(f)
+	return f, data.Synchronize(f)
 }
 
-func ReadIndexFile(r io.Reader, data io.ReadSeeker, handler DataHandler) (*IndexFile, error) {
+func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	f := &IndexFile{}
 
 	f.data = data
@@ -155,10 +146,12 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker, handler DataHandler) (*Index
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
-	return f, handler.Synchronize(f)
+	return f, data.Synchronize(f)
 }
 
-type JSONLHandler struct{}
+type JSONLHandler struct {
+	io.ReadSeeker
+}
 
 func (j JSONLHandler) Synchronize(f *IndexFile) error {
 

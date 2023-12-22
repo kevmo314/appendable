@@ -31,14 +31,8 @@ func main() {
 		panic(err)
 	}
 
-	// Determine file type, assign correct handler
-	handler, err := appendable.DetermineDataHandler(args[0])
-	if err != nil {
-		panic(err)
-	}
-
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(file, handler)
+	indexFile, err := appendable.NewIndexFile(appendable.JSONLHandler{ReadSeeker: file})
 	if err != nil {
 		panic(err)
 	}
