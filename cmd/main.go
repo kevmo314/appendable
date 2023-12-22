@@ -32,7 +32,7 @@ func main() {
 	}
 
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(file)
+	indexFile, err := appendable.NewIndexFile(appendable.JSONLHandler{ReadSeeker: file})
 	if err != nil {
 		panic(err)
 	}

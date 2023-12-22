@@ -10,7 +10,8 @@ import (
 
 func TestAppendDataRow(t *testing.T) {
 	t.Run("no schema changes", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -21,7 +22,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -47,7 +48,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("correctly sets field offset", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -58,7 +59,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +96,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("new index", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -106,7 +107,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":\"test3\"}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":\"test3\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -126,7 +127,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("existing index but different type", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -137,7 +138,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":123}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":123}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +154,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("creates nested indices", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -164,7 +165,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":{\"a\":1,\"b\":\"2\"}}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":{\"a\":1,\"b\":\"2\"}}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -200,7 +201,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("creates nested indices but also erases parent", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -211,7 +212,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":{\"a\":1,\"b\":\"2\"}}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":{\"a\":1,\"b\":\"2\"}}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -227,7 +228,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("ignores arrays", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,7 +239,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -250,7 +251,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("ignores arrays but downgrades type", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -261,7 +262,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":[[1,2,3],4]}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":[[1,2,3],4]}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -277,7 +278,7 @@ func TestAppendDataRow(t *testing.T) {
 	})
 
 	t.Run("existing index but nullable type", func(t *testing.T) {
-		i, err := NewIndexFile(strings.NewReader("{\"test\":\"test1\"}\n"))
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -288,7 +289,7 @@ func TestAppendDataRow(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, strings.NewReader("{\"test\":\"test1\"}\n{\"test\":null}\n"))
+		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":null}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}

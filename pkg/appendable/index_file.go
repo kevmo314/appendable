@@ -74,7 +74,7 @@ func (i *IndexFile) findIndex(name string, value any) int {
 
 }
 
-func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex, dataOffset uint64) error {
+func (i *IndexFile) handleJSONLObject(dec *json.Decoder, path []string, dataIndex, dataOffset uint64) error {
 	// while the next token is not }, read the key
 	for dec.More() {
 		key, err := dec.Token()
@@ -141,7 +141,7 @@ func (i *IndexFile) handleObject(dec *json.Decoder, path []string, dataIndex, da
 							i.Indexes[j].FieldType |= protocol.FieldTypeObject
 						}
 					}
-					if err := i.handleObject(dec, append(path, key), dataIndex, dataOffset); err != nil {
+					if err := i.handleJSONLObject(dec, append(path, key), dataIndex, dataOffset); err != nil {
 						return fmt.Errorf("failed to handle object: %w", err)
 					}
 					// read the }
