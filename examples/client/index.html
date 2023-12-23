@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+
     <script src="appendable.min.js"></script>
     <script>
       Appendable.init(
@@ -26,7 +28,7 @@
           document.getElementById("results").innerHTML = "";
 
           const query = db.query(
-            JSON.parse(document.getElementById("query").value)
+            JSON.parse(editor.getValue())
           );
 
           bindQuery(query);
@@ -35,7 +37,7 @@
         document.getElementById("results").innerHTML = "";
 
         const query = db.query(
-          JSON.parse(document.getElementById("query").value)
+          JSON.parse(editor.getValue())
         );
 
         bindQuery(query);
@@ -98,28 +100,35 @@
       </div>
       <div>
         <h2>Query</h2>
-        <textarea id="query" rows="20" cols="80">
-{
-  "where": [
-    {
-      "operation": "&gt;=",
-      "key": "trip_distance",
-      "value": 10
-    }
-  ],
-  "orderBy": [
-    {
-      "key": "trip_distance",
-      "direction": "ASC"
-    }
-  ]
-}</textarea
-        >
+        <div id="json-editor" style="height: 300px; width: 600px;"></div>
         <button id="execute">Execute</button>
         <h2>Results</h2>
         <pre id="results"></pre>
         <button id="next">Fetch more</button>
       </div>
     </div>
+    <script>
+      var editor = ace.edit("json-editor");
+      editor.session.setMode("ace/mode/json");
+      editor.setTheme("ace/theme/chrome");
+      editor.getSession().setTabSize(2);
+      editor.getSession().setUseSoftTabs(true);
+
+      editor.setValue(JSON.stringify({
+        "where": [
+          {
+            "operation": ">=",
+            "key": "trip_distance",
+            "value": 10
+          }
+        ],
+        "orderBy": [
+          {
+            "key": "trip_distance",
+            "direction": "ASC"
+          }
+        ]
+      }, null, 2), -1);
+    </script>
   </body>
 </html>
