@@ -11,9 +11,16 @@ import (
 )
 
 func main() {
+
+	var jsonlFlag bool
+	var csvFlag bool
+
+	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
+	flag.BoolVar(&csvFlag, "csv", false, "Use CSV handler")
+
 	// index := flag.String("i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [-i index] [-I index] filename\n", os.Args[0])
+		fmt.Printf("Usage: %s [-i index] [-I index] [-jsonl or -csv] filename\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -31,8 +38,20 @@ func main() {
 		panic(err)
 	}
 
+	var dataHandler appendable.DataHandler
+
+	switch {
+	case jsonlFlag:
+		dataHandler = appendable.JSONLHandler{ReadSeeker: file}
+	case csvFlag:
+		dataHandler = appendable.CSVHandler{ReadSeeker: file}
+	default:
+		fmt.Println("Please specify the file type with -jsonl or -csv.")
+		os.Exit(1)
+	}
+
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(appendable.JSONLHandler{ReadSeeker: file})
+	indexFile, err := appendable.NewIndexFile(dataHandler)
 	if err != nil {
 		panic(err)
 	}

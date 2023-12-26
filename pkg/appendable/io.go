@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -147,6 +148,53 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		}
 	}
 	return f, data.Synchronize(f)
+}
+
+type CSVHandler struct {
+	io.ReadSeeker
+}
+
+func (c CSVHandler) Synchronize(f *IndexFile) error {
+	csvReader := csv.NewReader(f.data)
+
+	var headers []string
+
+	var err error
+	headers, err = csvReader.Read()
+
+	if err != nil {
+		return fmt.Errorf("failed to parse CSV header: %w", err)
+	}
+	fmt.Printf("First line: %s\n", headers) // TODO! delete when done
+
+	for {
+
+		fields, err := csvReader.Read()
+
+		if err == io.EOF {
+			break // we've reached the end of the road
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed to parse CSV line: %w", err)
+		}
+
+		existingCount := len(f.EndByteOffsets)
+
+		var start uint64
+		if len(f.EndByteOffsets) > 0 {
+			start = f.EndByteOffsets[existingCount-1]
+		}
+
+		lineStr := strings.Join(fields, ",")
+		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(lineStr))+1)
+		f.Checksums = append(f.Checksums, xxhash.Sum64([]byte(lineStr)))
+
+		f.handleCSVLine(fields, headers, []string{}, uint64(existingCount), start)
+
+	}
+
+	return nil
 }
 
 type JSONLHandler struct {

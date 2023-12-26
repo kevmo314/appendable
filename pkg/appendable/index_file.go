@@ -165,3 +165,30 @@ func (i *IndexFile) handleJSONLObject(dec *json.Decoder, path []string, dataInde
 	}
 	return nil
 }
+
+func (i *IndexFile) handleCSVLine(fields []string, headers []string, path []string, dataIndex, dataOffset uint64) error {
+
+	currentOffset := dataOffset
+
+	for idx, field := range fields {
+		key := headers[idx]
+		name := strings.Join(append(path, key), ".")
+
+		var value any = field // TODO! Infer value type
+
+		fieldOffset := currentOffset
+		currentOffset += uint64(len(field) + 1) // account for ,
+
+		indexPos := i.findIndex(name, value)
+		tree := i.Indexes[indexPos].IndexRecords
+
+		tree[value] = append(tree[value], protocol.IndexRecord{
+			DataNumber:           dataIndex,
+			FieldStartByteOffset: fieldOffset,
+			FieldLength:          len(field),
+		})
+
+	}
+
+	return nil
+}
