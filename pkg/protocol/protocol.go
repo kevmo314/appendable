@@ -120,6 +120,10 @@ type IndexRecord struct {
 	FieldLength int
 }
 
+func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
+	return "", nil
+}
+
 func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {
 	offset, err := r.Seek(0, io.SeekCurrent)
 	if err != nil {
