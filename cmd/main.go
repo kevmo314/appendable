@@ -22,7 +22,7 @@ func main() {
 
 	// index := flag.String("i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [-i index] [-I index] [-t] filename\n", os.Args[0])
+		fmt.Printf("Usage: %s [-t] [-i index] [-I index] filename\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
