@@ -6,14 +6,23 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 )
 
 func main() {
+	var showTimings bool
+	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
+
+	var totalStart, readStart, writeStart time.Time
+	if showTimings {
+		totalStart = time.Now()
+	}
+
 	// index := flag.String("i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [-i index] [-I index] filename\n", os.Args[0])
+		fmt.Printf("Usage: %s [-i index] [-I index] [-t] filename\n", os.Args[0])
 		flag.PrintDefaults()
 		os.Exit(1)
 	}
@@ -31,13 +40,25 @@ func main() {
 		panic(err)
 	}
 
+	if showTimings {
+		readStart = time.Now()
+	}
 	// Open the index file
 	indexFile, err := appendable.NewIndexFile(appendable.JSONLHandler{ReadSeeker: file})
+
+	if showTimings {
+		readDuration := time.Since(readStart)
+		log.Printf("Opening + synchronizing index file took: %s", readDuration)
+	}
+
 	if err != nil {
 		panic(err)
 	}
 
 	// Write the index file
+	if showTimings {
+		writeStart = time.Now()
+	}
 	of, err := os.Create(args[0] + ".index")
 	if err != nil {
 		panic(err)
@@ -53,5 +74,14 @@ func main() {
 	if err := of.Close(); err != nil {
 		panic(err)
 	}
+
+	if showTimings {
+		writeDuration := time.Since(writeStart)
+		log.Printf("Writing index file took: %s", writeDuration)
+
+		totalDuration := time.Since(totalStart)
+		log.Printf("Total execution time: %s", totalDuration)
+	}
+
 	log.Printf("Done!")
 }
