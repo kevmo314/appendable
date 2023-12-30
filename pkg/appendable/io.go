@@ -15,16 +15,21 @@ import (
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
 
-func NewIndexFile(data io.ReadSeeker) (*IndexFile, error) {
+type DataHandler interface {
+	io.ReadSeeker
+	Synchronize(f *IndexFile) error
+}
+
+func NewIndexFile(data DataHandler) (*IndexFile, error) {
 	f := &IndexFile{
 		Version: CurrentVersion,
 		Indexes: []Index{},
 		data:    data,
 	}
-	return f, f.Synchronize()
+	return f, data.Synchronize(f)
 }
 
-func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
+func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	f := &IndexFile{}
 
 	f.data = data
@@ -141,10 +146,15 @@ func ReadIndexFile(r io.Reader, data io.ReadSeeker) (*IndexFile, error) {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
-	return f, f.Synchronize()
+	return f, data.Synchronize(f)
 }
 
-func (f *IndexFile) Synchronize() error {
+type JSONLHandler struct {
+	io.ReadSeeker
+}
+
+func (j JSONLHandler) Synchronize(f *IndexFile) error {
+
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)
 	for i := 0; scanner.Scan(); i++ {
@@ -168,7 +178,7 @@ func (f *IndexFile) Synchronize() error {
 			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 		}
 
-		if err := f.handleObject(dec, []string{}, uint64(existingCount), start); err != nil {
+		if err := f.handleJSONLObject(dec, []string{}, uint64(existingCount), start); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
