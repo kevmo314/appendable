@@ -52,9 +52,11 @@ func (n *Node) WriteTo(w io.Writer) (int64, error) {
 			return 0, err
 		}
 	}
-	for _, child := range n.Children {
-		if err := encoding.WriteUint64(w, child); err != nil {
-			return 0, err
+	if !n.Leaf {
+		for _, child := range n.Children {
+			if err := encoding.WriteUint64(w, child); err != nil {
+				return 0, err
+			}
 		}
 	}
 	return int64(1 + 16*len(n.Keys) + 8*len(n.Children)), nil
@@ -68,7 +70,6 @@ func (n *Node) ReadFrom(r io.Reader) (int64, error) {
 	n.Leaf = size&(1<<7) != 0
 	size = size & (1<<7 - 1)
 	n.Keys = make([]DataPointer, size)
-	n.Children = make([]uint64, size+1)
 	for i := 0; i < int(size); i++ {
 		recordOffset, err := encoding.ReadUint64(r)
 		if err != nil {
@@ -88,12 +89,15 @@ func (n *Node) ReadFrom(r io.Reader) (int64, error) {
 			Length:       length,
 		}
 	}
-	for i := 0; i <= int(size); i++ {
-		child, err := encoding.ReadUint64(r)
-		if err != nil {
-			return 0, err
+	if !n.Leaf {
+		n.Children = make([]uint64, size+1)
+		for i := 0; i <= int(size); i++ {
+			child, err := encoding.ReadUint64(r)
+			if err != nil {
+				return 0, err
+			}
+			n.Children[i] = child
 		}
-		n.Children[i] = child
 	}
 	return 1 + 16*int64(size) + 8*int64(size+1), nil
 }
