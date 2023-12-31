@@ -21,6 +21,21 @@ func TestEncoding(t *testing.T) {
 		}
 	})
 
+	t.Run("uint8 encoding", func(t *testing.T) {
+		u := uint8(1)
+		buf := &bytes.Buffer{}
+		if err := WriteUint8(buf, u); err != nil {
+			t.Fatal(err)
+		}
+		u2, err := ReadUint8(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if u != u2 {
+			t.Errorf("expected %v, got %v", u, u2)
+		}
+	})
+
 	t.Run("uint32 encoding", func(t *testing.T) {
 		u := uint32(1)
 		buf := &bytes.Buffer{}
