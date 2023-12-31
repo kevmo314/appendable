@@ -9,8 +9,7 @@ import (
 func TestNode(t *testing.T) {
 	t.Run("encode", func(t *testing.T) {
 		n := &Node{
-			Size: 2,
-			Keys: [8]DataPointer{
+			Keys: []DataPointer{
 				{
 					RecordOffset: 0,
 					FieldOffset:  0,
@@ -22,7 +21,7 @@ func TestNode(t *testing.T) {
 					Length:       5,
 				},
 			},
-			Children: [9]uint64{0, 1, 2},
+			Children: []uint64{0, 1, 2},
 			Leaf:     true,
 		}
 		buf := &bytes.Buffer{}
@@ -36,8 +35,7 @@ func TestNode(t *testing.T) {
 
 	t.Run("decode", func(t *testing.T) {
 		n := &Node{
-			Size: 2,
-			Keys: [8]DataPointer{
+			Keys: []DataPointer{
 				{
 					RecordOffset: 0,
 					FieldOffset:  0,
@@ -49,7 +47,7 @@ func TestNode(t *testing.T) {
 					Length:       5,
 				},
 			},
-			Children: [9]uint64{0, 1, 2},
+			Children: []uint64{0, 1, 2},
 			Leaf:     true,
 		}
 		buf := &bytes.Buffer{}

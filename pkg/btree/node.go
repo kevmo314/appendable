@@ -7,9 +7,8 @@ import (
 )
 
 type Node struct {
-	Size     uint8
-	Keys     [8]DataPointer
-	Children [9]uint64
+	Keys     []DataPointer
+	Children []uint64
 	Leaf     bool
 }
 
@@ -34,41 +33,43 @@ func (p DataPointer) Value(r io.ReadSeeker) ([]byte, error) {
 }
 
 func (n *Node) WriteTo(w io.Writer) (int64, error) {
-	size := n.Size
+	size := len(n.Keys)
 	if n.Leaf {
 		// mark the first bit
 		size |= 1 << 7
 	}
-	if err := encoding.WriteUint8(w, size); err != nil {
+	if err := encoding.WriteUint8(w, uint8(size)); err != nil {
 		return 0, err
 	}
-	for i := 0; i < int(n.Size); i++ {
-		if err := encoding.WriteUint64(w, n.Keys[i].RecordOffset); err != nil {
+	for _, key := range n.Keys {
+		if err := encoding.WriteUint64(w, key.RecordOffset); err != nil {
 			return 0, err
 		}
-		if err := encoding.WriteUint32(w, n.Keys[i].FieldOffset); err != nil {
+		if err := encoding.WriteUint32(w, key.FieldOffset); err != nil {
 			return 0, err
 		}
-		if err := encoding.WriteUint32(w, n.Keys[i].Length); err != nil {
-			return 0, err
-		}
-	}
-	for i := 0; i < int(n.Size)+1; i++ {
-		if err := encoding.WriteUint64(w, n.Children[i]); err != nil {
+		if err := encoding.WriteUint32(w, key.Length); err != nil {
 			return 0, err
 		}
 	}
-	return 1 + 16*int64(n.Size) + 8*int64(n.Size+1), nil
+	for _, child := range n.Children {
+		if err := encoding.WriteUint64(w, child); err != nil {
+			return 0, err
+		}
+	}
+	return int64(1 + 16*len(n.Keys) + 8*len(n.Children)), nil
 }
 
 func (n *Node) ReadFrom(r io.Reader) (int64, error) {
-	size, err := encoding.ReadByte(r)
+	size, err := encoding.ReadUint8(r)
 	if err != nil {
 		return 0, err
 	}
-	n.Size = size & 0x7f
 	n.Leaf = size&(1<<7) != 0
-	for i := 0; i < int(n.Size); i++ {
+	size = size & (1<<7 - 1)
+	n.Keys = make([]DataPointer, size)
+	n.Children = make([]uint64, size+1)
+	for i := 0; i < int(size); i++ {
 		recordOffset, err := encoding.ReadUint64(r)
 		if err != nil {
 			return 0, err
@@ -87,12 +88,20 @@ func (n *Node) ReadFrom(r io.Reader) (int64, error) {
 			Length:       length,
 		}
 	}
-	for i := 0; i < int(n.Size)+1; i++ {
+	for i := 0; i <= int(size); i++ {
 		child, err := encoding.ReadUint64(r)
 		if err != nil {
 			return 0, err
 		}
 		n.Children[i] = child
 	}
-	return 1 + 16*int64(n.Size) + 8*int64(n.Size+1), nil
+	return 1 + 16*int64(size) + 8*int64(size+1), nil
+}
+
+func (n *Node) Clone() *Node {
+	return &Node{
+		Keys:     n.Keys[:],
+		Children: n.Children[:],
+		Leaf:     n.Leaf,
+	}
 }
