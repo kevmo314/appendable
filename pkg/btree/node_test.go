@@ -26,7 +26,7 @@ func TestNode(t *testing.T) {
 			Leaf:     true,
 		}
 		buf := &bytes.Buffer{}
-		if err := n.encode(buf); err != nil {
+		if _, err := n.WriteTo(buf); err != nil {
 			t.Fatal(err)
 		}
 		if buf.Len() != 1+16*2+8*3 {
@@ -53,15 +53,34 @@ func TestNode(t *testing.T) {
 			Leaf:     true,
 		}
 		buf := &bytes.Buffer{}
-		if err := n.encode(buf); err != nil {
+		if _, err := n.WriteTo(buf); err != nil {
 			t.Fatal(err)
 		}
 		m := &Node{}
-		if err := m.decode(buf); err != nil {
+		if _, err := m.ReadFrom(buf); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(n, m) {
 			t.Fatalf("expected decoded node to be equal to original node")
 		}
 	})
+}
+
+func TestDataPointer(t *testing.T) {
+	buf := newSeekableBuffer()
+	if _, err := buf.Write([]byte("moocowslmao")); err != nil {
+		t.Fatal(err)
+	}
+	p := DataPointer{
+		RecordOffset: 1,
+		FieldOffset:  2,
+		Length:       5,
+	}
+	b, err := p.Value(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(b, []byte("cowsl")) {
+		t.Fatalf("expected value to be ocows, got %s", string(b))
+	}
 }
