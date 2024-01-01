@@ -93,4 +93,17 @@ func TestSeekableBuffer(t *testing.T) {
 			t.Fatalf("expected to read 'llo', read %s", string(buf))
 		}
 	})
+
+	t.Run("truncate", func(t *testing.T) {
+		b := newSeekableBuffer()
+		if _, err := b.Write([]byte("hello")); err != nil {
+			t.Fatal(err)
+		}
+		if err := b.Truncate(3); err != nil {
+			t.Fatal(err)
+		}
+		if string(b.buf) != "hel" {
+			t.Fatalf("expected to truncate to 'hel', truncated to %s", string(b.buf))
+		}
+	})
 }
