@@ -50,4 +50,15 @@ func (b *seekableBuffer) Read(p []byte) (int, error) {
 	return n, nil
 }
 
+func (b *seekableBuffer) Truncate(size int64) error {
+	if size < 0 {
+		return io.ErrShortBuffer
+	}
+	if size > int64(len(b.buf)) {
+		return io.ErrShortWrite
+	}
+	b.buf = b.buf[:size]
+	return nil
+}
+
 var _ io.ReadWriteSeeker = &seekableBuffer{}
