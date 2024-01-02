@@ -6,10 +6,23 @@ import (
 	"testing"
 )
 
+type testMetaPage struct {
+	root MemoryPointer
+}
+
+func (m *testMetaPage) SetRoot(mp MemoryPointer) error {
+	m.root = mp
+	return nil
+}
+
+func (m *testMetaPage) Root() (MemoryPointer, error) {
+	return m.root, nil
+}
+
 func TestBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 4096)
+		tree, err := NewBPTree(b, &testMetaPage{}, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -25,7 +38,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert creates a root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 4096)
+		tree, err := NewBPTree(b, &testMetaPage{}, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -46,7 +59,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert into root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 4096)
+		tree, err := NewBPTree(b, &testMetaPage{}, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -80,7 +93,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("compacting after second root insertion removes old root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 4096)
+		tree, err := NewBPTree(b, &testMetaPage{}, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -107,7 +120,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("split root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 4096)
+		tree, err := NewBPTree(b, &testMetaPage{}, 4096)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -170,7 +183,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("split intermediate", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 2)
+		tree, err := NewBPTree(b, &testMetaPage{}, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -203,7 +216,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insertion test", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree, err := NewBPTree(b, 512)
+		tree, err := NewBPTree(b, &testMetaPage{}, 512)
 		if err != nil {
 			t.Fatal(err)
 		}

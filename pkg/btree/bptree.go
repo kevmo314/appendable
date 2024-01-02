@@ -8,6 +8,14 @@ import (
 	"slices"
 )
 
+// MetaPage is an abstract interface over the root page of a btree
+// This allows the caller to control the memory location of the meta
+// pointer
+type MetaPage interface {
+	Root() (MemoryPointer, error)
+	SetRoot(MemoryPointer) error
+}
+
 type ReadWriteSeekTruncater interface {
 	io.ReadWriteSeeker
 	Truncate(size int64) error
@@ -15,11 +23,12 @@ type ReadWriteSeekTruncater interface {
 
 type BPTree struct {
 	tree ReadWriteSeekTruncater
+	meta MetaPage
 
 	maxPageSize int
 }
 
-func NewBPTree(tree ReadWriteSeekTruncater, maxPageSize int) (*BPTree, error) {
+func NewBPTree(tree ReadWriteSeekTruncater, meta MetaPage, maxPageSize int) (*BPTree, error) {
 	// read the root from the meta page
 	var root uint64
 	if err := binary.Read(tree, binary.BigEndian, &root); err != nil {
@@ -35,21 +44,12 @@ func NewBPTree(tree ReadWriteSeekTruncater, maxPageSize int) (*BPTree, error) {
 			return nil, err
 		}
 	}
-	return &BPTree{tree: tree, maxPageSize: maxPageSize}, nil
+	return &BPTree{tree: tree, meta: meta, maxPageSize: maxPageSize}, nil
 }
 
 func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
-	mp := MemoryPointer{}
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return nil, mp, err
-	}
-	if err := binary.Read(t.tree, binary.BigEndian, &mp.Offset); err != nil {
-		return nil, mp, err
-	}
-	if err := binary.Read(t.tree, binary.BigEndian, &mp.Length); err != nil {
-		return nil, mp, err
-	}
-	if mp.Offset == 0 || mp.Length == 0 {
+	mp, err := t.meta.Root()
+	if err != nil || mp.Offset == 0 || mp.Length == 0 {
 		return nil, mp, nil
 	}
 	root, err := t.readNode(mp)
@@ -57,16 +57,6 @@ func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 		return nil, mp, err
 	}
 	return root, mp, nil
-}
-
-func (t *BPTree) writeRoot(mp MemoryPointer) error {
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	if err := binary.Write(t.tree, binary.BigEndian, mp.Offset); err != nil {
-		return err
-	}
-	return binary.Write(t.tree, binary.BigEndian, mp.Length)
 }
 
 func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
@@ -153,7 +143,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 		if err != nil {
 			return err
 		}
-		return t.writeRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
+		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
 	}
 	path, err := t.traverse(key, root)
 	if err != nil {
@@ -249,7 +239,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 				if err != nil {
 					return err
 				}
-				return t.writeRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(psize)})
+				return t.meta.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(psize)})
 			}
 		} else {
 			// write this node to disk and update the parent
@@ -268,7 +258,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 				p.node.Pointers[p.index] = MemoryPointer{Offset: uint64(offset), Length: uint32(length)}
 			} else {
 				// update the root
-				return t.writeRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
+				return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
 			}
 		}
 	}
@@ -359,7 +349,7 @@ type Entry struct {
 // 		parents = nextParents
 // 		if len(parents) == 1 {
 // 			// this is the root
-// 			return t.writeRoot(parents[0].pointer)
+// 			return t.meta.SetRoot(parents[0].pointer)
 // 		}
 // 	}
 // }
@@ -468,7 +458,7 @@ func (t *BPTree) compact() error {
 	}
 
 	// update the meta pointer
-	return t.writeRoot(referenceMap[rootOffset.Offset])
+	return t.meta.SetRoot(referenceMap[rootOffset.Offset])
 }
 
 func (t *BPTree) String() string {
