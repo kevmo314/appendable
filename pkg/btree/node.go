@@ -1,111 +1,109 @@
 package btree
 
 import (
+	"bytes"
+	"encoding/binary"
 	"io"
-
-	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
-type Node struct {
-	Keys     []DataPointer
-	Children []uint64
-	Leaf     bool
+// MemoryPointer is a uint64 offset and uint32 length
+type MemoryPointer struct {
+	Offset uint64
+	Length uint32
 }
 
-type DataPointer struct {
-	RecordOffset        uint64
-	FieldOffset, Length uint32
+type BPTreeNode struct {
+	// contains the offset of the child node or the offset of the record for leaf
+	// if the node is a leaf, the last pointer is the offset of the next leaf
+	Pointers []MemoryPointer
+	Keys     [][]byte
 }
 
-func (p DataPointer) Value(r io.ReadSeeker) ([]byte, error) {
-	buf := make([]byte, p.Length)
-	if _, err := r.Seek(int64(p.RecordOffset+uint64(p.FieldOffset)), io.SeekStart); err != nil {
-		return nil, err
-	}
-	n, err := r.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	if n != int(p.Length) {
-		return nil, io.ErrUnexpectedEOF
-	}
-	return buf, nil
+func (n *BPTreeNode) leaf() bool {
+	// leafs contain the same number of pointers as keys
+	return len(n.Pointers) == len(n.Keys)
 }
 
-func (n *Node) WriteTo(w io.Writer) (int64, error) {
-	size := len(n.Keys)
-	if n.Leaf {
-		// mark the first bit
+func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
+	size := byte(len(n.Keys))
+	// set the first bit to 1 if it's a leaf
+	if n.leaf() {
 		size |= 1 << 7
 	}
-	if err := encoding.WriteUint8(w, uint8(size)); err != nil {
+	if err := binary.Write(w, binary.BigEndian, size); err != nil {
 		return 0, err
 	}
-	for _, key := range n.Keys {
-		if err := encoding.WriteUint64(w, key.RecordOffset); err != nil {
+	ct := 1
+	for _, k := range n.Keys {
+		if err := binary.Write(w, binary.BigEndian, uint32(len(k))); err != nil {
 			return 0, err
 		}
-		if err := encoding.WriteUint32(w, key.FieldOffset); err != nil {
+		m, err := w.Write(k)
+		if err != nil {
 			return 0, err
 		}
-		if err := encoding.WriteUint32(w, key.Length); err != nil {
-			return 0, err
-		}
+		ct += m + 4
 	}
-	if !n.Leaf {
-		for _, child := range n.Children {
-			if err := encoding.WriteUint64(w, child); err != nil {
-				return 0, err
-			}
+	for _, p := range n.Pointers {
+		if err := binary.Write(w, binary.BigEndian, p.Offset); err != nil {
+			return 0, err
 		}
+		if err := binary.Write(w, binary.BigEndian, p.Length); err != nil {
+			return 0, err
+		}
+		ct += 12
 	}
-	return int64(1 + 16*len(n.Keys) + 8*len(n.Children)), nil
+	return int64(ct), nil
 }
 
-func (n *Node) ReadFrom(r io.Reader) (int64, error) {
-	size, err := encoding.ReadUint8(r)
-	if err != nil {
+func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
+	var size byte
+	if err := binary.Read(r, binary.BigEndian, &size); err != nil {
 		return 0, err
 	}
-	n.Leaf = size&(1<<7) != 0
-	size = size & (1<<7 - 1)
-	n.Keys = make([]DataPointer, size)
-	for i := 0; i < int(size); i++ {
-		recordOffset, err := encoding.ReadUint64(r)
-		if err != nil {
-			return 0, err
-		}
-		fieldOffset, err := encoding.ReadUint32(r)
-		if err != nil {
-			return 0, err
-		}
-		length, err := encoding.ReadUint32(r)
-		if err != nil {
-			return 0, err
-		}
-		n.Keys[i] = DataPointer{
-			RecordOffset: recordOffset,
-			FieldOffset:  fieldOffset,
-			Length:       length,
-		}
+	leaf := size&(1<<7) != 0
+	if leaf {
+		n.Pointers = make([]MemoryPointer, size&0x7f)
+	} else {
+		n.Pointers = make([]MemoryPointer, (size&0x7f)+1)
 	}
-	if !n.Leaf {
-		n.Children = make([]uint64, size+1)
-		for i := 0; i <= int(size); i++ {
-			child, err := encoding.ReadUint64(r)
-			if err != nil {
-				return 0, err
-			}
-			n.Children[i] = child
+	n.Keys = make([][]byte, size&0x7f)
+	m := 1
+	for i := range n.Keys {
+		var l uint32
+		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
+			return 0, err
 		}
+		n.Keys[i] = make([]byte, l)
+		if _, err := io.ReadFull(r, n.Keys[i]); err != nil {
+			return 0, err
+		}
+		m += 4 + int(l)
 	}
-	return 1 + 16*int64(size) + 8*int64(size+1), nil
+	for i := range n.Pointers {
+		if err := binary.Read(r, binary.BigEndian, &n.Pointers[i].Offset); err != nil {
+			return 0, err
+		}
+		if err := binary.Read(r, binary.BigEndian, &n.Pointers[i].Length); err != nil {
+			return 0, err
+		}
+		m += 12
+	}
+	return int64(m), nil
 }
 
-func (n *Node) Clone() *Node {
-	return &Node{
-		Keys:     n.Keys[:],
-		Children: n.Children[:],
-		Leaf:     n.Leaf,
+func (n *BPTreeNode) bsearch(key []byte) (int, bool) {
+	i, j := 0, len(n.Keys)-1
+	for i <= j {
+		m := (i + j) / 2
+		cmp := bytes.Compare(key, n.Keys[m])
+		if cmp == 0 {
+			return m, true
+		} else if cmp < 0 {
+			j = m - 1
+		} else {
+			i = m + 1
+		}
 	}
+	return i, false
 }
