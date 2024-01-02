@@ -25,15 +25,18 @@ func (n *BPTreeNode) leaf() bool {
 }
 
 func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
-	size := byte(len(n.Keys))
+	size := int32(len(n.Keys))
 	// set the first bit to 1 if it's a leaf
 	if n.leaf() {
-		size |= 1 << 7
+		if err := binary.Write(w, binary.BigEndian, -size); err != nil {
+			return 0, err
+		}
+	} else {
+		if err := binary.Write(w, binary.BigEndian, size); err != nil {
+			return 0, err
+		}
 	}
-	if err := binary.Write(w, binary.BigEndian, size); err != nil {
-		return 0, err
-	}
-	ct := 1
+	ct := 4
 	for _, k := range n.Keys {
 		if err := binary.Write(w, binary.BigEndian, uint32(len(k))); err != nil {
 			return 0, err
@@ -57,18 +60,19 @@ func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
-	var size byte
+	var size int32
 	if err := binary.Read(r, binary.BigEndian, &size); err != nil {
 		return 0, err
 	}
-	leaf := size&(1<<7) != 0
+	leaf := size < 0
 	if leaf {
-		n.Pointers = make([]MemoryPointer, size&0x7f)
+		n.Pointers = make([]MemoryPointer, -size)
+		n.Keys = make([][]byte, -size)
 	} else {
-		n.Pointers = make([]MemoryPointer, (size&0x7f)+1)
+		n.Pointers = make([]MemoryPointer, size+1)
+		n.Keys = make([][]byte, size)
 	}
-	n.Keys = make([][]byte, size&0x7f)
-	m := 1
+	m := 4
 	for i := range n.Keys {
 		var l uint32
 		if err := binary.Read(r, binary.BigEndian, &l); err != nil {

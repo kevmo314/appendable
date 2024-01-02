@@ -239,10 +239,10 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 				poffset := noffset + nsize
 				// create a new root
 				p := &BPTreeNode{Pointers: []MemoryPointer{rootOffset}}
-				p.Keys = [][]byte{m.Keys[0]}
+				p.Keys = [][]byte{midKey}
 				p.Pointers = []MemoryPointer{
-					MemoryPointer{Offset: uint64(noffset), Length: uint32(nsize)},
-					MemoryPointer{Offset: uint64(moffset), Length: uint32(msize)},
+					{Offset: uint64(noffset), Length: uint32(nsize)},
+					{Offset: uint64(moffset), Length: uint32(msize)},
 				}
 
 				psize, err := p.WriteTo(t.tree)
@@ -519,9 +519,14 @@ func (t *BPTree) String() string {
 				return err.Error()
 			}
 		}
-		for _, p := range node.Pointers {
-			if _, err := buf.Write([]byte(fmt.Sprintf("%04d ", p))); err != nil {
+		for i := 0; i < len(node.Pointers); i++ {
+			if _, err := buf.Write([]byte(fmt.Sprintf("%04d ", node.Pointers[i]))); err != nil {
 				return err.Error()
+			}
+			if i < len(node.Keys) {
+				if _, err := buf.Write([]byte(fmt.Sprintf("%02d ", node.Keys[i]))); err != nil {
+					return err.Error()
+				}
 			}
 		}
 		if _, err := buf.Write([]byte("\n")); err != nil {
