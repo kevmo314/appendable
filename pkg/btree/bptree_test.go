@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"encoding/binary"
 	"fmt"
 	"testing"
 )
@@ -200,30 +201,34 @@ func TestBPTree(t *testing.T) {
 		fmt.Printf(tree.String())
 	})
 
-	// t.Run("insertion test", func(t *testing.T) {
-	// 	b := newSeekableBuffer()
-	// 	tree, err := NewBPTree(b, 4)
-	// 	if err != nil {
-	// 		t.Fatal(err)
-	// 	}
-	// 	for i := 0; i < 1000; i++ {
-	// 		if err := tree.Insert([]byte{byte(i)}, uint64(i)); err != nil {
-	// 			t.Fatal(err)
-	// 		}
-	// 	}
-	// 	for i := 0; i < 1000; i++ {
-	// 		v, found, err := tree.Find([]byte{byte(i)})
-	// 		if err != nil {
-	// 			t.Fatal(err)
-	// 		}
-	// 		if !found {
-	// 			t.Fatalf("expected to find key %d", i)
-	// 		}
-	// 		if v != uint64(i) {
-	// 			t.Fatalf("expected value %d, got %d", i, v)
-	// 		}
-	// 	}
-	// })
+	t.Run("insertion test", func(t *testing.T) {
+		b := newSeekableBuffer()
+		tree, err := NewBPTree(b, 512)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 10240; i++ {
+			buf := make([]byte, 4)
+			binary.BigEndian.PutUint32(buf, uint32(i))
+			if err := tree.Insert(buf, MemoryPointer{Offset: uint64(i)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for i := 0; i < 10240; i++ {
+			buf := make([]byte, 4)
+			binary.BigEndian.PutUint32(buf, uint32(i))
+			v, found, err := tree.Find(buf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !found {
+				t.Fatalf("expected to find key %d", i)
+			}
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+	})
 
 	// t.Run("bulk insert", func(t *testing.T) {
 	// 	b := newSeekableBuffer()
