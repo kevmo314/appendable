@@ -2,7 +2,6 @@ package btree
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"slices"
@@ -28,28 +27,13 @@ type BPTree struct {
 	maxPageSize int
 }
 
-func NewBPTree(tree ReadWriteSeekTruncater, meta MetaPage, maxPageSize int) (*BPTree, error) {
-	// read the root from the meta page
-	var root uint64
-	if err := binary.Read(tree, binary.BigEndian, &root); err != nil {
-		if err == io.EOF {
-			// empty tree
-			if _, err := tree.Seek(0, io.SeekStart); err != nil {
-				return nil, err
-			}
-			if _, err := tree.Write(make([]byte, 12)); err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return &BPTree{tree: tree, meta: meta, maxPageSize: maxPageSize}, nil
+func NewBPTree(tree ReadWriteSeekTruncater, meta MetaPage, maxPageSize int) *BPTree {
+	return &BPTree{tree: tree, meta: meta, maxPageSize: maxPageSize}
 }
 
 func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 	mp, err := t.meta.Root()
-	if err != nil || mp.Offset == 0 || mp.Length == 0 {
+	if err != nil || mp.Length == 0 {
 		return nil, mp, nil
 	}
 	root, err := t.readNode(mp)
@@ -364,8 +348,7 @@ func (t *BPTree) compact() error {
 		return err
 	}
 
-	// skip the meta pointer
-	if _, err := t.tree.Seek(12, io.SeekStart); err != nil {
+	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -385,7 +368,7 @@ func (t *BPTree) compact() error {
 	}
 
 	// read all the nodes again and write out the referenced nodes
-	if _, err := t.tree.Seek(12, io.SeekStart); err != nil {
+	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -395,7 +378,7 @@ func (t *BPTree) compact() error {
 
 	referenceMap := make(map[uint64]MemoryPointer)
 
-	offset := 12
+	offset := 0
 	for i, reference := range references {
 		// skip duplicates
 		if i > 0 && references[i-1] == reference {
@@ -428,7 +411,7 @@ func (t *BPTree) compact() error {
 	}
 
 	// update the parent pointers
-	if _, err := t.tree.Seek(12, io.SeekStart); err != nil {
+	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
 		return err
 	}
 	for {
@@ -485,7 +468,7 @@ func (t *BPTree) String() string {
 		return err.Error()
 	}
 	// seek to 8
-	if _, err := t.tree.Seek(12, io.SeekStart); err != nil {
+	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
 		return err.Error()
 	}
 	for {
