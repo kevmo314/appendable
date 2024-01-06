@@ -2,6 +2,7 @@ package btree
 
 import (
 	"encoding/binary"
+	"errors"
 	"io"
 )
 
@@ -55,12 +56,20 @@ func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
 }
 
 func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
+	// check that the next pointer is zero
+	curr, err := m.Next()
+	if err != nil {
+		return nil, err
+	}
+	if curr != nil {
+		return nil, errors.New("next pointer is not zero")
+	}
 	offset, err := m.rws.Seek(0, io.SeekEnd)
 	if err != nil {
 		return nil, err
 	}
 	next := &LinkedMetaPage{rws: m.rws, offset: uint64(offset)}
-	if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
+	if err := next.Reset(); err != nil {
 		return nil, err
 	}
 	// save the next pointer
