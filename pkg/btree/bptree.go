@@ -86,7 +86,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode) ([]*TraversalRecord, err
 		return []*TraversalRecord{{node: node}}, nil
 	}
 	for i, k := range node.Keys {
-		if bytes.Compare(key, k) < 0 {
+		if bytes.Compare(key, k.Value) < 0 {
 			child, err := t.readNode(node.Pointers[i])
 			if err != nil {
 				return nil, err
@@ -109,7 +109,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode) ([]*TraversalRecord, err
 	return append(path, &TraversalRecord{node: node, index: len(node.Keys)}), nil
 }
 
-func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
+func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	root, rootOffset, err := t.root()
 	if err != nil {
 		return fmt.Errorf("read root node: %w", err)
@@ -121,7 +121,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 			return err
 		}
 		node := &BPTreeNode{}
-		node.Keys = [][]byte{key}
+		node.Keys = []ReferencedValue{key}
 		node.Pointers = []MemoryPointer{value}
 		length, err := node.WriteTo(t.tree)
 		if err != nil {
@@ -129,14 +129,14 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 		}
 		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
 	}
-	path, err := t.traverse(key, root)
+	path, err := t.traverse(key.Value, root)
 	if err != nil {
 		return err
 	}
 
 	// insert the key into the leaf
 	n := path[0].node
-	j, _ := n.bsearch(key)
+	j, _ := n.bsearch(key.Value)
 	if j == len(n.Keys) {
 		n.Keys = append(n.Keys, key)
 		n.Pointers = append(n.Pointers, value)
@@ -193,7 +193,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 			// update the parent
 			if i < len(path)-1 {
 				p := path[i+1]
-				j, _ := p.node.bsearch(midKey)
+				j, _ := p.node.bsearch(midKey.Value)
 				if j != p.index {
 					// j should be equal to p.index...?
 					// panic("aww")
@@ -213,7 +213,7 @@ func (t *BPTree) Insert(key []byte, value MemoryPointer) error {
 				poffset := noffset + nsize
 				// create a new root
 				p := &BPTreeNode{Pointers: []MemoryPointer{rootOffset}}
-				p.Keys = [][]byte{midKey}
+				p.Keys = []ReferencedValue{midKey}
 				p.Pointers = []MemoryPointer{
 					{Offset: uint64(noffset), Length: uint32(nsize)},
 					{Offset: uint64(moffset), Length: uint32(msize)},
