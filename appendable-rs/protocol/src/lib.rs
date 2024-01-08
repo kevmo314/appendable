@@ -1,14 +1,13 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+pub mod field_type;
+pub mod protocol;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub use protocol::{
+    IndexFileHeader,
+    IndexHeader,
+    IndexRecord,
+    Version
+};
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use field_type::{
+    FieldType
+};
