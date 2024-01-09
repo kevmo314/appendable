@@ -1,5 +1,5 @@
 use crate::index_file::Index;
-use std::io::{Read, Seek};
+use std::io::Seek;
 
 pub trait DataHandler: Seek {
     fn synchronize(

@@ -94,6 +94,16 @@ impl IndexKey {
     }
 }
 
+impl fmt::Display for Index {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Field\nname: {}\n\ttype: {:?}\n\tindex_records: {:?}",
+            self.field_name, self.field_type, self.index_records
+        )
+    }
+}
+
 impl fmt::Display for IndexKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
@@ -121,6 +131,3 @@ impl fmt::Display for IndexKey {
         }
     }
 }
-
-// todo handleJSONLObject()
-// linking: https://github.com/kevmo314/appendable/blob/main/pkg/appendable/index_file.go#L77
