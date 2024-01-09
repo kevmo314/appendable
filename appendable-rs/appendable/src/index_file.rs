@@ -1,30 +1,59 @@
+use crate::io::DataHandler;
+use protocol::field_type::FieldFlags;
+use protocol::{FieldType, IndexRecord, Version};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
-use protocol::{Version, FieldType, IndexRecord};
-use protocol::field_type::FieldFlags;
-use crate::io::ReadSeek;
 
-const CURRENT_VERSION: u64 = 1;
+const CURRENT_VERSION: Version = 1;
+
+pub(crate) struct Index {
+    field_name: String,
+    field_type: FieldFlags,
+    pub(crate) index_records: HashMap<IndexKey, Vec<IndexRecord>>,
+}
 
 /// `IndexFile` is a representation of the entire index file.
 pub struct IndexFile {
     version: Version,
-    indexes: Vec<Index>,
-    end_byte_offsets: Vec<u64>,
-    checksums: Vec<u64>,
-    data: Box<dyn ReadSeek>,
+    pub(crate) indexes: Vec<Index>,
+    pub(crate) end_byte_offsets: Vec<u64>,
+    pub(crate) checksums: Vec<u64>,
+    data: Box<dyn DataHandler>,
     tail: u32,
 }
 
 impl IndexFile {
-    fn find_index(&mut self, name: &str, value: &IndexKey) -> usize {
-        if let Some((position, _)) = self.indexes
+    pub fn new(mut data_handler: Box<dyn DataHandler>) -> Result<Self, String> {
+        let mut file = IndexFile {
+            version: CURRENT_VERSION,
+            indexes: Vec::new(),
+            data: data_handler,
+            end_byte_offsets: Vec::new(),
+            checksums: Vec::new(),
+            tail: 0,
+        };
+
+        file.data.synchronize(
+            &mut file.indexes,
+            &mut file.end_byte_offsets,
+            &mut file.checksums,
+        )?;
+
+        Ok(file)
+    }
+
+    pub(crate) fn find_index(&mut self, name: &str, value: &IndexKey) -> usize {
+        if let Some((position, _)) = self
+            .indexes
             .iter()
             .enumerate()
-            .find(|(_, index)| index.field_name == name) {
-
-            if !self.indexes[position].field_type.contains(value.field_type()) {
+            .find(|(_, index)| index.field_name == name)
+        {
+            if !self.indexes[position]
+                .field_type
+                .contains(value.field_type())
+            {
                 self.indexes[position].field_type.set(value.field_type());
             }
 
@@ -60,7 +89,7 @@ impl IndexKey {
             IndexKey::Number(_) => FieldType::Number,
             IndexKey::Boolean(_) => FieldType::Boolean,
             IndexKey::Array(_) => FieldType::Array,
-            IndexKey::Object(_) => FieldType::Object
+            IndexKey::Object(_) => FieldType::Object,
         }
     }
 }
@@ -72,15 +101,17 @@ impl fmt::Display for IndexKey {
             IndexKey::Number(n) => write!(f, "{}", n),
             IndexKey::Boolean(b) => write!(f, "{}", b),
             IndexKey::Array(v) => {
-                let elements = v.iter()
+                let elements = v
+                    .iter()
                     .map(|element| format!("{}", element))
                     .collect::<Vec<String>>()
                     .join(", ");
 
                 write!(f, "[{}]", elements)
-            },
+            }
             IndexKey::Object(o) => {
-                let entries = o.iter()
+                let entries = o
+                    .iter()
                     .map(|(key, value)| format!("{}: {}", key, value))
                     .collect::<Vec<String>>()
                     .join(", ");
@@ -90,14 +121,6 @@ impl fmt::Display for IndexKey {
         }
     }
 }
-
-struct Index {
-    field_name: String,
-    field_type: FieldFlags,
-    index_records: HashMap<IndexKey, Vec<IndexRecord>>
-}
-
-
 
 // todo handleJSONLObject()
 // linking: https://github.com/kevmo314/appendable/blob/main/pkg/appendable/index_file.go#L77
