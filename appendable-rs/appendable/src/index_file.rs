@@ -8,8 +8,8 @@ use std::fmt::Formatter;
 const CURRENT_VERSION: Version = 1;
 
 pub(crate) struct Index {
-    field_name: String,
-    field_type: FieldFlags,
+    pub(crate) field_name: String,
+    pub(crate) field_type: FieldFlags,
     pub(crate) index_records: HashMap<IndexKey, Vec<IndexRecord>>,
 }
 
@@ -19,7 +19,6 @@ pub struct IndexFile {
     pub(crate) indexes: Vec<Index>,
     pub(crate) end_byte_offsets: Vec<u64>,
     pub(crate) checksums: Vec<u64>,
-    data: Box<dyn DataHandler>,
     tail: u32,
 }
 
@@ -28,17 +27,12 @@ impl IndexFile {
         let mut file = IndexFile {
             version: CURRENT_VERSION,
             indexes: Vec::new(),
-            data: data_handler,
             end_byte_offsets: Vec::new(),
             checksums: Vec::new(),
             tail: 0,
         };
 
-        file.data.synchronize(
-            &mut file.indexes,
-            &mut file.end_byte_offsets,
-            &mut file.checksums,
-        )?;
+        data_handler.synchronize(&mut file)?;
 
         Ok(file)
     }

@@ -2,13 +2,12 @@
 mod tests {
     use crate::handler::jsonl_handler::JSONLHandler;
     use crate::index_file::IndexFile;
-    use std::fs::File;
+    use std::fs;
     use std::io::Write;
-    use std::path::Path;
+    use std::path::PathBuf;
     use tempfile::NamedTempFile;
 
-    fn mock_jsonl_file() -> std::io::Result<File> {
-        // Create a temporary file
+    fn mock_jsonl_file_to_disk() -> std::io::Result<PathBuf> {
         let mut temp_file = NamedTempFile::new()?;
 
         writeln!(
@@ -20,16 +19,17 @@ mod tests {
             r#"{{"name": "kevin", "id": 1, "alpha": ["x", "y", "z"]}}"#
         )?;
 
-        // Persist the file and return the File handle
-        let file = temp_file.persist(Path::new("mock_data.jsonl"))?;
-        Ok(file)
+        let file_path = temp_file.into_temp_path();
+        let persisted_file = file_path.keep()?;
+        Ok(persisted_file)
     }
 
     #[test]
     fn create_index_file() {
-        let file = mock_jsonl_file().expect("Failed to create mock file");
-        let jsonl_handler = JSONLHandler::new(file);
+        let file_path = mock_jsonl_file_to_disk().expect("Failed to create mock file");
+        let data = fs::read(&file_path).expect("Unable to read mock file");
 
+        let jsonl_handler = JSONLHandler::new(data);
         let index_file = IndexFile::new(Box::new(jsonl_handler));
 
         assert!(index_file.is_ok());
