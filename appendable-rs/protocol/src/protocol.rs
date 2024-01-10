@@ -1,4 +1,5 @@
 use crate::field_type::FieldType;
+use std::fmt::{Debug, Display, Formatter};
 
 /*
 The overall index file for AppendableDB is structured as:
@@ -63,9 +64,24 @@ pub struct IndexHeader {
 /// - `field_start_byte_offset` represents the byte offset of the field in the data file to fetch exactly in the field value.
 /// - `field_length` is pessimistic: it is encoded value that is at least as long as the actual field value.
 pub struct IndexRecord {
-    data_number: u64,
-    field_start_byte_offset: u64,
-    field_length: u64,
+    pub data_number: u64,
+    pub field_start_byte_offset: u64,
+    pub field_length: u64,
+}
+
+impl Debug for IndexRecord {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+impl Display for IndexRecord {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "data_number: {}\nfield_start_byte_offset: {}\nfield_length: {}\n",
+            self.data_number, self.field_start_byte_offset, self.field_length
+        )
+    }
 }
 
 // Todo! write out JSON Token() implementation

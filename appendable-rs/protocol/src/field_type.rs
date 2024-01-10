@@ -1,4 +1,3 @@
-
 /// `FieldType` represents the type of data stored in the field, which follows JSON types excluding Object and null. Object is broken down into subfields and null is not stored.
 pub enum FieldType {
     String,
@@ -9,8 +8,8 @@ pub enum FieldType {
     Null,
 }
 
-
 /// `FieldFlags` is left as u64 to avoid shooting ourselves in the foot if we want to support more types in the future via other file formats
+#[derive(Debug)]
 pub struct FieldFlags {
     flags: u64,
 }
@@ -71,7 +70,7 @@ impl FieldFlags {
 
         match components.is_empty() {
             true => "unknown".to_string(),
-            false => components.join(" | ")
+            false => components.join(" | "),
         }
     }
 }
