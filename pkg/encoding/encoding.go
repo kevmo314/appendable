@@ -12,6 +12,10 @@ func WriteByte(w io.Writer, b byte) error {
 	return err
 }
 
+func WriteUint8(w io.Writer, u uint8) error {
+	return binary.Write(w, binary.BigEndian, u)
+}
+
 func WriteUint16(w io.Writer, u uint16) error {
 	return binary.Write(w, binary.BigEndian, u)
 }
@@ -49,6 +53,14 @@ func ReadByte(r io.Reader) (byte, error) {
 		return 0, err
 	}
 	return b[0], nil
+}
+
+func ReadUint8(r io.Reader) (uint8, error) {
+	var u uint8
+	if err := binary.Read(r, binary.BigEndian, &u); err != nil {
+		return 0, err
+	}
+	return u, nil
 }
 
 func ReadUint16(r io.Reader) (uint16, error) {
