@@ -53,6 +53,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			return nil, fmt.Errorf("failed to read index file header: %w", err)
 		}
 
+		fmt.Printf("ReadIndexFile - IndexFileHeader: IndexLength=%d, DataCount=%d\n", ifh.IndexLength, ifh.DataCount)
+
 		// read the index headers
 		f.Indexes = []Index{}
 		br := 0
@@ -82,6 +84,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 
 		// read the index records
 		for i, index := range f.Indexes {
+			fmt.Printf("ReadIndexFile - Reading Index %d: FieldName=%s, FieldType=%d\n", i, index.FieldName, index.FieldType)
+
 			for j := 0; j < int(recordCounts[i]); j++ {
 				var ir protocol.IndexRecord
 				if ir.DataNumber, err = encoding.ReadUint64(r); err != nil {
@@ -94,7 +98,18 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
 
-				value, err := ir.Token(data)
+				fmt.Printf("ReadIndexFile - IndexRecord: DataNumber=%d, StartByteOffset=%d, FieldLength=%d\n", ir.DataNumber, ir.FieldStartByteOffset, ir.FieldLength)
+
+				var value any
+				switch handler := data.(type) {
+				case JSONLHandler:
+					value, err = ir.Token(handler)
+				case CSVHandler:
+					value, err = ir.CSVField(handler)
+				default:
+					err = fmt.Errorf("unrecognized data handler type: %T", handler)
+				}
+
 				if err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
@@ -155,43 +170,44 @@ type CSVHandler struct {
 }
 
 func (c CSVHandler) Synchronize(f *IndexFile) error {
-	csvReader := csv.NewReader(f.data)
 
 	var headers []string
-
 	var err error
-	headers, err = csvReader.Read()
 
-	if err != nil {
-		return fmt.Errorf("failed to parse CSV header: %w", err)
-	}
-	fmt.Printf("First line: %s\n", headers) // TODO! delete when done
+	firstLine := true
+	scanner := bufio.NewScanner(f.data)
 
-	for {
+	for i := 0; scanner.Scan(); i++ {
+		line := scanner.Bytes()
 
-		fields, err := csvReader.Read()
-
-		if err == io.EOF {
-			break // we've reached the end of the road
-		}
-
-		if err != nil {
-			return fmt.Errorf("failed to parse CSV line: %w", err)
-		}
+		fmt.Printf("Processing line %d: %s\n", i, string(line))
+		fmt.Printf("Synchronize - Byte sequence: %v\n", line)
 
 		existingCount := len(f.EndByteOffsets)
 
+		// append a data range
 		var start uint64
 		if len(f.EndByteOffsets) > 0 {
 			start = f.EndByteOffsets[existingCount-1]
 		}
+		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
+		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
-		lineStr := strings.Join(fields, ",")
-		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(lineStr))+1)
-		f.Checksums = append(f.Checksums, xxhash.Sum64([]byte(lineStr)))
+		fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line)), xxhash.Sum64(line))
 
-		f.handleCSVLine(fields, headers, []string{}, uint64(existingCount), start)
+		if firstLine {
+			dec := csv.NewReader(bytes.NewReader(line))
+			headers, err = dec.Read()
+			if err != nil {
+				return fmt.Errorf("failed to parse CSV header: %w", err)
+			}
+			firstLine = false
 
+			continue
+		}
+
+		dec := csv.NewReader(bytes.NewReader(line))
+		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
 	}
 
 	return nil

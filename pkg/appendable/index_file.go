@@ -1,9 +1,11 @@
 package appendable
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
@@ -166,29 +168,79 @@ func (i *IndexFile) handleJSONLObject(dec *json.Decoder, path []string, dataInde
 	return nil
 }
 
-func (i *IndexFile) handleCSVLine(fields []string, headers []string, path []string, dataIndex, dataOffset uint64) error {
-
-	currentOffset := dataOffset
-
-	for idx, field := range fields {
-		key := headers[idx]
-		name := strings.Join(append(path, key), ".")
-
-		var value any = field // TODO! Infer value type
-
-		fieldOffset := currentOffset
-		currentOffset += uint64(len(field) + 1) // account for ,
-
-		indexPos := i.findIndex(name, value)
-		tree := i.Indexes[indexPos].IndexRecords
-
-		tree[value] = append(tree[value], protocol.IndexRecord{
-			DataNumber:           dataIndex,
-			FieldStartByteOffset: fieldOffset,
-			FieldLength:          len(field),
-		})
-
+func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
+	if fieldValue == "" {
+		return nil, protocol.FieldTypeNull
 	}
+
+	if i, err := strconv.Atoi(fieldValue); err == nil {
+		return i, protocol.FieldTypeNumber
+	}
+
+	if f, err := strconv.ParseFloat(fieldValue, 64); err == nil {
+		return f, protocol.FieldTypeNumber
+	}
+
+	if b, err := strconv.ParseBool(fieldValue); err == nil {
+		return b, protocol.FieldTypeBoolean
+	}
+
+	return fieldValue, protocol.FieldTypeString
+}
+
+func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
+
+	record, err := dec.Read()
+
+	if err != nil {
+		return fmt.Errorf("failed to read CSV record at index %d: %w", dataIndex, err)
+	}
+
+	cumulativeLength := uint64(0)
+
+	for fieldIndex, fieldValue := range record {
+		if fieldIndex >= len(headers) {
+			return fmt.Errorf("field index %d is out of bounds with header", fieldIndex)
+		}
+
+		fieldName := headers[fieldIndex]
+		name := strings.Join(append(path, fieldName), ".")
+
+		fieldOffset := dataOffset + cumulativeLength
+		fieldLength := uint64(len(fieldValue))
+
+		value, fieldType := inferCSVField(fieldValue)
+
+		fmt.Printf("Field '%s' - Offset: %d, Length: %d, Value: %v, Type: %v\n", fieldName, fieldOffset, fieldLength, value, fieldType)
+
+		switch fieldType {
+		case protocol.FieldTypeBoolean, protocol.FieldTypeString, protocol.FieldTypeNumber:
+			tree := i.Indexes[i.findIndex(name, value)].IndexRecords
+
+			tree[value] = append(tree[value], protocol.IndexRecord{
+				DataNumber:           dataIndex,
+				FieldStartByteOffset: uint64(fieldOffset),
+				FieldLength:          int(fieldLength),
+			})
+
+		case protocol.FieldTypeNull:
+			for j := range i.Indexes {
+				if i.Indexes[j].FieldName == name {
+					i.Indexes[j].FieldType |= protocol.FieldTypeNull
+				}
+			}
+
+		default:
+			return fmt.Errorf("unexpected type '%T'", value)
+		}
+
+		cumulativeLength += fieldLength
+		if fieldIndex < len(record)-1 {
+			cumulativeLength += 1
+		}
+	}
+
+	fmt.Printf("\n")
 
 	return nil
 }
