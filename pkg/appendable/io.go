@@ -132,7 +132,13 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			}
 		}
 		start := uint64(0)
+		if _, isCSV := data.(CSVHandler); isCSV && len(f.EndByteOffsets) > 0 {
+			start = f.EndByteOffsets[0]
+		}
 		for i := 0; i < int(ifh.DataCount); i++ {
+			if _, isCSV := data.(CSVHandler); isCSV {
+				i = i + 1
+			}
 			if f.Checksums[i], err = encoding.ReadUint64(r); err != nil {
 				return nil, fmt.Errorf("failed to read data range: %w", err)
 			}
@@ -146,6 +152,7 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
 
+			fmt.Printf("bytes look like: %v\n", buf.Bytes())
 			// verify the checksum
 			if xxhash.Sum64(buf.Bytes()) != f.Checksums[i] {
 				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), f.Checksums[i])
@@ -174,7 +181,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 	var headers []string
 	var err error
 
-	firstLine := true
+	isHeader := true
 	scanner := bufio.NewScanner(f.data)
 
 	for i := 0; scanner.Scan(); i++ {
@@ -190,25 +197,30 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		if len(f.EndByteOffsets) > 0 {
 			start = f.EndByteOffsets[existingCount-1]
 		}
+
 		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
-		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
-		fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line)), xxhash.Sum64(line))
+		if !isHeader {
+			f.Checksums = append(f.Checksums, xxhash.Sum64(line))
+		}
 
-		if firstLine {
+		fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
+
+		if isHeader {
 			dec := csv.NewReader(bytes.NewReader(line))
 			headers, err = dec.Read()
 			if err != nil {
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
-			firstLine = false
-
+			isHeader = false
 			continue
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
 	}
+
+	fmt.Printf("Length of Indexes: %d\nChecksums: %d\nBytes :%d\n", len(f.Indexes), len(f.Checksums), len(f.EndByteOffsets))
 
 	return nil
 }
@@ -251,6 +263,7 @@ func (j JSONLHandler) Synchronize(f *IndexFile) error {
 			return fmt.Errorf("expected '}', got '%v'", t)
 		}
 	}
+
 	return nil
 }
 
