@@ -33,7 +33,7 @@ func TestAppendDataRowJSONL(t *testing.T) {
 		}
 
 		if len(j.EndByteOffsets) != 2 {
-			t.Errorf("got len(i.DataRanges) = %d, want 2", len(i.Indexes))
+			t.Errorf("got len(i.DataRanges) = %d, want 2", len(i.EndByteOffsets))
 		}
 
 		// check that the first data range is untouched despite being incorrect

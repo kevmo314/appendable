@@ -235,9 +235,6 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 		}
 
 		cumulativeLength += fieldLength
-		if fieldIndex < len(record)-1 {
-			cumulativeLength += 1
-		}
 	}
 
 	fmt.Printf("\n")

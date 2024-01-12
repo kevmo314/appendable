@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -53,8 +54,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			return nil, fmt.Errorf("failed to read index file header: %w", err)
 		}
 
-		fmt.Printf("ReadIndexFile - IndexFileHeader: IndexLength=%d, DataCount=%d\n", ifh.IndexLength, ifh.DataCount)
-
 		// read the index headers
 		f.Indexes = []Index{}
 		br := 0
@@ -84,7 +83,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 
 		// read the index records
 		for i, index := range f.Indexes {
-			fmt.Printf("ReadIndexFile - Reading Index %d: FieldName=%s, FieldType=%d\n", i, index.FieldName, index.FieldType)
 
 			for j := 0; j < int(recordCounts[i]); j++ {
 				var ir protocol.IndexRecord
@@ -97,8 +95,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 				if ir.FieldLength, err = encoding.UnpackFint16(r); err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
-
-				fmt.Printf("ReadIndexFile - IndexRecord: DataNumber=%d, StartByteOffset=%d, FieldLength=%d\n", ir.DataNumber, ir.FieldStartByteOffset, ir.FieldLength)
 
 				var value any
 				switch handler := data.(type) {
@@ -125,35 +121,41 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 
 		// read the data ranges
 		f.EndByteOffsets = make([]uint64, ifh.DataCount)
-		f.Checksums = make([]uint64, ifh.DataCount)
 		for i := 0; i < int(ifh.DataCount); i++ {
 			if f.EndByteOffsets[i], err = encoding.ReadUint64(r); err != nil {
 				return nil, fmt.Errorf("failed to read data range: %w", err)
 			}
 		}
+
+		// read the checksums
+		f.Checksums = make([]uint64, ifh.DataCount)
+		for i := 0; i < int(ifh.DataCount); i++ {
+			if f.Checksums[i], err = encoding.ReadUint64(r); err != nil {
+				return nil, fmt.Errorf("failed to read checksum: %w", err)
+			}
+		}
+
+		fmt.Printf("All checksums: %v\n", f.Checksums)
+
+		startIndex := 0
 		start := uint64(0)
 		if _, isCSV := data.(CSVHandler); isCSV && len(f.EndByteOffsets) > 0 {
 			start = f.EndByteOffsets[0]
+			startIndex = 1
 		}
-		for i := 0; i < int(ifh.DataCount); i++ {
-			if _, isCSV := data.(CSVHandler); isCSV {
-				i = i + 1
-			}
-			if f.Checksums[i], err = encoding.ReadUint64(r); err != nil {
-				return nil, fmt.Errorf("failed to read data range: %w", err)
-			}
+		for i := startIndex; i < int(ifh.DataCount); i++ {
 
 			// read the range from the data file to verify the checksum
 			if _, err := data.Seek(int64(start), io.SeekStart); err != nil {
 				return nil, fmt.Errorf("failed to seek data file: %w", err)
 			}
 			buf := &bytes.Buffer{}
+
 			if _, err := io.CopyN(buf, data, int64(f.EndByteOffsets[i]-start-1)); err != nil {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
+			fmt.Printf("string: %v and \n bytes look like: %v\n", buf.String(), buf.Bytes())
 
-			fmt.Printf("bytes look like: %v\n", buf.Bytes())
-			// verify the checksum
 			if xxhash.Sum64(buf.Bytes()) != f.Checksums[i] {
 				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), f.Checksums[i])
 			}
@@ -168,7 +170,13 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]), io.SeekStart); err != nil {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
+
+		if _, isCSV := data.(CSVHandler); isCSV {
+			f.EndByteOffsets = f.EndByteOffsets[1:]
+			f.Checksums = f.Checksums[1:]
+		}
 	}
+
 	return f, data.Synchronize(f)
 }
 
@@ -187,9 +195,6 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 	for i := 0; scanner.Scan(); i++ {
 		line := scanner.Bytes()
 
-		fmt.Printf("Processing line %d: %s\n", i, string(line))
-		fmt.Printf("Synchronize - Byte sequence: %v\n", line)
-
 		existingCount := len(f.EndByteOffsets)
 
 		// append a data range
@@ -200,11 +205,14 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 
 		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
 
-		if !isHeader {
-			f.Checksums = append(f.Checksums, xxhash.Sum64(line))
-		}
+		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
-		fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
+		if i == 0 {
+			fmt.Printf("Header %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
+
+		} else {
+			fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
+		}
 
 		if isHeader {
 			dec := csv.NewReader(bytes.NewReader(line))
@@ -220,8 +228,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
 	}
 
-	fmt.Printf("Length of Indexes: %d\nChecksums: %d\nBytes :%d\n", len(f.Indexes), len(f.Checksums), len(f.EndByteOffsets))
-
+	fmt.Printf("%v\n\n", f.Checksums)
 	return nil
 }
 
@@ -265,6 +272,32 @@ func (j JSONLHandler) Synchronize(f *IndexFile) error {
 	}
 
 	return nil
+}
+
+func fieldRankCsvField(fieldValue any) int {
+	fieldStr, ok := fieldValue.(string)
+
+	if !ok {
+		panic("unknown type")
+	}
+
+	if fieldStr == "" {
+		return 1
+	}
+
+	if _, err := strconv.Atoi(fieldStr); err == nil {
+		return 3
+	}
+
+	if _, err := strconv.ParseFloat(fieldStr, 64); err == nil {
+		return 3
+	}
+
+	if _, err := strconv.ParseBool(fieldStr); err == nil {
+		return 2
+	}
+
+	return 4
 }
 
 func fieldRank(token json.Token) int {
@@ -331,11 +364,29 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 			keys[i] = key
 			i++
 		}
+		var isCSVHandler bool
+		switch f.data.(type) {
+		case CSVHandler:
+			isCSVHandler = true
+		case JSONLHandler:
+			isCSVHandler = false
+		default:
+			panic("unknown handler type")
+		}
+
 		sort.Slice(keys, func(i, j int) bool {
 			at, bt := keys[i], keys[j]
-			if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
-				return atr < btr
+
+			if isCSVHandler {
+				if atr, btr := fieldRankCsvField(at), fieldRank(bt); atr != btr {
+					return atr < btr
+				}
+			} else {
+				if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
+					return atr < btr
+				}
 			}
+
 			switch at.(type) {
 			case nil:
 				return false
