@@ -36,7 +36,6 @@ function parseIgnoringSuffix(x: string) {
 }
 
 function fieldRank(token: any) {
-	console.log("fieldRank value:", token, typeof token);
 	if (token === null) {
 		return 1;
 	}
@@ -53,7 +52,6 @@ function fieldRank(token: any) {
 }
 
 function cmp(a: any, b: any) {
-  console.log("Comparing:", a, b);
 	const atr = fieldRank(a);
 	const btr = fieldRank(b);
 	if (atr !== btr) {

@@ -24,9 +24,14 @@ describe("Database", () => {
 			dataRecord: jest.fn(),
 		} as jest.Mocked<VersionedIndexFile<any>>;
 
+
+        // instantiate a Database object with given mocked data file and index file
 		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile);
 	});
 
+    /*
+    This test case tests the query function in `database.ts`.
+    */
 	it("should handle a simple query", async () => {
 		mockIndexFile.indexHeaders.mockResolvedValue([
 			{
