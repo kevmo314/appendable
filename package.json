@@ -1,27 +1,31 @@
 {
-  "name": "appendable",
-  "version": "1.0.0",
-  "description": "AppendableDB is an append-only\\*, schemaless, service-less, client-facing database.",
-  "main": "index.js",
-  "scripts": {
-    "build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
-    "build-index": "go run cmd/main.go examples/workspace/green_tripdata_2023-01.jsonl",
-    "serve:example": "cd examples/client && npx http-server"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/kevmo314/appendable.git"
-  },
-  "author": "Kevin Wang <kevmo314@gmail.com>",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/kevmo314/appendable/issues"
-  },
-  "homepage": "https://github.com/kevmo314/appendable#readme",
-  "dependencies": {
-    "esbuild": "^0.19.7"
-  },
-  "devDependencies": {
-    "http-server": "^14.1.1"
-  }
+	"name": "appendable",
+	"version": "1.0.0",
+	"description": "AppendableDB is an append-only\\*, schemaless, service-less, client-facing database.",
+	"main": "index.js",
+	"scripts": {
+		"build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
+		"build-index": "go run cmd/main.go examples/workspace/green_tripdata_2023-01.jsonl",
+		"serve:example": "cd examples/client && npx http-server",
+		"test": "jest"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/kevmo314/appendable.git"
+	},
+	"author": "Kevin Wang <kevmo314@gmail.com>",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/kevmo314/appendable/issues"
+	},
+	"homepage": "https://github.com/kevmo314/appendable#readme",
+	"dependencies": {
+		"esbuild": "^0.19.7"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.11",
+		"http-server": "^14.1.1",
+		"ts-jest": "^29.1.1",
+		"ts-node": "^10.9.2"
+	}
 }
