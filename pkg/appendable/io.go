@@ -145,6 +145,14 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		}
 		for i := startIndex; i < int(ifh.DataCount); i++ {
 
+			fmt.Printf("Current start idx: %d, position: %d\n", i, start)
+
+			if _, isCsv := data.(CSVHandler); isCsv {
+				if i > 1 {
+					start -= 1
+				}
+			}
+
 			// read the range from the data file to verify the checksum
 			if _, err := data.Seek(int64(start), io.SeekStart); err != nil {
 				return nil, fmt.Errorf("failed to seek data file: %w", err)

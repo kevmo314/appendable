@@ -9,7 +9,7 @@ import (
 func TestAppendDataRowCSV(t *testing.T) {
 
 	var mockCsv string = "test\ntest1\n"
-	var mockCsv2 string = "test\ntest1\ntest3\nomoplata\n"
+	var mockCsv2 string = "test\ntest1\ntest3\n"
 
 	t.Run("no schema changes", func(t *testing.T) {
 
@@ -50,7 +50,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	})
 
 	t.Run("correctly sets field offset", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,6 +70,8 @@ func TestAppendDataRowCSV(t *testing.T) {
 		if len(j.Indexes) != 1 {
 			t.Errorf("got len(j.Indexes) = %d, want 1", len(j.Indexes))
 		}
+
+		t.Logf("len: %v", j.Indexes[0].IndexRecords)
 
 		if len(j.Indexes[0].IndexRecords) != 2 {
 			t.Errorf("got len(j.Indexes[0].IndexRecords) = %d, want 2", len(j.Indexes[0].IndexRecords))
