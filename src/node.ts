@@ -147,16 +147,29 @@ export class BPTreeNode {
 }
 
 // https://pkg.go.dev/internal/bytealg#Compare
-export function compareBytes(a: Uint8Array, b: Uint8Array): number {
+export function compareBytes(
+	a: Uint8Array | null,
+	b: Uint8Array | null
+): number {
+	if (a === null && b === null) return 0;
+	if (a === null) {
+		if (b!.length === 0) {
+			return 0;
+		}
+		return -1;
+	}
+	if (b === null) {
+		if (a!.length === 0) {
+			return 0;
+		}
+		return 1;
+	}
+
 	const len = Math.min(a.length, b.length);
 
-	for (let idx = 0; idx <= len - 1; idx++) {
+	for (let idx = 0; idx < len; idx++) {
 		if (a[idx] !== b[idx]) {
-			return -1;
-		}
-
-		if (a[idx] > b[idx]) {
-			return 1;
+			return a[idx] < b[idx] ? -1 : 1;
 		}
 	}
 

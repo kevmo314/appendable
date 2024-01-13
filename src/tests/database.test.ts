@@ -5,7 +5,7 @@ import { IndexFile, VersionedIndexFile } from "../index-file";
 jest.mock("../data-file");
 jest.mock("../index-file");
 
-describe("Database", () => {
+describe("test query relation", () => {
 	let mockDataFile: jest.Mocked<DataFile>;
 	let mockIndexFile: jest.Mocked<VersionedIndexFile<any>>;
 	let database: Database<any>;
@@ -24,12 +24,11 @@ describe("Database", () => {
 			dataRecord: jest.fn(),
 		} as jest.Mocked<VersionedIndexFile<any>>;
 
-
-        // instantiate a Database object with given mocked data file and index file
+		// instantiate a Database object with given mocked data file and index file
 		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile);
 	});
 
-    /*
+	/*
     This test case tests the query function in `database.ts`.
     */
 	it("should handle a simple query", async () => {
@@ -52,10 +51,10 @@ describe("Database", () => {
 			fieldLength: 10,
 		});
 
-        mockIndexFile.dataRecord.mockResolvedValue({
-            startByteOffset: 0,
-            endByteOffset: 10,
-        });
+		mockIndexFile.dataRecord.mockResolvedValue({
+			startByteOffset: 0,
+			endByteOffset: 10,
+		});
 
 		// Adjust the mocked DataFile.get to return a string that represents a valid JSON object
 		mockDataFile.get.mockImplementation(
