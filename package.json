@@ -25,6 +25,7 @@
 	"devDependencies": {
 		"@types/jest": "^29.5.11",
 		"http-server": "^14.1.1",
+		"prettier": "^3.2.1",
 		"ts-jest": "^29.1.1",
 		"ts-node": "^10.9.2"
 	}
