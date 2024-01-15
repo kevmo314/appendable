@@ -385,15 +385,31 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 		sort.Slice(keys, func(i, j int) bool {
 			at, bt := keys[i], keys[j]
 
-			if isCSVHandler {
-				if atr, btr := fieldRankCsvField(at), fieldRank(bt); atr != btr {
-					return atr < btr
-				}
-			} else {
-				if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
-					return atr < btr
-				}
+		switch f.data.(type) {
+		case CSVHandler:
+			if atr, btr := fieldRankCsvField(at), fieldRankCsvField(bt); atr != btr {
+				return atr < btr
 			}
+			// TODO: compare at, bt knowing that they are the same type.
+		case JSONLHandler:
+			if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
+				return atr < btr
+			}
+			switch at.(type) {
+			case nil:
+				return false
+			case bool:
+				return !at.(bool) && bt.(bool)
+			case int, int8, int16, int32, int64, float32, float64:
+				return at.(float64) < bt.(float64)
+			case string:
+				return strings.Compare(at.(string), bt.(string)) < 0
+			default:
+				panic("unknown type")
+			}
+		default:
+			panic("unknown handler")
+		}
 
 			switch at.(type) {
 			case nil:
