@@ -12,6 +12,13 @@ import (
 )
 
 func main() {
+
+	var jsonlFlag bool
+	var csvFlag bool
+
+	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
+	flag.BoolVar(&csvFlag, "csv", false, "Use CSV handler")
+
 	var showTimings bool
 	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
 
@@ -40,11 +47,24 @@ func main() {
 		panic(err)
 	}
 
-	if showTimings {
+
+	var dataHandler appendable.DataHandler
+
+	switch {
+	case jsonlFlag:
+		dataHandler = appendable.JSONLHandler{ReadSeeker: file}
+	case csvFlag:
+		dataHandler = appendable.CSVHandler{ReadSeeker: file}
+	default:
+		fmt.Println("Please specify the file type with -jsonl or -csv.")
+		os.Exit(1)
+	}
+  if showTimings {
 		readStart = time.Now()
 	}
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(appendable.JSONLHandler{ReadSeeker: file})
+	indexFile, err := appendable.NewIndexFile(dataHandler)
+
 
 	if showTimings {
 		readDuration := time.Since(readStart)
