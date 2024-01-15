@@ -1,28 +1,17 @@
 import { BPTreeNode, MemoryPointer, compareBytes } from "./node";
+import { LengthIntegrityError, RangeResolver } from "./resolver";
 
 // taken from `buffer.go`
-interface ReadWriteSeekTruncater {
-	write(buffer: Uint8Array): Promise<number>;
-	seek(offset: number, whence: "start" | "current" | "end"): Promise<number>;
-	read(buffer: Uint8Array, offset: number): Promise<number>;
-	truncate(size: number): Promise<void>;
-}
-
 interface MetaPage {
 	root(): Promise<MemoryPointer>;
-	setRoot(pointer: MemoryPointer): void;
 }
 
 class BPTree {
-	private tree: ReadWriteSeekTruncater;
+	private tree: RangeResolver;
 	private meta: MetaPage;
 	private maxPageSize: number;
 
-	constructor(
-		tree: ReadWriteSeekTruncater,
-		meta: MetaPage,
-		maxPageSize: number
-	) {
+	constructor(tree: RangeResolver, meta: MetaPage, maxPageSize: number) {
 		this.tree = tree;
 		this.meta = meta;
 		this.maxPageSize = maxPageSize;
@@ -43,23 +32,23 @@ class BPTree {
 	}
 
 	private async readNode(ptr: MemoryPointer): Promise<BPTreeNode | null> {
-		const pos = await this.tree.seek(ptr.offset, "start");
-		if (!pos || pos !== ptr.offset) {
+		try {
+			const node = new BPTreeNode(this.tree, [], []);
+
+			const bytesRead = await node.readFrom();
+
+			if (!bytesRead || bytesRead !== ptr.length) {
+				return null;
+			}
+
+			return node;
+		} catch (error) {
+			if (error instanceof LengthIntegrityError) {
+				// handle LengthIntegrityError
+			}
+
 			return null;
 		}
-
-		const buffer = Buffer.alloc(ptr.length);
-		await this.tree.read(buffer, 0);
-
-		const node = new BPTreeNode(this.tree, [], []);
-
-		const bytesRead = await node.readFrom(buffer);
-
-		if (!bytesRead || bytesRead !== ptr.length) {
-			return null;
-		}
-
-		return node;
 	}
 
 	private async traverse(
@@ -104,23 +93,23 @@ class BPTree {
 		let [rootNode, _] = await this.root();
 
 		if (!rootNode) {
-			return [new MemoryPointer(0, 0), false];
+			return [{ offset: 0, length: 0 }, false];
 		}
 
 		const path = await this.traverse(key, rootNode);
 		if (!path) {
-			return [new MemoryPointer(0, 0), false];
+			return [{ offset: 0, length: 0 }, false];
 		}
 
 		const n = path[0].node;
 
-		const [i, found] = await n.bsearch(key);
+		const i = await n.bsearch(key);
 
-		if (found) {
+		if (i >= 0) {
 			return [n.pointers[i], true];
 		}
 
-		return [new MemoryPointer(0, 0), false];
+		return [{ offset: 0, length: 0 }, false];
 	}
 }
 

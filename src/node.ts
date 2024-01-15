@@ -1,34 +1,15 @@
-class ReferencedValue {
-	private dataPointer: MemoryPointer;
-	public value: Buffer;
+import { RangeResolver } from "./resolver";
 
-	constructor(dataPointer: MemoryPointer, value: Buffer) {
-		this.dataPointer = dataPointer;
-		this.value = value;
-	}
-}
-
-export class MemoryPointer {
-	offset: number;
-	length: number;
-
-	constructor(offset: number, length: number) {
-		this.offset = offset;
-		this.length = length;
-	}
-}
-
-interface DataHandler {
-	read(buffer: Uint8Array, offset: number): Promise<number>;
-}
+export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
+export type MemoryPointer = { offset: number; length: number };
 
 export class BPTreeNode {
-	public dataHandler: DataHandler;
+	public dataHandler: RangeResolver;
 	public pointers: MemoryPointer[];
 	public keys: ReferencedValue[];
 
 	constructor(
-		dataHandler: DataHandler,
+		dataHandler: RangeResolver,
 		pointers: MemoryPointer[],
 		keys: ReferencedValue[]
 	) {
@@ -37,134 +18,159 @@ export class BPTreeNode {
 		this.keys = keys;
 	}
 
-	addPointer(pointer: MemoryPointer) {
-		this.pointers.push(pointer);
-	}
-
-	addKey(key: ReferencedValue) {
-		this.keys.push(key);
-	}
-
-	async readAtOffset(buffer: Uint8Array, offset: number): Promise<number> {
-		return await this.dataHandler.read(buffer, offset);
-	}
-
-	async leaf(): Promise<boolean> {
+	leaf(): boolean {
 		return this.pointers.length === this.keys.length;
 	}
 
-	async readFrom(buffer: Buffer): Promise<number> {
-		let offset = 0;
-		let size: number;
-
-		let m = 4;
+	async readFrom(): Promise<number> {
+		let totalBytesRead = 0;
 
 		try {
-			// since we are reading a 32-bit integer, we move by 4 bytes
-			size = buffer.readInt32BE(offset);
-			offset += 4;
+			console.log("Fetching initial data...");
 
-			const leaf = size < 0;
-			const absSize = Math.abs(size);
+			let { data: sizeData } = await this.dataHandler({
+				start: 0,
+				end: 4,
+			});
+
+			let sizeBuffer = Buffer.from(sizeData);
+
+			let size = sizeBuffer.readInt32BE(0);
+			let leaf = size < 0;
+			let absSize = Math.abs(size);
+
+			console.log(`Size: ${size}, Leaf: ${leaf}`);
 
 			this.pointers = new Array(absSize + (leaf ? 0 : 1))
 				.fill(null)
-				.map(() => new MemoryPointer(0, 0));
+				.map(() => ({ offset: 0, length: 0 }));
+			this.keys = new Array(absSize).fill(null).map(() => ({
+				dataPointer: { offset: 0, length: 0 },
+				value: Buffer.alloc(0),
+			}));
 
-			this.keys = new Array(absSize)
-				.fill(null)
-				.map(
-					() => new ReferencedValue(new MemoryPointer(0, 0), Buffer.alloc(0))
-				);
+			let currentOffset = 4;
+			totalBytesRead += 4;
 
 			for (let idx = 0; idx <= this.keys.length - 1; idx++) {
-				const l = buffer.readUInt32BE(offset);
+				console.log(`Processing key ${idx}...`);
 
-				offset += 4;
-				m += 4;
+				let { data: keyData } = await this.dataHandler({
+					start: currentOffset,
+					end: currentOffset + 4,
+				});
 
-				if (l == 0) {
-					const dpOffset = buffer.readUInt32BE(offset);
-					offset += 4;
-					const dpLength = buffer.readUInt32BE(offset);
-					offset += 4;
+				console.log(`Key data fetched:`, keyData);
 
-					const dataPointer = new MemoryPointer(dpOffset, dpLength);
-					const keyValue = Buffer.alloc(dpLength);
+				let keyBuffer = Buffer.from(keyData);
+				let l = keyBuffer.readUint32BE(0);
 
-					await this.dataHandler.read(keyValue, dpOffset);
-					this.keys[idx] = new ReferencedValue(dataPointer, keyValue);
-					m += 12;
+				console.log("length of key", l);
+
+				currentOffset += 4;
+				totalBytesRead += 4;
+
+				if (l === 0) {
+					let { data: pointerData } = await this.dataHandler({
+						start: currentOffset,
+						end: currentOffset + 12,
+					});
+					let pointerBuffer = Buffer.from(pointerData);
+
+					let dpOffset = pointerBuffer.readInt32BE(0);
+					let dpLength = pointerBuffer.readUInt32BE(4);
+
+					this.keys[idx].dataPointer = { offset: dpOffset, length: dpLength };
+					currentOffset += 8;
+					totalBytesRead += 8;
+
+					let { data: keyValue } = await this.dataHandler({
+						start: dpOffset,
+						end: dpOffset + dpLength - 1,
+					});
+					this.keys[idx].value = Buffer.from(keyValue);
+					this.keys[idx].dataPointer.length = dpLength;
+
+					totalBytesRead += dpLength;
 				} else {
-					const keyValue = buffer.slice(offset, offset + l);
-					this.keys[idx] = new ReferencedValue(
-						new MemoryPointer(0, 0),
-						keyValue
-					);
+					let { data: keyValue } = await this.dataHandler({
+						start: currentOffset,
+						end: currentOffset + l,
+					});
 
-					offset += l;
-					m += l;
+					console.log(
+						"key value from buffer: ",
+						Buffer.from(keyValue).toString()
+					);
+					this.keys[idx].value = Buffer.from(keyValue);
+					this.keys[idx].dataPointer.length = l; // directly assign length here
+
+					currentOffset += l;
+					totalBytesRead += l;
 				}
 			}
 
 			for (let idx = 0; idx <= this.pointers.length - 1; idx++) {
-				const pointerOffset = buffer.readUint32BE(offset);
-				offset += 4;
+				console.log("reading from currentOffset: ", currentOffset);
 
-				const pointerLength = buffer.readUint32BE(offset);
-				offset += 4;
+				let { data: offsetData } = await this.dataHandler({
+					start: currentOffset,
+					end: currentOffset + 4,
+				});
+				let offsetBuffer = Buffer.from(offsetData);
 
-				this.pointers[idx] = new MemoryPointer(pointerOffset, pointerLength);
+				let pointerOffset = offsetBuffer.readUint32BE(0);
+				currentOffset += 4;
+				totalBytesRead += 4;
 
-				m += 8;
+				console.log("reading from currentOffset: ", currentOffset);
+				let { data: lengthData } = await this.dataHandler({
+					start: currentOffset,
+					end: currentOffset + 4,
+				});
+				let lengthBuffer = Buffer.from(lengthData);
+
+				let pointerLength = lengthBuffer.readUint32BE(0);
+				currentOffset += 4;
+				totalBytesRead += 4;
+
+				this.pointers[idx] = { offset: pointerOffset, length: pointerLength };
+
+				totalBytesRead += 8;
 			}
 		} catch (error) {
+			// console.error(error);
 			return 0;
 		}
-		return m;
+
+		return totalBytesRead;
 	}
 
-	async bsearch(key: Uint8Array): Promise<[number, boolean]> {
+	async bsearch(key: Uint8Array): Promise<number> {
 		let lo = 0;
 		let hi = this.keys.length - 1;
 
 		while (lo <= hi) {
-			const mid = (lo + hi) / 2;
+			const mid = Math.floor((lo + hi) / 2);
 			const cmp = compareBytes(key, this.keys[mid].value);
 
 			switch (cmp) {
 				case 0:
-					return [mid, true];
+					return mid;
 				case -1:
 					hi = mid - 1;
+					break;
 				case 1:
 					lo = mid + 1;
+					break;
 			}
 		}
 
-		return [lo, false];
+		return ~lo;
 	}
 }
 
-// https://pkg.go.dev/internal/bytealg#Compare
-export function compareBytes(
-	a: Uint8Array | null,
-	b: Uint8Array | null
-): number {
-	if (a === null && b === null) return 0;
-	if (a === null) {
-		if (b!.length === 0) {
-			return 0;
-		}
-		return -1;
-	}
-	if (b === null) {
-		if (a!.length === 0) {
-			return 0;
-		}
-		return 1;
-	}
-
+export function compareBytes(a: Uint8Array, b: Uint8Array): number {
 	const len = Math.min(a.length, b.length);
 
 	for (let idx = 0; idx < len; idx++) {
