@@ -1,15 +1,11 @@
 package appendable
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
-	"encoding/csv"
-	"encoding/json"
 	"fmt"
 	"io"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -32,9 +28,12 @@ func NewIndexFile(data DataHandler) (*IndexFile, error) {
 }
 
 func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
+	fmt.Println("\n\n===READ INDEX FILE ===")
 	f := &IndexFile{}
 
 	f.data = data
+
+	fmt.Printf("data looks like %v\n", data)
 
 	// read the version
 	version, err := encoding.ReadByte(r)
@@ -135,8 +134,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			}
 		}
 
-		fmt.Printf("All checksums: %v\n", f.Checksums)
-
 		startIndex := 0
 		start := uint64(0)
 		if _, isCSV := data.(CSVHandler); isCSV && len(f.EndByteOffsets) > 0 {
@@ -173,6 +170,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		return nil, fmt.Errorf("unsupported version: %d", version)
 	}
 
+	fmt.Printf("endbyteoffsets: %v\n", f.EndByteOffsets)
+
 	// we've deserialized the underlying file, seek to the end of the last data range to prepare for appending
 	if len(f.EndByteOffsets) > 0 {
 		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]), io.SeekStart); err != nil {
@@ -185,142 +184,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		}
 	}
 
+	fmt.Println("End of ReadIndexFile, calling Synchronize")
 	return f, data.Synchronize(f)
-}
-
-type CSVHandler struct {
-	io.ReadSeeker
-}
-
-func (c CSVHandler) Synchronize(f *IndexFile) error {
-
-	var headers []string
-	var err error
-
-	isHeader := true
-	scanner := bufio.NewScanner(f.data)
-
-	for i := 0; scanner.Scan(); i++ {
-		line := scanner.Bytes()
-
-		existingCount := len(f.EndByteOffsets)
-
-		// append a data range
-		var start uint64
-		if len(f.EndByteOffsets) > 0 {
-			start = f.EndByteOffsets[existingCount-1]
-		}
-
-		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
-
-		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
-
-		if i == 0 {
-			fmt.Printf("Header %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
-
-		} else {
-			fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
-		}
-
-		if isHeader {
-			dec := csv.NewReader(bytes.NewReader(line))
-			headers, err = dec.Read()
-			if err != nil {
-				return fmt.Errorf("failed to parse CSV header: %w", err)
-			}
-			isHeader = false
-			continue
-		}
-
-		dec := csv.NewReader(bytes.NewReader(line))
-		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
-	}
-
-	fmt.Printf("%v\n\n", f.Checksums)
-	return nil
-}
-
-type JSONLHandler struct {
-	io.ReadSeeker
-}
-
-func (j JSONLHandler) Synchronize(f *IndexFile) error {
-
-	// read until the next newline
-	scanner := bufio.NewScanner(f.data)
-	for i := 0; scanner.Scan(); i++ {
-		line := scanner.Bytes()
-
-		// create a new json decoder
-		dec := json.NewDecoder(bytes.NewReader(line))
-
-		existingCount := len(f.EndByteOffsets)
-
-		// append a data range
-		var start uint64
-		if len(f.EndByteOffsets) > 0 {
-			start = f.EndByteOffsets[existingCount-1]
-		}
-		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
-		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
-
-		// if the first token is not {, then return an error
-		if t, err := dec.Token(); err != nil || t != json.Delim('{') {
-			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
-		}
-
-		if err := f.handleJSONLObject(dec, []string{}, uint64(existingCount), start); err != nil {
-			return fmt.Errorf("failed to handle object: %w", err)
-		}
-
-		// the next token must be a }
-		if t, err := dec.Token(); err != nil || t != json.Delim('}') {
-			return fmt.Errorf("expected '}', got '%v'", t)
-		}
-	}
-
-	return nil
-}
-
-func fieldRankCsvField(fieldValue any) int {
-	fieldStr, ok := fieldValue.(string)
-
-	if !ok {
-		panic("unknown type")
-	}
-
-	if fieldStr == "" {
-		return 1
-	}
-
-	if _, err := strconv.Atoi(fieldStr); err == nil {
-		return 3
-	}
-
-	if _, err := strconv.ParseFloat(fieldStr, 64); err == nil {
-		return 3
-	}
-
-	if _, err := strconv.ParseBool(fieldStr); err == nil {
-		return 2
-	}
-
-	return 4
-}
-
-func fieldRank(token json.Token) int {
-	switch token.(type) {
-	case nil:
-		return 1
-	case bool:
-		return 2
-	case int, int8, int16, int32, int64, float32, float64:
-		return 3
-	case string:
-		return 4
-	default:
-		panic("unknown type")
-	}
 }
 
 func (f *IndexFile) Serialize(w io.Writer) error {
@@ -372,56 +237,57 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 			keys[i] = key
 			i++
 		}
-		var isCSVHandler bool
-		switch f.data.(type) {
-		case CSVHandler:
-			isCSVHandler = true
-		case JSONLHandler:
-			isCSVHandler = false
-		default:
-			panic("unknown handler type")
-		}
 
 		sort.Slice(keys, func(i, j int) bool {
 			at, bt := keys[i], keys[j]
 
-		switch f.data.(type) {
-		case CSVHandler:
-			if atr, btr := fieldRankCsvField(at), fieldRankCsvField(bt); atr != btr {
-				return atr < btr
-			}
-			// TODO: compare at, bt knowing that they are the same type.
-		case JSONLHandler:
-			if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
-				return atr < btr
-			}
-			switch at.(type) {
-			case nil:
-				return false
-			case bool:
-				return !at.(bool) && bt.(bool)
-			case int, int8, int16, int32, int64, float32, float64:
-				return at.(float64) < bt.(float64)
-			case string:
-				return strings.Compare(at.(string), bt.(string)) < 0
-			default:
-				panic("unknown type")
-			}
-		default:
-			panic("unknown handler")
-		}
+			switch f.data.(type) {
+			case CSVHandler:
+				if atr, btr := fieldRankCsvField(at), fieldRankCsvField(bt); atr != btr {
+					return atr < btr
+				}
 
-			switch at.(type) {
-			case nil:
-				return false
-			case bool:
-				return !at.(bool) && bt.(bool)
-			case int, int8, int16, int32, int64, float32, float64:
-				return at.(float64) < bt.(float64)
-			case string:
-				return strings.Compare(at.(string), bt.(string)) < 0
+				astr, aok := at.(string)
+				bstr, bok := bt.(string)
+
+				if !aok || !bok {
+					panic("string conversion error")
+				}
+
+				av, atype := inferCSVField(astr)
+				bv, _ := inferCSVField(bstr)
+
+				switch atype {
+				case protocol.FieldTypeNull:
+					return false
+				case protocol.FieldTypeNumber:
+					return av.(float64) < bt.(float64)
+				case protocol.FieldTypeBoolean:
+					return !av.(bool) && bv.(bool)
+				case protocol.FieldTypeString:
+					return strings.Compare(av.(string), bv.(string)) < 0
+				default:
+					panic("unknown type")
+				}
+
+			case JSONLHandler:
+				if atr, btr := fieldRank(at), fieldRank(bt); atr != btr {
+					return atr < btr
+				}
+				switch at.(type) {
+				case nil:
+					return false
+				case bool:
+					return !at.(bool) && bt.(bool)
+				case int, int8, int16, int32, int64, float32, float64:
+					return at.(float64) < bt.(float64)
+				case string:
+					return strings.Compare(at.(string), bt.(string)) < 0
+				default:
+					panic("unknown type")
+				}
 			default:
-				panic("unknown type")
+				panic("unknown handler")
 			}
 		})
 		// iterate in key-ascending order
