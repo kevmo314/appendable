@@ -17,12 +17,18 @@ type CSVHandler struct {
 	io.ReadSeeker
 }
 
-func (c CSVHandler) Synchronize(f *IndexFile) error {
-
+func (c CSVHandler) Synchronize(f *IndexFile, headerData []string) error {
+	fmt.Println("===SYNCHRONIZE===")
 	var headers []string
 	var err error
 
-	isHeader := true
+	isHeader := false
+	if headerData == nil {
+		isHeader = true
+	} else {
+		headers = headerData
+	}
+
 	scanner := bufio.NewScanner(f.data)
 
 	for i := 0; scanner.Scan(); i++ {
@@ -40,7 +46,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 
 		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
-		if i == 0 {
+		if i == 0 && isHeader {
 			fmt.Printf("Header %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
 
 		} else {
@@ -58,10 +64,10 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
-		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
+		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
 	}
 
-	fmt.Printf("%v\n\n", f.Checksums)
+	fmt.Printf("%v\n\n===END===", f.Checksums)
 	return nil
 }
 
@@ -113,6 +119,7 @@ func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 }
 
 func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
+	fmt.Println("\t===reached handleCsv line===")
 
 	record, err := dec.Read()
 
@@ -120,9 +127,12 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 		return fmt.Errorf("failed to read CSV record at index %d: %w", dataIndex, err)
 	}
 
+	fmt.Printf("\tRecord looks like %v", record)
+
 	cumulativeLength := uint64(0)
 
 	for fieldIndex, fieldValue := range record {
+		fmt.Printf("\n\theaders: %v\n", headers)
 		if fieldIndex >= len(headers) {
 			return fmt.Errorf("field index %d is out of bounds with header", fieldIndex)
 		}
@@ -135,7 +145,7 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 
 		value, fieldType := inferCSVField(fieldValue)
 
-		fmt.Printf("Field '%s' - Offset: %d, Length: %d, Value: %v, Type: %v\n", fieldName, fieldOffset, fieldLength, value, fieldType)
+		fmt.Printf("\tField '%s' - Offset: %d, Length: %d, Value: %v, Type: %v\n", fieldName, fieldOffset, fieldLength, value, fieldType)
 
 		switch fieldType {
 		case protocol.FieldTypeBoolean, protocol.FieldTypeString, protocol.FieldTypeNumber:
@@ -161,7 +171,7 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 		cumulativeLength += fieldLength
 	}
 
-	fmt.Printf("\n")
+	fmt.Printf("\t===end===\n")
 
 	return nil
 }
