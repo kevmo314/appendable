@@ -28,7 +28,6 @@ func NewIndexFile(data DataHandler) (*IndexFile, error) {
 }
 
 func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
-	fmt.Println("\n\n===READ INDEX FILE ===")
 	f := &IndexFile{}
 
 	f.data = data
@@ -77,8 +76,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		if br != int(ifh.IndexLength) {
 			return nil, fmt.Errorf("expected to read %d bytes, read %d bytes", ifh.IndexLength, br)
 		}
-
-		fmt.Printf("headers look like: %v\n", f.Indexes)
 
 		// read the index records
 		for i, index := range f.Indexes {
@@ -141,10 +138,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			start = f.EndByteOffsets[0]
 			startIndex = 1
 		}
-		fmt.Printf("\ndatacount: %v\n", ifh.DataCount)
-		for i := startIndex; i < int(ifh.DataCount); i++ {
 
-			fmt.Printf("\n\nCurrent start idx: %d, position: %d\n", i, start)
+		for i := startIndex; i < int(ifh.DataCount); i++ {
 
 			if _, isCsv := data.(CSVHandler); isCsv {
 				if i > 1 {
@@ -161,7 +156,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			if _, err := io.CopyN(buf, data, int64(f.EndByteOffsets[i]-start-1)); err != nil {
 				return nil, fmt.Errorf("failed to read data file: %w", err)
 			}
-			fmt.Printf("string: %v and bytes look like: %v\n", buf.String(), buf.Bytes())
 
 			if xxhash.Sum64(buf.Bytes()) != f.Checksums[i] {
 				return nil, fmt.Errorf("checksum mismatch a %d, b %d", xxhash.Sum64(buf.Bytes()), f.Checksums[i])
@@ -171,26 +165,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", version)
 	}
-	// var headers []string
-	// if _, isCSV := data.(CSVHandler); isCSV {
-
-	// 	if _, err := data.Seek(0, io.SeekStart); err != nil {
-	// 		return nil, fmt.Errorf("failed to seek data file: %w", err)
-	// 	}
-
-	// 	buf := bufio.NewReader(data)
-	// 	headerLine, err := buf.ReadString('\n')
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to read header line: %w", err)
-	// 	}
-
-	// 	dec := csv.NewReader(strings.NewReader(headerLine))
-	// 	headers, err = dec.Read()
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to parse CSV header: %w", err)
-	// 	}
-	// }
-	fmt.Printf("endbyteoffsets: %v\n", f.EndByteOffsets)
 
 	// we've deserialized the underlying file, seek to the end of the last data range to prepare for appending
 	if len(f.EndByteOffsets) > 0 {
@@ -205,8 +179,6 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	}
 
 	// extract headers from 0 -> endByteOffsets[0]
-
-	fmt.Printf("\n===End of ReadIndexFile, calling Synchronize===\n")
 	return f, data.Synchronize(f)
 }
 
