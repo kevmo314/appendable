@@ -8,8 +8,8 @@ import (
 
 func TestAppendDataRowCSV(t *testing.T) {
 
-	var mockCsv string = "test\ntest1\n"
-	var mockCsv2 string = "test\ntest1\ntest3\n"
+	var mockCsv string = "header1\ntest1\n"
+	var mockCsv2 string = "header1\ntest1\ntest3\n"
 
 	t.Run("no schema changes", func(t *testing.T) {
 
@@ -49,63 +49,61 @@ func TestAppendDataRowCSV(t *testing.T) {
 		}
 	})
 
-	/*
-		t.Run("correctly sets field offset", func(t *testing.T) {
-			i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
-			if err != nil {
-				t.Fatal(err)
-			}
+	t.Run("append index to existing", func(t *testing.T) {
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			buf := &bytes.Buffer{}
+		buf := &bytes.Buffer{}
 
-			if err := i.Serialize(buf); err != nil {
-				t.Fatal(err)
-			}
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
 
-			j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
-			if err != nil {
-				t.Fatal(err)
-			}
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
+		if err != nil {
+			t.Fatal(err)
+		}
 
-			// check that the index file now has the additional data ranges but same number of indices
-			if len(j.Indexes) != 1 {
-				t.Errorf("got len(j.Indexes) = %d, want 1", len(j.Indexes))
-			}
+		// check that the index file now has the additional data ranges but same number of indices
+		if len(j.Indexes) != 1 {
+			t.Errorf("got len(j.Indexes) = %d, want 1", len(j.Indexes))
+		}
 
-			t.Logf("len: %v", j.Indexes[0].IndexRecords)
+		if len(j.Indexes[0].IndexRecords) != 2 {
+			t.Errorf("got len(j.Indexes[0].IndexRecords) = %d, want 2", len(j.Indexes[0].IndexRecords))
+		}
 
-			if len(j.Indexes[0].IndexRecords) != 2 {
-				t.Errorf("got len(j.Indexes[0].IndexRecords) = %d, want 2", len(j.Indexes[0].IndexRecords))
+		if len(j.Indexes[0].IndexRecords["test1"]) != 1 {
+			t.Errorf("got len(j.Indexes[0].IndexRecords[\"test1\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test1"]))
+		}
+		if len(j.Indexes[0].IndexRecords["test3"]) != 1 {
+			for key, records := range j.Indexes[0].IndexRecords {
+				t.Errorf("\n\n\nKey: %v, Records: %+v", key, records)
 			}
+			t.Errorf("got len(j.Indexes[0].IndexRecords[\"test3\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test3"]))
+		}
 
-			if len(j.Indexes[0].IndexRecords["test1"]) != 1 {
-				t.Errorf("got len(j.Indexes[0].IndexRecords[\"test1\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test1"]))
-			}
-			if len(j.Indexes[0].IndexRecords["test3"]) != 1 {
-				for key, records := range j.Indexes[0].IndexRecords {
-					t.Errorf("\n\n\nKey: %v, Records: %+v", key, records)
-				}
-				t.Errorf("got len(j.Indexes[0].IndexRecords[\"test3\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test3"]))
-			}
+		if j.Indexes[0].IndexRecords["test1"][0].DataNumber != 0 {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].DataNumber = %d, want 0", j.Indexes[0].IndexRecords["test1"][0].DataNumber)
+		}
+		if j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("{\"test\":")) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset)
+		}
 
-			if j.Indexes[0].IndexRecords["test1"][0].DataNumber != 0 {
-				t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].DataNumber = %d, want 0", j.Indexes[0].IndexRecords["test1"][0].DataNumber)
-			}
-			if j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("{\"test\":")) {
-				t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset)
-			}
+		if j.Indexes[0].IndexRecords["test3"][0].DataNumber != 0 {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].DataNumber = %d, want 1", j.Indexes[0].IndexRecords["test3"][0].DataNumber)
+		}
 
-			if j.Indexes[0].IndexRecords["test3"][0].DataNumber != 1 {
-				t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][1].DataNumber = %d, want 1", j.Indexes[0].IndexRecords["test3"][1].DataNumber)
-			}
-			if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("test\ntest1\n")) {
-				t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][1].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test3"][1].FieldStartByteOffset)
-			}
-		})
-	*/
+		// verify byte offset calculation
+		if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("header\ntest1\n")+1) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].FieldStartByteOffset = %d, want 14", j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset)
+		}
+	})
 
 	t.Run("generate index file", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("")})
 
 		if err != nil {
 			t.Fatal(err)

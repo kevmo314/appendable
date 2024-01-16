@@ -136,8 +136,6 @@ func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
 		return nil, fmt.Errorf("failed to decode field: %w", err)
 	}
 
-	fmt.Printf("Fields read at offset %d: %v\n", i.FieldStartByteOffset, fields)
-
 	if _, err := r.Seek(offset, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("failed to seek to original offset: %w", err)
 	}

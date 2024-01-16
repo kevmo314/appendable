@@ -18,11 +18,19 @@ type CSVHandler struct {
 }
 
 func (c CSVHandler) Synchronize(f *IndexFile) error {
-
 	var headers []string
 	var err error
 
-	isHeader := true
+	isHeader := false
+
+	if len(f.Indexes) == 0 {
+		isHeader = true
+	} else {
+		for _, index := range f.Indexes {
+			headers = append(headers, index.FieldName)
+		}
+	}
+
 	scanner := bufio.NewScanner(f.data)
 
 	for i := 0; scanner.Scan(); i++ {
@@ -40,13 +48,6 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 
 		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
-		if i == 0 {
-			fmt.Printf("Header %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
-
-		} else {
-			fmt.Printf("Line %d - StartOffset: %d, EndOffset: %d, Checksum: %d\n", i, start, start+uint64(len(line))+1, xxhash.Sum64(line))
-		}
-
 		if isHeader {
 			dec := csv.NewReader(bytes.NewReader(line))
 			headers, err = dec.Read()
@@ -58,10 +59,9 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
-		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
+		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
 	}
 
-	fmt.Printf("%v\n\n", f.Checksums)
 	return nil
 }
 
@@ -135,8 +135,6 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 
 		value, fieldType := inferCSVField(fieldValue)
 
-		fmt.Printf("Field '%s' - Offset: %d, Length: %d, Value: %v, Type: %v\n", fieldName, fieldOffset, fieldLength, value, fieldType)
-
 		switch fieldType {
 		case protocol.FieldTypeBoolean, protocol.FieldTypeString, protocol.FieldTypeNumber:
 			tree := i.Indexes[i.findIndex(name, value)].IndexRecords
@@ -160,8 +158,6 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 
 		cumulativeLength += fieldLength
 	}
-
-	fmt.Printf("\n")
 
 	return nil
 }
