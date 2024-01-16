@@ -16,7 +16,7 @@ type JSONLHandler struct {
 	io.ReadSeeker
 }
 
-func (j JSONLHandler) Synchronize(f *IndexFile, headerData []string) error {
+func (j JSONLHandler) Synchronize(f *IndexFile) error {
 
 	// read until the next newline
 	scanner := bufio.NewScanner(f.data)

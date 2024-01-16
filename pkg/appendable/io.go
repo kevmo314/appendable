@@ -1,10 +1,8 @@
 package appendable
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
-	"encoding/csv"
 	"fmt"
 	"io"
 	"sort"
@@ -17,7 +15,7 @@ import (
 
 type DataHandler interface {
 	io.ReadSeeker
-	Synchronize(f *IndexFile, headerData []string) error
+	Synchronize(f *IndexFile) error
 }
 
 func NewIndexFile(data DataHandler) (*IndexFile, error) {
@@ -26,7 +24,7 @@ func NewIndexFile(data DataHandler) (*IndexFile, error) {
 		Indexes: []Index{},
 		data:    data,
 	}
-	return f, data.Synchronize(f, nil)
+	return f, data.Synchronize(f)
 }
 
 func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
@@ -173,25 +171,25 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	default:
 		return nil, fmt.Errorf("unsupported version: %d", version)
 	}
-	var headers []string
-	if _, isCSV := data.(CSVHandler); isCSV {
+	// var headers []string
+	// if _, isCSV := data.(CSVHandler); isCSV {
 
-		if _, err := data.Seek(0, io.SeekStart); err != nil {
-			return nil, fmt.Errorf("failed to seek data file: %w", err)
-		}
+	// 	if _, err := data.Seek(0, io.SeekStart); err != nil {
+	// 		return nil, fmt.Errorf("failed to seek data file: %w", err)
+	// 	}
 
-		buf := bufio.NewReader(data)
-		headerLine, err := buf.ReadString('\n')
-		if err != nil {
-			return nil, fmt.Errorf("failed to read header line: %w", err)
-		}
+	// 	buf := bufio.NewReader(data)
+	// 	headerLine, err := buf.ReadString('\n')
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to read header line: %w", err)
+	// 	}
 
-		dec := csv.NewReader(strings.NewReader(headerLine))
-		headers, err = dec.Read()
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse CSV header: %w", err)
-		}
-	}
+	// 	dec := csv.NewReader(strings.NewReader(headerLine))
+	// 	headers, err = dec.Read()
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to parse CSV header: %w", err)
+	// 	}
+	// }
 	fmt.Printf("endbyteoffsets: %v\n", f.EndByteOffsets)
 
 	// we've deserialized the underlying file, seek to the end of the last data range to prepare for appending
@@ -209,7 +207,7 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 	// extract headers from 0 -> endByteOffsets[0]
 
 	fmt.Printf("\n===End of ReadIndexFile, calling Synchronize===\n")
-	return f, data.Synchronize(f, headers)
+	return f, data.Synchronize(f)
 }
 
 func (f *IndexFile) Serialize(w io.Writer) error {

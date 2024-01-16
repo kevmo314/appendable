@@ -17,16 +17,19 @@ type CSVHandler struct {
 	io.ReadSeeker
 }
 
-func (c CSVHandler) Synchronize(f *IndexFile, headerData []string) error {
+func (c CSVHandler) Synchronize(f *IndexFile) error {
 	fmt.Println("===SYNCHRONIZE===")
 	var headers []string
 	var err error
 
 	isHeader := false
-	if headerData == nil {
+
+	if len(f.Indexes) == 0 {
 		isHeader = true
 	} else {
-		headers = headerData
+		for _, index := range f.Indexes {
+			headers = append(headers, index.FieldName)
+		}
 	}
 
 	scanner := bufio.NewScanner(f.data)
