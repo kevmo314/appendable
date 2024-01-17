@@ -165,7 +165,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	// this test case fails due to the way we measure checksums
 	// since CSV's are column-based appending new columns, cause checksums and endbyteoffsets to be mismatched
 	t.Run("new index", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("header1\ntest1\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,6 +184,10 @@ func TestAppendDataRowCSV(t *testing.T) {
 		// check that the index file now has the additional index
 		if len(j.Indexes) != 2 {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(j.Indexes))
+		}
+
+		if j.Indexes[0].FieldName != "test1" {
+			t.Errorf("got i.Indexes[1].FieldName = %s, want \"test2\"", j.Indexes[0].FieldName)
 		}
 
 		if j.Indexes[1].FieldName != "test2" {
