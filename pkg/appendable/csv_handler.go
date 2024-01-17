@@ -94,6 +94,7 @@ func fieldRankCsvField(fieldValue any) int {
 func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 
 	if fieldValue == "" {
+		fmt.Printf("sir this is empty")
 		return nil, protocol.FieldTypeNull
 	}
 
