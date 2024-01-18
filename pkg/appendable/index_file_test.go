@@ -24,6 +24,7 @@ func TestIndexFile(t *testing.T) {
 	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
 	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
 
+
 	t.Run("generate index file", func(t *testing.T) {
 		// jsonl
 		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
@@ -39,7 +40,7 @@ func TestIndexFile(t *testing.T) {
 		}
 
 		status, res := jif.compareTo(civ)
-
+    
 		if !status {
 			t.Errorf("Not equal\n%v", res)
 		}
@@ -83,7 +84,6 @@ func (i1 *Index) compareIndex(i2 *Index) (bool, string) {
 	}
 
 	for key, records1 := range i1.IndexRecords {
-
 		records2, ok := i2.IndexRecords[key]
 		if !ok {
 			return false, fmt.Sprintf("key doesn't exist in i2\tkey found in i1: %v\n%v\t%v", key, i1.IndexRecords, i2.IndexRecords)
@@ -123,15 +123,16 @@ func (i1 *IndexFile) compareTo(i2 *IndexFile) (bool, string) {
 	if len(i1.EndByteOffsets) != len(i2.EndByteOffsets) {
 		return false, fmt.Sprintf("endbyteoffsets length not equal\ti1: %v, i2: %v", len(i1.EndByteOffsets), len(i2.EndByteOffsets))
 	}
-
+  
 	fmt.Printf("endbyteoffsets equal")
 
 	if len(i1.Checksums) != len(i2.Checksums) {
 		return false, fmt.Sprintf("checksums length not equal\ti1: %v, i2: %v", len(i1.Checksums), len(i2.Checksums))
 	}
 
-	fmt.Printf("checksums equal")
 
+	fmt.Printf("checksums equal")
+  
 	/*
 		for i, _ := range i1.EndByteOffsets {
 			if i1.EndByteOffsets[i] != i2.EndByteOffsets[i] {
@@ -145,5 +146,6 @@ func (i1 *IndexFile) compareTo(i2 *IndexFile) (bool, string) {
 	*/
 
 	fmt.Printf("endbyte and checksums deeply equal")
+
 	return true, "great success!"
 }
