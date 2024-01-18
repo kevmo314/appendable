@@ -74,35 +74,23 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 }
 
 func fieldRankCsvField(fieldValue any) int {
-	fieldStr, ok := fieldValue.(string)
-
-	if !ok {
+	switch fieldValue.(type) {
+	case nil:
+		return 1
+	case bool:
+		return 2
+	case int, int8, int16, int32, int64, float32, float64:
+		return 3
+	case string:
+		return 4
+	default:
 		panic("unknown type")
 	}
-
-	if fieldStr == "" {
-		return 1
-	}
-
-	if _, err := strconv.Atoi(fieldStr); err == nil {
-		return 3
-	}
-
-	if _, err := strconv.ParseFloat(fieldStr, 64); err == nil {
-		return 3
-	}
-
-	if _, err := strconv.ParseBool(fieldStr); err == nil {
-		return 2
-	}
-
-	return 4
 }
 
 func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 
 	if fieldValue == "" {
-		fmt.Printf("sir this is empty")
 		return nil, protocol.FieldTypeNull
 	}
 

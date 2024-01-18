@@ -232,29 +232,22 @@ func (f *IndexFile) Serialize(w io.Writer) error {
 
 			switch f.data.(type) {
 			case CSVHandler:
+
 				if atr, btr := fieldRankCsvField(at), fieldRankCsvField(bt); atr != btr {
 					return atr < btr
 				}
 
-				astr, aok := at.(string)
-				bstr, bok := bt.(string)
-
-				if !aok || !bok {
-					panic("string conversion error")
-				}
-
-				av, atype := inferCSVField(astr)
-				bv, _ := inferCSVField(bstr)
-
-				switch atype {
-				case protocol.FieldTypeNull:
+				switch at.(type) {
+				case nil:
 					return false
-				case protocol.FieldTypeNumber:
-					return av.(float64) < bt.(float64)
-				case protocol.FieldTypeBoolean:
-					return !av.(bool) && bv.(bool)
-				case protocol.FieldTypeString:
-					return strings.Compare(av.(string), bv.(string)) < 0
+				case bool:
+					return !at.(bool) && bt.(bool)
+				case int, int8, int16, int32, int64:
+					return at.(int) < bt.(int)
+				case float32, float64:
+					return at.(float64) < bt.(float64)
+				case string:
+					return strings.Compare(at.(string), bt.(string)) < 0
 				default:
 					panic("unknown type")
 				}
