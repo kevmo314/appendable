@@ -21,10 +21,13 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 	var headers []string
 	var err error
 
+	fromNewIndexFile := false
+
 	isHeader := false
 
 	if len(f.Indexes) == 0 {
 		isHeader = true
+		fromNewIndexFile = true
 	} else {
 		for _, index := range f.Indexes {
 			headers = append(headers, index.FieldName)
@@ -62,6 +65,11 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
 	}
 
+	if fromNewIndexFile && len(f.EndByteOffsets) > 0 {
+		f.EndByteOffsets = f.EndByteOffsets[1:]
+		f.Checksums = f.Checksums[1:]
+	}
+
 	return nil
 }
 
@@ -94,6 +102,7 @@ func fieldRankCsvField(fieldValue any) int {
 func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 
 	if fieldValue == "" {
+		fmt.Printf("sir this is empty")
 		return nil, protocol.FieldTypeNull
 	}
 

@@ -141,6 +141,7 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 
 		for i := startIndex; i < int(ifh.DataCount); i++ {
 
+			// this is a hotfix solution. It works great B)
 			if _, isCsv := data.(CSVHandler); isCsv {
 				if i > 1 {
 					start -= 1
@@ -171,14 +172,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		if _, err := data.Seek(int64(f.EndByteOffsets[len(f.EndByteOffsets)-1]), io.SeekStart); err != nil {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
-
-		if _, isCSV := data.(CSVHandler); isCSV {
-			f.EndByteOffsets = f.EndByteOffsets[1:]
-			f.Checksums = f.Checksums[1:]
-		}
 	}
 
-	// extract headers from 0 -> endByteOffsets[0]
 	return f, data.Synchronize(f)
 }
 
