@@ -4,16 +4,13 @@ export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
 export type MemoryPointer = { offset: number; length: number };
 
 export class BPTreeNode {
-	public dataHandler: RangeResolver;
 	public pointers: MemoryPointer[];
 	public keys: ReferencedValue[];
 
 	constructor(
-		dataHandler: RangeResolver,
 		pointers: MemoryPointer[],
 		keys: ReferencedValue[]
 	) {
-		this.dataHandler = dataHandler;
 		this.pointers = pointers;
 		this.keys = keys;
 	}
@@ -22,15 +19,18 @@ export class BPTreeNode {
 		return this.pointers.length === this.keys.length;
 	}
 
-	async readFrom(): Promise<number> {
+	static async fromMemoryPointer(mp: MemoryPointer, resolver: RangeResolver): Promise<{node: BPTreeNode | null, bytesRead: number}> {		
 		let totalBytesRead = 0;
+
+		// initialize a new node with empty pointers and keys
+		let node = new BPTreeNode([], []);
 
 		try {
 			console.log("Fetching initial data...");
 
-			let { data: sizeData } = await this.dataHandler({
-				start: 0,
-				end: 4,
+			let { data: sizeData } = await resolver({
+				start: mp.offset,
+				end: mp.offset + mp.length,
 			});
 
 			let sizeBuffer = Buffer.from(sizeData);
@@ -41,10 +41,10 @@ export class BPTreeNode {
 
 			console.log(`Size: ${size}, Leaf: ${leaf}`);
 
-			this.pointers = new Array(absSize + (leaf ? 0 : 1))
+			node.pointers = new Array(absSize + (leaf ? 0 : 1))
 				.fill(null)
 				.map(() => ({ offset: 0, length: 0 }));
-			this.keys = new Array(absSize).fill(null).map(() => ({
+			node.keys = new Array(absSize).fill(null).map(() => ({
 				dataPointer: { offset: 0, length: 0 },
 				value: Buffer.alloc(0),
 			}));
@@ -52,10 +52,10 @@ export class BPTreeNode {
 			let currentOffset = 4;
 			totalBytesRead += 4;
 
-			for (let idx = 0; idx <= this.keys.length - 1; idx++) {
+			for (let idx = 0; idx <= node.keys.length - 1; idx++) {
 				console.log(`Processing key ${idx}...`);
 
-				let { data: keyData } = await this.dataHandler({
+				let { data: keyData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
 				});
@@ -71,7 +71,7 @@ export class BPTreeNode {
 				totalBytesRead += 4;
 
 				if (l === 0) {
-					let { data: pointerData } = await this.dataHandler({
+					let { data: pointerData } = await resolver({
 						start: currentOffset,
 						end: currentOffset + 12,
 					});
@@ -80,20 +80,20 @@ export class BPTreeNode {
 					let dpOffset = pointerBuffer.readInt32BE(0);
 					let dpLength = pointerBuffer.readUInt32BE(4);
 
-					this.keys[idx].dataPointer = { offset: dpOffset, length: dpLength };
+					node.keys[idx].dataPointer = { offset: dpOffset, length: dpLength };
 					currentOffset += 8;
 					totalBytesRead += 8;
 
-					let { data: keyValue } = await this.dataHandler({
+					let { data: keyValue } = await resolver({
 						start: dpOffset,
 						end: dpOffset + dpLength - 1,
 					});
-					this.keys[idx].value = Buffer.from(keyValue);
-					this.keys[idx].dataPointer.length = dpLength;
+					node.keys[idx].value = Buffer.from(keyValue);
+					node.keys[idx].dataPointer.length = dpLength;
 
 					totalBytesRead += dpLength;
 				} else {
-					let { data: keyValue } = await this.dataHandler({
+					let { data: keyValue } = await resolver({
 						start: currentOffset,
 						end: currentOffset + l,
 					});
@@ -102,18 +102,18 @@ export class BPTreeNode {
 						"key value from buffer: ",
 						Buffer.from(keyValue).toString()
 					);
-					this.keys[idx].value = Buffer.from(keyValue);
-					this.keys[idx].dataPointer.length = l; // directly assign length here
+					node.keys[idx].value = Buffer.from(keyValue);
+					node.keys[idx].dataPointer.length = l; // directly assign length here
 
 					currentOffset += l;
 					totalBytesRead += l;
 				}
 			}
 
-			for (let idx = 0; idx <= this.pointers.length - 1; idx++) {
+			for (let idx = 0; idx <= node.pointers.length - 1; idx++) {
 				console.log("reading from currentOffset: ", currentOffset);
 
-				let { data: offsetData } = await this.dataHandler({
+				let { data: offsetData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
 				});
@@ -124,7 +124,7 @@ export class BPTreeNode {
 				totalBytesRead += 4;
 
 				console.log("reading from currentOffset: ", currentOffset);
-				let { data: lengthData } = await this.dataHandler({
+				let { data: lengthData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
 				});
@@ -134,16 +134,17 @@ export class BPTreeNode {
 				currentOffset += 4;
 				totalBytesRead += 4;
 
-				this.pointers[idx] = { offset: pointerOffset, length: pointerLength };
+				node.pointers[idx] = { offset: pointerOffset, length: pointerLength };
 
 				totalBytesRead += 8;
+
 			}
+
+			return { node, bytesRead: totalBytesRead };
 		} catch (error) {
 			// console.error(error);
-			return 0;
+			return { node: null, bytesRead: 0}
 		}
-
-		return totalBytesRead;
 	}
 
 	async bsearch(key: Uint8Array): Promise<number> {

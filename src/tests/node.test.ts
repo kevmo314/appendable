@@ -78,7 +78,7 @@ describe("test binary search", () => {
 		keys.sort((a, b) => compareBytes(a.value, b.value));
 
 		pointers = new Array(keys.length + 1).fill({ offset: 0, length: 0 });
-		bpTreeNode = new BPTreeNode(mockRangeResolver, pointers, keys);
+		bpTreeNode = new BPTreeNode(pointers, keys);
 	});
 
 	it("should find the correct position for existing keys", async () => {
@@ -110,53 +110,3 @@ describe("test binary search", () => {
 	});
 });
 
-describe("test readFrom", () => {
-	let bpTreeNode: BPTreeNode;
-	let mockDataHandler: RangeResolver;
-
-	function mockData(start: number, end: number) {
-		const keys = ["key1", "key2", "key3"];
-
-		// for every key, (4 bytes for length, 4 bytes for data)
-		let buffer = Buffer.alloc(4 + keys.length * 8);
-
-		buffer.writeInt32BE(-keys.length, 0);
-
-		let offset = 4;
-		keys.forEach((key, index) => {
-			buffer.writeInt32BE(4, offset);
-			offset += 4;
-
-			// we're assuming each key is exactly 4 bytes
-			// this might not be true for actual data
-			buffer.write(key, offset, 4, "utf-8");
-			offset += 4;
-		});
-
-		return buffer.slice(start, end);
-	}
-
-	beforeEach(() => {
-		mockDataHandler = jest.fn().mockImplementation(async ({ start, end }) => {
-			return { data: mockData(start, end), totalLength: end - start };
-		});
-
-		bpTreeNode = new BPTreeNode(mockDataHandler, [], []);
-	});
-
-	it("correctly reads and parses data for leaf node", async () => {
-		const totalBytesRead = await bpTreeNode.readFrom();
-
-		expect(mockDataHandler).toHaveBeenCalled();
-
-		const expectedKeys = ["key1", "key2", "key3"].map((key) => ({
-			dataPointer: { offset: 0, length: 4 },
-			value: Buffer.from(key, "utf-8"),
-		}));
-
-		expect(bpTreeNode.keys).toEqual(expectedKeys);
-		expect(bpTreeNode.pointers.length).toEqual(expectedKeys.length);
-
-		//expect(totalBytesRead).toBe(4 + expectedKeys.length * 8);
-	});
-});

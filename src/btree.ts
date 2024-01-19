@@ -33,9 +33,7 @@ class BPTree {
 
 	private async readNode(ptr: MemoryPointer): Promise<BPTreeNode | null> {
 		try {
-			const node = new BPTreeNode(this.tree, [], []);
-
-			const bytesRead = await node.readFrom();
+			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(ptr, this.tree);
 
 			if (!bytesRead || bytesRead !== ptr.length) {
 				return null;
