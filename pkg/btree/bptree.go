@@ -508,3 +508,53 @@ func (t *BPTree) String() string {
 	}
 	return buf.String()
 }
+
+// serialize bptree into JSON format
+type SerializableNode struct {
+	Keys     []string            `json:"keys"`
+	Pointers []uint64            `json:"pointers"`
+	Children []*SerializableNode `json:"children,omitempty"`
+	IsLeaf   bool                `json:"isLeaf"`
+}
+
+func SerializeNode(node *BPTreeNode, tree *BPTree) *SerializableNode {
+	if node == nil {
+		return nil
+	}
+
+	serNode := &SerializableNode{
+		IsLeaf:   node.leaf(),
+		Keys:     make([]string, len(node.Keys)),
+		Pointers: make([]uint64, len(node.Pointers)),
+	}
+
+	for i, key := range node.Keys {
+		serNode.Keys[i] = string(key.Value) // Convert byte slice to string
+	}
+
+	for i, pointer := range node.Pointers {
+		serNode.Pointers[i] = pointer.Offset
+	}
+
+	if !node.leaf() {
+		serNode.Children = make([]*SerializableNode, len(node.Pointers))
+		for i, ptr := range node.Pointers {
+			childNode, err := tree.readNode(ptr)
+			if err != nil {
+				// Handle error
+				continue
+			}
+			serNode.Children[i] = SerializeNode(childNode, tree)
+		}
+	}
+
+	return serNode
+}
+
+func (t *BPTree) SerializeTree() (*SerializableNode, error) {
+	rootNode, _, err := t.root()
+	if err != nil {
+		return nil, err
+	}
+	return SerializeNode(rootNode, t), nil
+}

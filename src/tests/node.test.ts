@@ -47,10 +47,6 @@ describe("test binary search", () => {
 	let keys: ReferencedValue[];
 	let pointers: MemoryPointer[];
 
-	const mockRangeResolver = async () => {
-		return { data: new Uint8Array(), totalLength: 0 };
-	};
-
 	beforeEach(() => {
 		keys = [
 			{
@@ -110,3 +106,68 @@ describe("test binary search", () => {
 	});
 });
 
+describe("BPTree readNode method", () => {
+    let mockRangeResolver: RangeResolver;
+    let mockMemoryPointer: MemoryPointer;
+
+	function createMockNodeData(isLeaf: boolean, keys: string[]): Uint8Array {
+		const size = isLeaf ? -keys.length : keys.length;
+		const sizeBuffer = Buffer.alloc(4);
+		sizeBuffer.writeInt32BE(size);
+	
+		let totalSize = 4; 
+		for (const key of keys) {
+			totalSize += 4; 
+			totalSize += key.length;
+		}
+		const pointerSize = 8;
+		totalSize += keys.length * pointerSize;
+	
+		const mockData = Buffer.alloc(totalSize);
+		sizeBuffer.copy(mockData, 0);
+	
+		let offset = 4;
+		for (const key of keys) {
+			const keyBuffer = strToUint8Array(key);
+
+			mockData.writeUInt32BE(keyBuffer.length, offset);
+			offset += 4;
+	
+			keyBuffer.forEach((byte) => {
+				mockData[offset] = byte;
+				offset++;
+			});
+
+			mockData.writeUInt32BE(3, offset);  // specify length as 3
+			offset += 4;
+			mockData.writeUInt32BE(3, offset);
+			offset += 4;
+		}
+	
+		return mockData;
+	}
+	
+	const mockNodeData = createMockNodeData(true, ["cat", "dog", "wef"]);
+	
+    beforeEach(() => {
+        mockRangeResolver = jest.fn().mockImplementation(async ({ start, end }) => {
+            return { 
+                data: mockNodeData.slice(start, end), 
+                totalLength: end - start 
+            };
+        });
+
+        mockMemoryPointer = { offset: 0, length: mockNodeData.length }; 
+
+    });
+
+
+	it("should correctly construct a BPTreeNode from memory", async () => {
+        const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(mockMemoryPointer, mockRangeResolver);
+
+		console.log(node)
+		
+        expect(bytesRead).toBe(mockMemoryPointer.length);
+
+    });
+});

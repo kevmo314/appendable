@@ -32,6 +32,7 @@ export class BPTreeNode {
 				start: mp.offset,
 				end: mp.offset + mp.length,
 			});
+			console.log(`Size data fetched: `, sizeData);
 
 			let sizeBuffer = Buffer.from(sizeData);
 
@@ -39,7 +40,7 @@ export class BPTreeNode {
 			let leaf = size < 0;
 			let absSize = Math.abs(size);
 
-			console.log(`Size: ${size}, Leaf: ${leaf}`);
+			console.log(`Size: ${size}, Leaf: ${leaf}, AbsSize: ${absSize}`);
 
 			node.pointers = new Array(absSize + (leaf ? 0 : 1))
 				.fill(null)
@@ -65,7 +66,7 @@ export class BPTreeNode {
 				let keyBuffer = Buffer.from(keyData);
 				let l = keyBuffer.readUint32BE(0);
 
-				console.log("length of key", l);
+				console.log(`length of key ${idx}:\t`, l);
 
 				currentOffset += 4;
 				totalBytesRead += 4;
@@ -140,10 +141,14 @@ export class BPTreeNode {
 
 			}
 
+			console.log(`Final node constructed: `, node);
+	        console.log(`Total bytes read: ${totalBytesRead}`);
+
+
 			return { node, bytesRead: totalBytesRead };
 		} catch (error) {
 			// console.error(error);
-			return { node: null, bytesRead: 0}
+			return { node: null, bytesRead: totalBytesRead}
 		}
 	}
 
