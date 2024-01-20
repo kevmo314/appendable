@@ -33,7 +33,7 @@ jobs:
           cd -
 
           # Build the index
-          go run cmd/main.go examples/workspace/green_tripdata_2023-01.jsonl
+          go run cmd/main.go -jsonl examples/workspace/green_tripdata_2023-01.jsonl
 
           # Copy to client
           cp examples/workspace/green_tripdata_2023-01.jsonl examples/client

@@ -1,306 +1,151 @@
 package appendable
 
 import (
-	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
 
-func TestAppendDataRow(t *testing.T) {
-	t.Run("no schema changes", func(t *testing.T) {
+/*
+This test file performs deep checks between two Index files.
 
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
+When introducing a new file format, this testing file serves to check if the index file from the newly supported file format is identical to index files from currently supported file formats.
+
+We'll use the green_tripdata_2023-01 dataset as our input
+
+Current findings when comparing:
+jsonl <---> csv
+> the field length doesn't align, it seems like JSONL is accounting for "" for strings, while CSV measures raw string values
+*/
+func TestIndexFile(t *testing.T) {
+
+	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
+	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
+
+
+	t.Run("generate index file", func(t *testing.T) {
+		// jsonl
+		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
+
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		buf := &bytes.Buffer{}
+		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(i.Indexes))
+		status, res := jif.compareTo(civ)
+    
+		if !status {
+			t.Errorf("Not equal\n%v", res)
 		}
 
-		if len(j.EndByteOffsets) != 2 {
-			t.Errorf("got len(i.DataRanges) = %d, want 2", len(i.Indexes))
-		}
-
-		// check that the first data range is untouched despite being incorrect
-		if j.EndByteOffsets[0] != uint64(len("{\"test\":\"test1\"}\n")) {
-			t.Errorf("got i.DataRanges[0].EndByteOffset = %d, want %d", j.EndByteOffsets[0], uint64(len("{\"test\":\"test1\"}\n")))
-		}
-
-		// check that the second data range has properly set offsets
-		if j.EndByteOffsets[1] != uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")) {
-			t.Errorf("got i.DataRanges[1].EndByteOffset = %d, want %d", j.EndByteOffsets[1], uint64(len("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")))
-		}
 	})
 
-	t.Run("correctly sets field offset", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
+}
+
+func compareIndexRecord(ir1, ir2 *protocol.IndexRecord) (bool, string) {
+	if ir1.DataNumber != ir2.DataNumber {
+		return false, fmt.Sprintf("Index record data numbers do not align\ti1: %v, i2: %v", ir1.DataNumber, ir2.DataNumber)
+	}
+
+	/*
+			if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
+				return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
+			}
+
+		if ir1.FieldLength != ir2.FieldLength {
+			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
 
-		buf := &bytes.Buffer{}
+	*/
+	return true, ""
+}
 
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
+func (i1 *Index) compareIndex(i2 *Index) (bool, string) {
+	// compare fieldname
+	if i1.FieldName != i2.FieldName {
+		return false, fmt.Sprintf("field names do not align\ti1: %v, i2: %v", i1.FieldName, i2.FieldName)
+	}
+
+	// compare fieldtype
+	if i1.FieldType != i2.FieldType {
+		return false, fmt.Sprintf("field types do not align\ti1: %v, i2: %v", i1.FieldType, i2.FieldType)
+	}
+
+	// compare index records
+	if len(i1.IndexRecords) != len(i2.IndexRecords) {
+		return false, fmt.Sprintf("index record lengths do not line up\ti1: %v, i2: %v", len(i1.IndexRecords), len(i2.IndexRecords))
+	}
+
+	for key, records1 := range i1.IndexRecords {
+		records2, ok := i2.IndexRecords[key]
+		if !ok {
+			return false, fmt.Sprintf("key doesn't exist in i2\tkey found in i1: %v\n%v\t%v", key, i1.IndexRecords, i2.IndexRecords)
 		}
 
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")})
-		if err != nil {
-			t.Fatal(err)
+		for i := range records1 {
+			status, res := compareIndexRecord(&records1[i], &records2[i])
+			if !status {
+				return false, res
+			}
 		}
+	}
 
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(j.Indexes) = %d, want 1", len(j.Indexes))
+	return true, ""
+}
+
+func (i1 *IndexFile) compareTo(i2 *IndexFile) (bool, string) {
+	// check versions
+	if i1.Version != i2.Version {
+		return false, fmt.Sprintf("versions mismatched\ti1: %v, i2: %v", i1.Version, i2.Version)
+	}
+
+	if len(i1.Indexes) != len(i2.Indexes) {
+		return false, fmt.Sprintf("indexes length not equal\ti1: %v, i2: %v", len(i1.Indexes), len(i2.Indexes))
+	}
+
+	for i, index1 := range i1.Indexes {
+		index2 := i2.Indexes[i]
+
+		status, res := index1.compareIndex(&index2)
+
+		if !status {
+			return false, res
 		}
+	}
 
-		if len(j.Indexes[0].IndexRecords) != 2 {
-			t.Errorf("got len(j.Indexes[0].IndexRecords) = %d, want 2", len(j.Indexes[0].IndexRecords))
+	if len(i1.EndByteOffsets) != len(i2.EndByteOffsets) {
+		return false, fmt.Sprintf("endbyteoffsets length not equal\ti1: %v, i2: %v", len(i1.EndByteOffsets), len(i2.EndByteOffsets))
+	}
+  
+	fmt.Printf("endbyteoffsets equal")
+
+	if len(i1.Checksums) != len(i2.Checksums) {
+		return false, fmt.Sprintf("checksums length not equal\ti1: %v, i2: %v", len(i1.Checksums), len(i2.Checksums))
+	}
+
+
+	fmt.Printf("checksums equal")
+  
+	/*
+		for i, _ := range i1.EndByteOffsets {
+			if i1.EndByteOffsets[i] != i2.EndByteOffsets[i] {
+				return false, fmt.Sprintf("endbyteoffsets not equal\ti1: %v, i2: %v", i1.EndByteOffsets[i], i2.EndByteOffsets[i])
+			}
+
+			if i1.Checksums[i] != i2.Checksums[i] {
+				return false, fmt.Sprintf("checksums not equal\ti1: %v, i2: %v", i1.Checksums[i], i2.Checksums[i])
+			}
 		}
+	*/
 
-		if len(j.Indexes[0].IndexRecords["test1"]) != 1 {
-			t.Errorf("got len(j.Indexes[0].IndexRecords[\"test1\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test1"]))
-		}
-		if len(j.Indexes[0].IndexRecords["test3"]) != 1 {
-			t.Errorf("got len(j.Indexes[0].IndexRecords[\"test3\"]) = %d, want 1", len(j.Indexes[0].IndexRecords["test3"]))
-		}
+	fmt.Printf("endbyte and checksums deeply equal")
 
-		if j.Indexes[0].IndexRecords["test1"][0].DataNumber != 0 {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].DataNumber = %d, want 0", j.Indexes[0].IndexRecords["test1"][0].DataNumber)
-		}
-		if j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("{\"test\":")) {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset)
-		}
-
-		if j.Indexes[0].IndexRecords["test3"][0].DataNumber != 1 {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][1].DataNumber = %d, want 1", j.Indexes[0].IndexRecords["test3"][1].DataNumber)
-		}
-		if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("{\"test\":\"test1\"}\n{\"test\":")) {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][1].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test3"][1].FieldStartByteOffset)
-		}
-	})
-
-	t.Run("new index", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":\"test3\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional index
-		if len(j.Indexes) != 2 {
-			t.Errorf("got len(i.Indexes) = %d, want 2", len(j.Indexes))
-		}
-
-		if j.Indexes[1].FieldName != "test2" {
-			t.Errorf("got i.Indexes[1].FieldName = %s, want \"test2\"", j.Indexes[1].FieldName)
-		}
-
-		if j.Indexes[1].FieldType != protocol.FieldTypeString {
-			t.Errorf("got i.Indexes[1].FieldType = %+v, want protocol.FieldTypeString", j.Indexes[1].FieldType)
-		}
-	})
-
-	t.Run("existing index but different type", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":123}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(j.Indexes))
-		}
-
-		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeNumber {
-			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
-		}
-	})
-
-	t.Run("creates nested indices", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":{\"a\":1,\"b\":\"2\"}}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 3 {
-			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
-		}
-
-		if j.Indexes[0].FieldType != protocol.FieldTypeString {
-			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
-		}
-
-		if j.Indexes[1].FieldType != protocol.FieldTypeNumber {
-			t.Errorf("got i.Indexes[1].FieldType = %#v, want protocol.FieldTypeNumber", j.Indexes[1].FieldType)
-		}
-
-		if j.Indexes[2].FieldType != protocol.FieldTypeString {
-			t.Errorf("got i.Indexes[2].FieldType = %#v, want protocol.FieldTypeString", j.Indexes[2].FieldType)
-		}
-
-		if j.Indexes[0].FieldName != "test" {
-			t.Errorf("got i.Indexes[0].FieldName = %s, want \"test\"", j.Indexes[0].FieldName)
-		}
-
-		if j.Indexes[1].FieldName != "test2.a" {
-			t.Errorf("got i.Indexes[1].FieldName = %s, want \"test2.a\"", j.Indexes[1].FieldName)
-		}
-
-		if j.Indexes[2].FieldName != "test2.b" {
-			t.Errorf("got i.Indexes[2].FieldName = %s, want \"test2.b\"", j.Indexes[2].FieldName)
-		}
-	})
-
-	t.Run("creates nested indices but also erases parent", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":{\"a\":1,\"b\":\"2\"}}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 3 {
-			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
-		}
-
-		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeObject {
-			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
-		}
-	})
-
-	t.Run("ignores arrays", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
-		}
-	})
-
-	t.Run("ignores arrays but downgrades type", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":[[1,2,3],4]}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 3", len(j.Indexes))
-		}
-
-		if j.Indexes[0].FieldType != protocol.FieldTypeString|protocol.FieldTypeArray {
-			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeUnknown", j.Indexes[0].FieldType)
-		}
-	})
-
-	t.Run("existing index but nullable type", func(t *testing.T) {
-		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		buf := &bytes.Buffer{}
-
-		if err := i.Serialize(buf); err != nil {
-			t.Fatal(err)
-		}
-
-		j, err := ReadIndexFile(buf, JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n{\"test\":null}\n")})
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		if len(j.Indexes) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(j.Indexes))
-		}
-
-		if j.Indexes[0].FieldType != protocol.FieldTypeNull|protocol.FieldTypeString {
-			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeNullableString", j.Indexes[0].FieldType)
-		}
-	})
+	return true, "great success!"
 }

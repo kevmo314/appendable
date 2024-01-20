@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -118,6 +119,28 @@ type IndexRecord struct {
 	// FieldLength is pessimistic: it is an encoded value that is at least as
 	// long as the actual field value.
 	FieldLength int
+}
+
+func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
+	offset, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get current offset: %w", err)
+	}
+
+	if _, err := r.Seek(int64(i.FieldStartByteOffset), io.SeekStart); err != nil {
+		return nil, fmt.Errorf("failed to seek to field start byte offset: %w", err)
+	}
+
+	fields, err := csv.NewReader(io.LimitReader(r, int64(i.FieldLength))).Read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode field: %w", err)
+	}
+
+	if _, err := r.Seek(offset, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("failed to seek to original offset: %w", err)
+	}
+
+	return fields[0], nil
 }
 
 func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {

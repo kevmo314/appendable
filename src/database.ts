@@ -184,11 +184,8 @@ export class Database<T extends Schema> {
 		// evaluate the field ranges in order.
 		for (const [key, [start, end]] of fieldRangesSorted) {
 			// check if the iteration order should be reversed.
-			console.log(query.orderBy);
 			const orderBy = query.orderBy?.find((orderBy) => orderBy.key === key);
-			console.log(orderBy);
 			const reverse = orderBy?.direction === "DESC";
-			console.log(key, start, end, reverse);
 			const length = end - start;
 			for (let offset = 0; offset < length; offset++) {
 				const index = reverse ? end - offset - 1 : start + offset;
