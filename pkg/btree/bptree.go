@@ -15,19 +15,14 @@ type MetaPage interface {
 	SetRoot(MemoryPointer) error
 }
 
-type ReadWriteSeekTruncater interface {
-	io.ReadWriteSeeker
-	Truncate(size int64) error
-}
-
 type BPTree struct {
-	tree ReadWriteSeekTruncater
+	tree io.ReadWriteSeeker
 	meta MetaPage
 
 	maxPageSize int
 }
 
-func NewBPTree(tree ReadWriteSeekTruncater, meta MetaPage, maxPageSize int) *BPTree {
+func NewBPTree(tree io.ReadWriteSeeker, meta MetaPage, maxPageSize int) *BPTree {
 	return &BPTree{tree: tree, meta: meta, maxPageSize: maxPageSize}
 }
 
@@ -184,7 +179,11 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				n.Pointers = n.Pointers[:mid+1]
 				n.Keys = n.Keys[:mid]
 			}
-			noffset := moffset + msize
+			// seek has to be done again to trigger a new page allocation
+			noffset, err := t.tree.Seek(0, io.SeekEnd)
+			if err != nil {
+				return err
+			}
 			nsize, err := n.WriteTo(t.tree)
 			if err != nil {
 				return err
@@ -406,9 +405,9 @@ func (t *BPTree) compact() error {
 	}
 
 	// truncate the file
-	if err := t.tree.Truncate(int64(offset)); err != nil {
-		return err
-	}
+	// if err := t.tree.Truncate(int64(offset)); err != nil {
+	// 	return err
+	// }
 
 	// update the parent pointers
 	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {

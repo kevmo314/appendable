@@ -105,6 +105,6 @@ func (m *LinkedMetaPage) Reset() error {
 	return nil
 }
 
-func NewMultiBPTree(t ReadWriteSeekTruncater) *LinkedMetaPage {
+func NewMultiBPTree(t io.ReadWriteSeeker) *LinkedMetaPage {
 	return &LinkedMetaPage{rws: t, offset: 0}
 }
