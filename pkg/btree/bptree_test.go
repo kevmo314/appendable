@@ -2,7 +2,6 @@ package btree
 
 import (
 	"encoding/binary"
-	"fmt"
 	"testing"
 )
 
@@ -22,7 +21,11 @@ func (m *testMetaPage) Root() (MemoryPointer, error) {
 func TestBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 4096)
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
 		// find a key that doesn't exist
 		_, found, err := tree.Find([]byte("hello"))
 		if err != nil {
@@ -35,7 +38,11 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert creates a root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 4096)
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +60,11 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert into root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 4096)
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -82,33 +93,13 @@ func TestBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("compacting after second root insertion removes old root", func(t *testing.T) {
+	t.Run("split root", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 4096)
-		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
-			t.Fatal(err)
-		}
-		if err := tree.Insert(ReferencedValue{Value: []byte("world")}, MemoryPointer{Offset: 2}); err != nil {
-			t.Fatal(err)
-		}
-		if err := tree.compact(); err != nil {
-			t.Fatal(err)
-		}
-		v, found, err := tree.Find([]byte("world"))
+		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
-			t.Fatal("expected to find key")
-		}
-		if v.Offset != 2 {
-			t.Fatalf("expected value 2, got %d", v)
-		}
-	})
-
-	t.Run("split root", func(t *testing.T) {
-		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 4096)
+		tree := NewBPTree(p, &testMetaPage{})
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -119,9 +110,6 @@ func TestBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4}); err != nil {
-			t.Fatal(err)
-		}
-		if err := tree.compact(); err != nil {
 			t.Fatal(err)
 		}
 		v1, f1, err := tree.Find([]byte("hello"))
@@ -168,47 +156,45 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("split intermediate", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 2)
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x05}}, MemoryPointer{Offset: 5}); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("inserted a\n")
-		fmt.Printf(tree.String())
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x15}}, MemoryPointer{Offset: 15}); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("inserted b\n")
-		fmt.Printf(tree.String())
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x25}}, MemoryPointer{Offset: 25}); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("inserted c\n")
-		fmt.Printf(tree.String())
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x35}}, MemoryPointer{Offset: 35}); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("inserted d\n")
-		fmt.Printf(tree.String())
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x45}}, MemoryPointer{Offset: 45}); err != nil {
 			t.Fatal(err)
 		}
-		fmt.Printf("inserted e\n")
-		fmt.Printf(tree.String())
 	})
 
 	t.Run("insertion test", func(t *testing.T) {
 		b := newSeekableBuffer()
-		tree := NewBPTree(b, &testMetaPage{}, 512)
-		for i := 0; i < 10240; i++ {
-			buf := make([]byte, 4)
-			binary.BigEndian.PutUint32(buf, uint32(i))
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
+		for i := 0; i < 16384; i++ {
+			buf := make([]byte, 8)
+			binary.BigEndian.PutUint64(buf, uint64(i))
 			if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i)}); err != nil {
 				t.Fatal(err)
 			}
 		}
-		for i := 0; i < 10240; i++ {
-			buf := make([]byte, 4)
-			binary.BigEndian.PutUint32(buf, uint32(i))
+		for i := 0; i < 16384; i++ {
+			buf := make([]byte, 8)
+			binary.BigEndian.PutUint64(buf, uint64(i))
 			v, found, err := tree.Find(buf)
 			if err != nil {
 				t.Fatal(err)
