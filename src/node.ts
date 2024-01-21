@@ -7,10 +7,7 @@ export class BPTreeNode {
 	public pointers: MemoryPointer[];
 	public keys: ReferencedValue[];
 
-	constructor(
-		pointers: MemoryPointer[],
-		keys: ReferencedValue[]
-	) {
+	constructor(pointers: MemoryPointer[], keys: ReferencedValue[]) {
 		this.pointers = pointers;
 		this.keys = keys;
 	}
@@ -19,28 +16,22 @@ export class BPTreeNode {
 		return this.pointers.length === this.keys.length;
 	}
 
-	static async fromMemoryPointer(mp: MemoryPointer, resolver: RangeResolver): Promise<{node: BPTreeNode | null, bytesRead: number}> {		
-		let totalBytesRead = 0;
-
-		// initialize a new node with empty pointers and keys
-		let node = new BPTreeNode([], []);
-
+	static async fromMemoryPointer(
+		mp: MemoryPointer,
+		resolver: RangeResolver
+	): Promise<{ node: BPTreeNode | null; bytesRead: number }> {
 		try {
-			console.log("Fetching initial data...");
-
+			let node = new BPTreeNode([], []);
 			let { data: sizeData } = await resolver({
 				start: mp.offset,
 				end: mp.offset + mp.length,
 			});
-			console.log(`Size data fetched: `, sizeData);
 
 			let sizeBuffer = Buffer.from(sizeData);
 
 			let size = sizeBuffer.readInt32BE(0);
 			let leaf = size < 0;
 			let absSize = Math.abs(size);
-
-			console.log(`Size: ${size}, Leaf: ${leaf}, AbsSize: ${absSize}`);
 
 			node.pointers = new Array(absSize + (leaf ? 0 : 1))
 				.fill(null)
@@ -51,25 +42,17 @@ export class BPTreeNode {
 			}));
 
 			let currentOffset = 4;
-			totalBytesRead += 4;
 
 			for (let idx = 0; idx <= node.keys.length - 1; idx++) {
-				console.log(`Processing key ${idx}...`);
-
 				let { data: keyData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
 				});
 
-				console.log(`Key data fetched:`, keyData);
-
 				let keyBuffer = Buffer.from(keyData);
 				let l = keyBuffer.readUint32BE(0);
 
-				console.log(`length of key ${idx}:\t`, l);
-
 				currentOffset += 4;
-				totalBytesRead += 4;
 
 				if (l === 0) {
 					let { data: pointerData } = await resolver({
@@ -83,7 +66,6 @@ export class BPTreeNode {
 
 					node.keys[idx].dataPointer = { offset: dpOffset, length: dpLength };
 					currentOffset += 8;
-					totalBytesRead += 8;
 
 					let { data: keyValue } = await resolver({
 						start: dpOffset,
@@ -91,29 +73,20 @@ export class BPTreeNode {
 					});
 					node.keys[idx].value = Buffer.from(keyValue);
 					node.keys[idx].dataPointer.length = dpLength;
-
-					totalBytesRead += dpLength;
 				} else {
 					let { data: keyValue } = await resolver({
 						start: currentOffset,
 						end: currentOffset + l,
 					});
 
-					console.log(
-						"key value from buffer: ",
-						Buffer.from(keyValue).toString()
-					);
 					node.keys[idx].value = Buffer.from(keyValue);
-					node.keys[idx].dataPointer.length = l; // directly assign length here
+					node.keys[idx].dataPointer.length = l;
 
 					currentOffset += l;
-					totalBytesRead += l;
 				}
 			}
 
 			for (let idx = 0; idx <= node.pointers.length - 1; idx++) {
-				console.log("reading from currentOffset: ", currentOffset);
-
 				let { data: offsetData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
@@ -122,9 +95,7 @@ export class BPTreeNode {
 
 				let pointerOffset = offsetBuffer.readUint32BE(0);
 				currentOffset += 4;
-				totalBytesRead += 4;
 
-				console.log("reading from currentOffset: ", currentOffset);
 				let { data: lengthData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
@@ -133,22 +104,14 @@ export class BPTreeNode {
 
 				let pointerLength = lengthBuffer.readUint32BE(0);
 				currentOffset += 4;
-				totalBytesRead += 4;
 
 				node.pointers[idx] = { offset: pointerOffset, length: pointerLength };
-
-				totalBytesRead += 8;
-
 			}
 
-			console.log(`Final node constructed: `, node);
-	        console.log(`Total bytes read: ${totalBytesRead}`);
-
-
-			return { node, bytesRead: totalBytesRead };
+			return { node, bytesRead: currentOffset };
 		} catch (error) {
 			// console.error(error);
-			return { node: null, bytesRead: totalBytesRead}
+			return { node: null, bytesRead: 0 };
 		}
 	}
 
