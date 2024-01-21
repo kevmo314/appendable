@@ -7,12 +7,12 @@ import (
 )
 
 type LinkedMetaPage struct {
-	rws    io.ReadWriteSeeker
+	rws    ReadWriteSeekPager
 	offset uint64
 }
 
 func (m *LinkedMetaPage) Root() (MemoryPointer, error) {
-	if _, err := m.rws.Seek(int64(m.offset), 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return MemoryPointer{}, err
 	}
 	var mp MemoryPointer
@@ -20,14 +20,14 @@ func (m *LinkedMetaPage) Root() (MemoryPointer, error) {
 }
 
 func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
-	if _, err := m.rws.Seek(int64(m.offset), 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err
 	}
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
 func (m *LinkedMetaPage) Metadata() (MemoryPointer, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+12, 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
 		return MemoryPointer{}, err
 	}
 	var mp MemoryPointer
@@ -35,14 +35,14 @@ func (m *LinkedMetaPage) Metadata() (MemoryPointer, error) {
 }
 
 func (m *LinkedMetaPage) SetMetadata(mp MemoryPointer) error {
-	if _, err := m.rws.Seek(int64(m.offset)+12, 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
 		return err
 	}
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+24, 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset)+24, io.SeekStart); err != nil {
 		return nil, err
 	}
 	var next MemoryPointer
@@ -64,7 +64,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if curr != nil {
 		return nil, errors.New("next pointer is not zero")
 	}
-	offset, err := m.rws.Seek(0, io.SeekEnd)
+	offset, err := m.rws.NewPage()
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +73,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 		return nil, err
 	}
 	// save the next pointer
-	if _, err := m.rws.Seek(int64(m.offset)+24, 0); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset)+24, io.SeekStart); err != nil {
 		return nil, err
 	}
 	if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
@@ -105,6 +105,10 @@ func (m *LinkedMetaPage) Reset() error {
 	return nil
 }
 
-func NewMultiBPTree(t ReadWriteSeekTruncater) *LinkedMetaPage {
-	return &LinkedMetaPage{rws: t, offset: 0}
+func NewMultiBPTree(t ReadWriteSeekPager) (*LinkedMetaPage, error) {
+	offset, err := t.NewPage()
+	if err != nil {
+		return nil, err
+	}
+	return &LinkedMetaPage{rws: t, offset: uint64(offset)}, nil
 }

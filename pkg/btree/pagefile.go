@@ -7,16 +7,18 @@ import (
 	"log"
 )
 
-type ReadWritePager interface {
-	io.ReadWriter
+type ReadWriteSeekPager interface {
+	io.ReadWriteSeeker
 
 	NewPage() (int64, error)
 	FreePage(int64) error
+
+	PageSize() int
 }
 
 type PageFile struct {
 	io.ReadWriteSeeker
-	PageSize int
+	pageSize int
 
 	// local cache of free pages to avoid reading from disk too often.
 	freePageIndexes [512]int64
@@ -38,7 +40,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	}
 	pf := &PageFile{
 		ReadWriteSeeker: rws,
-		PageSize:        pageSizeBytes,
+		pageSize:        pageSizeBytes,
 	}
 	if err == io.EOF {
 		// allocate one page for the free page indexes
@@ -81,9 +83,9 @@ func (pf *PageFile) NewPage() (int64, error) {
 	}
 	// if the offset is not a multiple of the page size, we need to pad the file
 	// with zeros to the next page boundary.
-	if pf.PageSize > 0 && offset%int64(pf.PageSize) != 0 {
+	if pf.pageSize > 0 && offset%int64(pf.pageSize) != 0 {
 		// Calculate the number of bytes to pad
-		pad := int64(pf.PageSize) - (offset % int64(pf.PageSize))
+		pad := int64(pf.pageSize) - (offset % int64(pf.pageSize))
 		// Write the padding
 		if _, err := pf.Write(make([]byte, pad)); err != nil {
 			return 0, err
@@ -94,7 +96,7 @@ func (pf *PageFile) NewPage() (int64, error) {
 }
 
 func (pf *PageFile) FreePage(offset int64) error {
-	if offset%int64(pf.PageSize) != 0 {
+	if offset%int64(pf.pageSize) != 0 {
 		return errors.New("offset is not a multiple of the page size")
 	}
 	// find the last nonzero free page index and insert it after that
@@ -113,4 +115,8 @@ func (pf *PageFile) FreePage(offset int64) error {
 		}
 	}
 	return errors.New("too many free pages")
+}
+
+func (pf *PageFile) PageSize() int {
+	return pf.pageSize
 }

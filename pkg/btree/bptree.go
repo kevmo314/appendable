@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"slices"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -15,20 +14,15 @@ type MetaPage interface {
 	SetRoot(MemoryPointer) error
 }
 
-type ReadWriteSeekTruncater interface {
-	io.ReadWriteSeeker
-	Truncate(size int64) error
-}
-
 type BPTree struct {
-	tree ReadWriteSeekTruncater
+	tree ReadWriteSeekPager
 	meta MetaPage
 
 	maxPageSize int
 }
 
-func NewBPTree(tree ReadWriteSeekTruncater, meta MetaPage, maxPageSize int) *BPTree {
-	return &BPTree{tree: tree, meta: meta, maxPageSize: maxPageSize}
+func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
+	return &BPTree{tree: tree, meta: meta}
 }
 
 func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
@@ -116,7 +110,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		offset, err := t.tree.Seek(0, io.SeekEnd)
+		offset, err := t.tree.NewPage()
 		if err != nil {
 			return err
 		}
@@ -151,9 +145,9 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	for i := 0; i < len(path); i++ {
 		tr := path[i]
 		n := tr.node
-		if len(n.Keys) > t.maxPageSize {
+		if len(n.Keys) > t.tree.PageSize() {
 			// split the node
-			moffset, err := t.tree.Seek(0, io.SeekEnd)
+			moffset, err := t.tree.NewPage()
 			if err != nil {
 				return err
 			}
@@ -184,7 +178,11 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				n.Pointers = n.Pointers[:mid+1]
 				n.Keys = n.Keys[:mid]
 			}
-			noffset := moffset + msize
+
+			noffset, err := t.tree.NewPage()
+			if err != nil {
+				return err
+			}
 			nsize, err := n.WriteTo(t.tree)
 			if err != nil {
 				return err
@@ -227,7 +225,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			}
 		} else {
 			// write this node to disk and update the parent
-			offset, err := t.tree.Seek(0, io.SeekEnd)
+			offset, err := t.tree.NewPage()
 			if err != nil {
 				return err
 			}
@@ -337,174 +335,3 @@ type Entry struct {
 // 		}
 // 	}
 // }
-
-func (t *BPTree) compact() error {
-	// read all the nodes and compile a list of nodes still referenced,
-	// then write out the nodes in order, removing unreferenced nodes and updating
-	// the parent pointers.
-
-	_, rootOffset, err := t.root()
-	if err != nil {
-		return err
-	}
-
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-
-	references := []MemoryPointer{rootOffset}
-	for {
-		node := &BPTreeNode{}
-		if _, err := node.ReadFrom(t.tree); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		if !node.leaf() {
-			// all pointers are references
-			references = append(references, node.Pointers...)
-		}
-	}
-
-	// read all the nodes again and write out the referenced nodes
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-
-	slices.SortFunc(references, func(x, y MemoryPointer) int {
-		return int(x.Offset - y.Offset)
-	})
-
-	referenceMap := make(map[uint64]MemoryPointer)
-
-	offset := 0
-	for i, reference := range references {
-		// skip duplicates
-		if i > 0 && references[i-1] == reference {
-			continue
-		}
-		// read the referenced node
-		if _, err := t.tree.Seek(int64(reference.Offset), io.SeekStart); err != nil {
-			return err
-		}
-		node := &BPTreeNode{}
-		if _, err := node.ReadFrom(t.tree); err != nil {
-			return err
-		}
-		// write the node to the new offset
-		if _, err := t.tree.Seek(int64(offset), io.SeekStart); err != nil {
-			return err
-		}
-		n, err := node.WriteTo(t.tree)
-		if err != nil {
-			return err
-		}
-		// update the reference map
-		referenceMap[reference.Offset] = MemoryPointer{Offset: uint64(offset), Length: uint32(n)}
-		offset += int(n)
-	}
-
-	// truncate the file
-	if err := t.tree.Truncate(int64(offset)); err != nil {
-		return err
-	}
-
-	// update the parent pointers
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return err
-	}
-	for {
-		offset, err := t.tree.Seek(0, io.SeekCurrent)
-		if err != nil {
-			return err
-		}
-		node := &BPTreeNode{}
-		if _, err := node.ReadFrom(t.tree); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-		if !node.leaf() {
-			// all pointers are references
-			for i, p := range node.Pointers {
-				node.Pointers[i] = referenceMap[p.Offset]
-			}
-		}
-		if _, err := t.tree.Seek(offset, io.SeekStart); err != nil {
-			return err
-		}
-		if _, err := node.WriteTo(t.tree); err != nil {
-			return err
-		}
-	}
-
-	// update the meta pointer
-	return t.meta.SetRoot(referenceMap[rootOffset.Offset])
-}
-
-func (t *BPTree) String() string {
-	var buf bytes.Buffer
-	// get the current seek position
-	seekPos, err := t.tree.Seek(0, io.SeekCurrent)
-	if err != nil {
-		return err.Error()
-	}
-	defer func() {
-		// reset the seek position
-		if _, err := t.tree.Seek(seekPos, io.SeekStart); err != nil {
-			panic(err)
-		}
-	}()
-	root, rootOffset, err := t.root()
-	if err != nil {
-		return err.Error()
-	}
-	if root == nil {
-		return "empty tree"
-	}
-	if _, err := buf.Write([]byte(fmt.Sprintf("root: %d\n", rootOffset))); err != nil {
-		return err.Error()
-	}
-	// seek to 8
-	if _, err := t.tree.Seek(0, io.SeekStart); err != nil {
-		return err.Error()
-	}
-	for {
-		offset, err := t.tree.Seek(0, io.SeekCurrent)
-		if err != nil {
-			return err.Error()
-		}
-		node := &BPTreeNode{}
-		if _, err := node.ReadFrom(t.tree); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err.Error()
-		}
-		if node.leaf() {
-			if _, err := buf.Write([]byte(fmt.Sprintf("%04d | ", offset))); err != nil {
-				return err.Error()
-			}
-		} else {
-			if _, err := buf.Write([]byte(fmt.Sprintf("%04d   ", offset))); err != nil {
-				return err.Error()
-			}
-		}
-		for i := 0; i < len(node.Pointers); i++ {
-			if _, err := buf.Write([]byte(fmt.Sprintf("%04d ", node.Pointers[i]))); err != nil {
-				return err.Error()
-			}
-			if i < len(node.Keys) {
-				if _, err := buf.Write([]byte(fmt.Sprintf("%02d ", node.Keys[i]))); err != nil {
-					return err.Error()
-				}
-			}
-		}
-		if _, err := buf.Write([]byte("\n")); err != nil {
-			return err.Error()
-		}
-	}
-	return buf.String()
-}
