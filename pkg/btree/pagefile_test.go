@@ -6,57 +6,123 @@ import (
 )
 
 func TestPageFile(t *testing.T) {
-	t.Run("no page size behaves like regular ReadWriteSeeker", func(t *testing.T) {
+	t.Run("allocates first page", func(t *testing.T) {
 		buf := newSeekableBuffer()
-		pf := &PageFile{
-			ReadWriteSeeker: buf,
-		}
-		if _, err := pf.Seek(0, io.SeekStart); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := pf.Write([]byte("hello")); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := pf.Seek(0, io.SeekStart); err != nil {
-			t.Fatal(err)
-		}
-		b := make([]byte, 5)
-		if _, err := pf.Read(b); err != nil {
-			t.Fatal(err)
-		}
-		if string(b) != "hello" {
-			t.Fatalf("expected %q, got %q", "hello", string(b))
-		}
-	})
-
-	t.Run("page size allocates pages on seek end", func(t *testing.T) {
-		buf := newSeekableBuffer()
-		pf := &PageFile{
-			ReadWriteSeeker: buf,
-			PageSize:        16,
-		}
-		if _, err := pf.Seek(0, io.SeekEnd); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := pf.Write([]byte("hello")); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := pf.Seek(0, io.SeekStart); err != nil {
-			t.Fatal(err)
-		}
-		b := make([]byte, 5)
-		if _, err := pf.Read(b); err != nil {
-			t.Fatal(err)
-		}
-		if string(b) != "hello" {
-			t.Fatalf("expected %q, got %q", "hello", string(b))
-		}
-		n, err := pf.Seek(0, io.SeekEnd)
+		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if n != 16 {
-			t.Fatalf("expected %d, got %d", 16, n)
+		offset, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset)
+		}
+	})
+
+	t.Run("page size reuses page without allocation", func(t *testing.T) {
+		buf := newSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset1, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset1 != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
+		}
+		// since no data has been written, this page should be reused.
+		offset2, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset2 != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes*2, offset2)
+		}
+	})
+
+	t.Run("page size allocates second page", func(t *testing.T) {
+		buf := newSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset1, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset1 != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
+		}
+		// need to write at least one byte to trigger a new page.
+		if _, err := pf.Write(make([]byte, 1)); err != nil {
+			t.Fatal(err)
+		}
+		offset2, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset2 != pageSizeBytes*2 {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes*2, offset2)
+		}
+	})
+
+	t.Run("new page seeks to page", func(t *testing.T) {
+		buf := newSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset1, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset2, err := pf.Seek(0, io.SeekCurrent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset1 != offset2 {
+			t.Fatalf("expected offset %d, got %d", offset1, offset2)
+		}
+	})
+
+	t.Run("free page reuses page", func(t *testing.T) {
+		buf := newSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset1, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset1 != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
+		}
+		// need to write at least one byte to trigger a new page.
+		if _, err := pf.Write(make([]byte, 1)); err != nil {
+			t.Fatal(err)
+		}
+		offset2, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset2 != pageSizeBytes*2 {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset2)
+		}
+
+		if err := pf.FreePage(offset1); err != nil {
+			t.Fatal(err)
+		}
+		offset3, err := pf.NewPage()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset3 != offset1 {
+			t.Fatalf("expected offset %d, got %d", offset2, offset3)
 		}
 	})
 }
