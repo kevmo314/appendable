@@ -88,8 +88,39 @@
 						return "Error: 'value' in 'where' clause is missing.";
 					}
 
-					// todo: find out how to decode bigint field types. i.e. what is a 34n?
-					// assert `where` type
+					const fieldType = fieldTypes[whereNode.key];
+
+					if (whereNode.value === null) {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Null)
+						) {
+							return `Error: 'key: ${whereNode.key} does not have type: null.`;
+						}
+					}
+					if (typeof whereNode.value === "boolean") {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Boolean)
+						) {
+							return `Error: 'key: ${whereNode.key} does not have type: boolean.`;
+						}
+					}
+					if (
+						typeof whereNode.value === "number" ||
+						typeof whereNode.value === "bigint"
+					) {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Number)
+						) {
+							return `Error: 'key: ${whereNode.key} does not have type: number.`;
+						}
+					}
+					if (typeof whereNode.value === "string") {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.String)
+						) {
+							return `Error: 'key: ${whereNode.key} does not have type: string.`;
+						}
+					}
 				}
 
 				if (query.orderBy) {
