@@ -12,10 +12,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
 		exists, err := tree.Exists()
 		if err != nil {
 			t.Fatal(err)
@@ -31,10 +28,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -46,8 +40,8 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal("expected found")
 		}
 		mp := tree.MemoryPointer()
-		if mp.Length != 36 {
-			t.Fatalf("expected length 36, got %d", mp.Length)
+		if mp.Length != 24 {
+			t.Fatalf("expected length 24, got %d", mp.Length)
 		}
 	})
 
@@ -57,10 +51,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -68,15 +59,15 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if next1.MemoryPointer().Length != 36 {
-			t.Fatalf("expected length 36, got %d", next1)
+		if next1.MemoryPointer().Length != 24 {
+			t.Fatalf("expected length 24, got %d", next1)
 		}
 		next2, err := next1.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if next2.MemoryPointer().Length != 36 {
-			t.Fatalf("expected length 36, got %d", next2)
+		if next2.MemoryPointer().Length != 24 {
+			t.Fatalf("expected length 24, got %d", next2)
 		}
 
 		if next1.MemoryPointer().Offset == next2.MemoryPointer().Offset {
@@ -99,10 +90,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p)
-		if err != nil {
-			t.Fatal(err)
-		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -110,12 +98,53 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if next1.MemoryPointer().Length != 36 {
-			t.Fatalf("expected length 36, got %d", next1)
+		if next1.MemoryPointer().Length != 24 {
+			t.Fatalf("expected length 24, got %d", next1)
 		}
 		_, err = tree.AddNext()
 		if err == nil {
 			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("starts with empty metadata", func(t *testing.T) {
+		b := newSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+		metadata, err := tree.Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(metadata) != 0 {
+			t.Fatalf("expected empty metadata, got %v", metadata)
+		}
+	})
+
+	t.Run("storing metadata works", func(t *testing.T) {
+		b := newSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.SetMetadata([]byte("hello")); err != nil {
+			t.Fatal(err)
+		}
+		metadata, err := tree.Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(metadata, []byte("hello")) {
+			t.Fatalf("got %v want %v", metadata, []byte("hello"))
 		}
 	})
 }
