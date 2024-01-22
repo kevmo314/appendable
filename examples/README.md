@@ -18,7 +18,8 @@ cd workspace
 # green tripdata
 python3 -m pip install -r requirements.txt
 
-python3 fetch_data.py
+# fetch data with .jsonl format
+python3 fetch_jsonl.py
 ```
 
 Then run the indexing process:
