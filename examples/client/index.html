@@ -19,7 +19,7 @@
 				db.fields().then((fields) => {
 					fields.map((field) => {
 						dbFields.add(field.fieldName);
-						fieldTypes[field.fieldName] = db.decodeType(field.fieldType);
+						fieldTypes[field.fieldName] = field.fieldType;
 					});
 
 					document.getElementById("fields").innerHTML = JSON.stringify(
@@ -88,33 +88,35 @@
 						return "Error: 'value' in 'where' clause is missing.";
 					}
 
-					const allowedRanks = fieldTypes[whereNode.key];
+					const keyType = fieldTypes[whereNode.key];
 
-					let valueRank;
-					let valueType;
+					const FIELD_TYPE_STRING = 1 << 0;
+					const FIELD_TYPE_NUMBER = 1 << 1;
+					const FIELD_TYPE_BOOLEAN = 1 << 4;
+					const FIELD_TYPE_NULL = 1 << 5;
 
 					if (whereNode.value === null) {
-						valueRank = 1;
-						valueType = "null";
+						if (keyType && FIELD_TYPE_NULL > 0) {
+							return `Error: 'key: ${whereNode.key} does not have type: null.`;
+						}
 					}
 					if (typeof whereNode.value === "boolean") {
-						valueRank = 2;
-						valueType = "boolean";
+						if (keyType && FIELD_TYPE_BOOLEAN > 0) {
+							return `Error: 'key: ${whereNode.key} does not have type: boolean.`;
+						}
 					}
 					if (
 						typeof whereNode.value === "number" ||
 						typeof whereNode.value === "bigint"
 					) {
-						valueRank = 3;
-						valueType = "number or bigint";
+						if (keyType && FIELD_TYPE_NUMBER) {
+							return `Error: 'key: ${whereNode.key} does not have type: number or bigint.`;
+						}
 					}
 					if (typeof whereNode.value === "string") {
-						valueRank = 4;
-						valueType = "string";
-					}
-
-					if (!allowedRanks.has(valueRank)) {
-						return `Error: 'key: ${whereNode.key} does not have type: ${valueType}.`;
+						if (keyType && FIELD_TYPE_STRING) {
+							return `Error: 'key: ${whereNode.key} does not have type: string.`;
+						}
 					}
 				}
 

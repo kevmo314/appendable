@@ -21,16 +21,6 @@ export type Query<T extends Schema> = {
 	orderBy?: OrderBy<T>[];
 };
 
-// This record maps from fieldRank -> Bitmask
-export const typeRankToBits: Record<number, bigint> = {
-	4: BigInt(1), // FieldTypeString = 1 << 0
-	3: BigInt(2), // FieldTypeNumber = 1 << 1
-	//'Object': BigInt(4),    // FieldTypeObject = 1 << 2
-	//'Array': BigInt(8),     // FieldTypeArray = 1 << 3
-	2: BigInt(16), // FieldTypeBoolean = 1 << 4
-	1: BigInt(32), // FieldTypeNull = 1 << 5
-};
-
 function parseIgnoringSuffix(x: string) {
 	// TODO: implement a proper parser.
 	try {
@@ -212,18 +202,5 @@ export class Database<T extends Schema> {
 				yield dataFieldValue;
 			}
 		}
-	}
-
-	// given a bitmask, we decode and return the types
-	decodeType(bitmask: bigint): Set<number> {
-		let decodedRanks = new Set<number>();
-
-		for (const [fieldRank, bitValue] of Object.entries(typeRankToBits)) {
-			if ((bitmask & bitValue) !== BigInt(0)) {
-				decodedRanks.add(Number(fieldRank));
-			}
-		}
-
-		return decodedRanks;
 	}
 }
