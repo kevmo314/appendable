@@ -202,7 +202,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 					p.node.Keys = append(p.node.Keys, midKey)
 				} else {
 					p.node.Keys = append(p.node.Keys[:j+1], p.node.Keys[j:]...)
-					p.node.Keys[j+1] = midKey
+					p.node.Keys[j] = midKey
 				}
 				p.node.Pointers = append(p.node.Pointers[:j+1], p.node.Pointers[j:]...)
 				p.node.Pointers[j] = MemoryPointer{Offset: uint64(noffset), Length: uint32(nsize)}
@@ -336,3 +336,42 @@ type Entry struct {
 // 		}
 // 	}
 // }
+
+func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
+	// print the node itself
+	var buf bytes.Buffer
+	if !n.leaf() {
+		for i := range n.Pointers {
+			child, err := t.readNode(n.Pointers[i])
+			if err != nil {
+				return fmt.Sprintf("error: failed to read child node: %v", err)
+			}
+			buf.WriteString(t.recursiveString(child, indent+1))
+			if i < len(n.Pointers)-1 {
+				for i := 0; i < indent; i++ {
+					buf.WriteString("  ")
+				}
+				buf.WriteString(fmt.Sprintf("key %v\n", n.Keys[i]))
+			}
+		}
+	} else {
+		for i := range n.Pointers {
+			for i := 0; i < indent; i++ {
+				buf.WriteString("  ")
+			}
+			buf.WriteString(fmt.Sprintf("%v\n", n.Keys[i]))
+		}
+	}
+	return buf.String()
+}
+
+func (t *BPTree) String() string {
+	root, _, err := t.root()
+	if err != nil {
+		return fmt.Sprintf("error: failed to read root node: %v", err)
+	}
+	if root == nil {
+		return "empty tree"
+	}
+	return "b+ tree ---\n" + t.recursiveString(root, 0)
+}
