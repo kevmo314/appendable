@@ -1,5 +1,5 @@
 import { DataFile } from "./data-file";
-import { IndexFile, VersionedIndexFile } from "./index-file";
+import { VersionedIndexFile } from "./index-file";
 
 type Schema = {
 	[key: string]: {};
@@ -20,6 +20,18 @@ export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
 	orderBy?: OrderBy<T>[];
 };
+
+export enum FieldType {
+	String = 1 << 0,
+	Number = 1 << 1,
+	Boolean = 1 << 4,
+	Null = 1 << 5,
+}
+
+// given a fieldType and the desired type, this function performs a bitwise operation to test membership
+export function containsType(fieldType: bigint, desiredType: FieldType) {
+	return (fieldType & BigInt(desiredType)) !== BigInt(0);
+}
 
 function parseIgnoringSuffix(x: string) {
 	// TODO: implement a proper parser.

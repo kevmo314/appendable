@@ -88,20 +88,19 @@
 						return "Error: 'value' in 'where' clause is missing.";
 					}
 
-					const keyType = fieldTypes[whereNode.key];
-
-					const FIELD_TYPE_STRING = 1 << 0;
-					const FIELD_TYPE_NUMBER = 1 << 1;
-					const FIELD_TYPE_BOOLEAN = 1 << 4;
-					const FIELD_TYPE_NULL = 1 << 5;
+					const fieldType = fieldTypes[whereNode.key];
 
 					if (whereNode.value === null) {
-						if (keyType && FIELD_TYPE_NULL > 0) {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Null)
+						) {
 							return `Error: 'key: ${whereNode.key} does not have type: null.`;
 						}
 					}
 					if (typeof whereNode.value === "boolean") {
-						if (keyType && FIELD_TYPE_BOOLEAN > 0) {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Boolean)
+						) {
 							return `Error: 'key: ${whereNode.key} does not have type: boolean.`;
 						}
 					}
@@ -109,12 +108,16 @@
 						typeof whereNode.value === "number" ||
 						typeof whereNode.value === "bigint"
 					) {
-						if (keyType && FIELD_TYPE_NUMBER) {
-							return `Error: 'key: ${whereNode.key} does not have type: number or bigint.`;
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.Number)
+						) {
+							return `Error: 'key: ${whereNode.key} does not have type: number.`;
 						}
 					}
 					if (typeof whereNode.value === "string") {
-						if (keyType && FIELD_TYPE_STRING) {
+						if (
+							!Appendable.containsType(fieldType, Appendable.FieldType.String)
+						) {
 							return `Error: 'key: ${whereNode.key} does not have type: string.`;
 						}
 					}
