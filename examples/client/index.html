@@ -19,7 +19,7 @@
 				db.fields().then((fields) => {
 					fields.map((field) => {
 						dbFields.add(field.fieldName);
-						fieldTypes[field.fieldName] = field.fieldType;
+						fieldTypes[field.fieldName] = db.decodeType(field.fieldType);
 					});
 
 					document.getElementById("fields").innerHTML = JSON.stringify(
@@ -88,8 +88,34 @@
 						return "Error: 'value' in 'where' clause is missing.";
 					}
 
-					// todo: find out how to decode bigint field types. i.e. what is a 34n?
-					// assert `where` type
+					const allowedRanks = fieldTypes[whereNode.key];
+
+					let valueRank;
+					let valueType;
+
+					if (whereNode.value === null) {
+						valueRank = 1;
+						valueType = "null";
+					}
+					if (typeof whereNode.value === "boolean") {
+						valueRank = 2;
+						valueType = "boolean";
+					}
+					if (
+						typeof whereNode.value === "number" ||
+						typeof whereNode.value === "bigint"
+					) {
+						valueRank = 3;
+						valueType = "number or bigint";
+					}
+					if (typeof whereNode.value === "string") {
+						valueRank = 4;
+						valueType = "string";
+					}
+
+					if (!allowedRanks.has(valueRank)) {
+						return `Error: 'key: ${whereNode.key} does not have type: ${valueType}.`;
+					}
 				}
 
 				if (query.orderBy) {
