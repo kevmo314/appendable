@@ -1,134 +1,319 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+	<head>
+		<script
+			src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"
+			type="text/javascript"
+			charset="utf-8"
+		></script>
+		<script src="appendable.min.js"></script>
+		<script>
+			Appendable.init(
+				"green_tripdata_2023-01.jsonl",
+				"green_tripdata_2023-01.jsonl.index"
+			).then(async (db) => {
+				let dbFields = new Set();
+				let fieldTypes = {};
 
-    <script src="appendable.min.js"></script>
-    <script>
-      Appendable.init(
-        "green_tripdata_2023-01.jsonl",
-        "green_tripdata_2023-01.jsonl.index"
-      ).then(async (db) => {
-        // populate fields
-        db.fields().then((fields) => {
-          document.getElementById("fields").innerHTML = JSON.stringify(
-            fields,
-            (key, value) => {
-              if (typeof value === "bigint") {
-                return value.toString();
-              }
-              return value;
-            },
-            2
-          );
-        });
+				// populate fields
+				db.fields().then((fields) => {
+					fields.map((field) => {
+						dbFields.add(field.fieldName);
+						fieldTypes[field.fieldName] = field.fieldType;
+					});
 
-        // then execute the query
-        document.getElementById("execute").onclick = () => {
-          document.getElementById("results").innerHTML = "";
+					document.getElementById("fields").innerHTML = JSON.stringify(
+						fields,
+						(key, value) => {
+							if (typeof value === "bigint") {
+								return value.toString();
+							}
 
-          const query = db.query(
-            JSON.parse(editor.getValue())
-          );
+							return value;
+						},
+						2
+					);
+				});
 
-          bindQuery(query);
-        };
+				// then execute the query
+				document.getElementById("execute").onclick = () => {
+					document.getElementById("results").innerHTML = "";
+					const queryJson = JSON.parse(editor.getValue());
 
-        document.getElementById("results").innerHTML = "";
+					const validationResult = validateQuery(
+						queryJson,
+						dbFields,
+						fieldTypes
+					);
 
-        const query = db.query(
-          JSON.parse(editor.getValue())
-        );
+					if (validationResult !== "Valid Query") {
+						document.getElementById("results").innerHTML = validationResult;
+						return;
+					}
 
-        bindQuery(query);
-      });
+					const query = db.query(queryJson);
+					bindQuery(query);
+				};
 
-      async function bindQuery(query) {
-        document.getElementById("next").disabled = true;
+				document.getElementById("results").innerHTML = "";
 
-        for (let i = 0; i < 10; i++) {
-          const result = await query.next();
-          if (result.done) {
-            return;
-          }
-          document.getElementById("results").innerHTML +=
-            JSON.stringify(result.value) + "\n";
-        }
-        while (true) {
-          document.getElementById("next").disabled = false;
-          await new Promise(
-            (resolve) => (document.getElementById("next").onclick = resolve)
-          );
-          document.getElementById("next").disabled = true;
-          const result = await query.next();
-          if (result.done) {
-            return;
-          }
-          document.getElementById("results").innerHTML +=
-            JSON.stringify(result.value) + "\n";
-        }
-      }
-    </script>
-  </head>
-  <body>
-    <h1>
-      <a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
-      Green Cab Trip Data in 01/2023
-    </h1>
-    <div>
-      Download the raw data here:
-      <a href="green_tripdata_2023-01.jsonl">JSONL</a> -
-      <a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
-      <a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
-        >Source</a
-      >
-    </div>
-    <p>
-      Appendable is querying the JSONL and index files that GitHub pages hosts
-      <em>directly</em>. There is no server involved here!
-    </p>
-    <p>
-      Keep in mind that while the query syntax supports a lot of different
-      operations, Appendable doesn't support composite indexes yet. Therefore,
-      only one field at a time can be filtered on and that field must be used
-      for sorting.
-    </p>
-    <div style="display: flex">
-      <div>
-        <h2>Fields</h2>
-        <pre id="fields"></pre>
-      </div>
-      <div>
-        <h2>Query</h2>
-        <div id="json-editor" style="height: 300px; width: 600px;"></div>
-        <button id="execute">Execute</button>
-        <h2>Results</h2>
-        <pre id="results"></pre>
-        <button id="next">Fetch more</button>
-      </div>
-    </div>
-    <script>
-      var editor = ace.edit("json-editor");
-      editor.session.setMode("ace/mode/json");
-      editor.setTheme("ace/theme/chrome");
-      editor.getSession().setTabSize(2);
-      editor.getSession().setUseSoftTabs(true);
+				const query = db.query(JSON.parse(editor.getValue()));
 
-      editor.setValue(JSON.stringify({
-        "where": [
-          {
-            "operation": ">=",
-            "key": "trip_distance",
-            "value": 10
-          }
-        ],
-        "orderBy": [
-          {
-            "key": "trip_distance",
-            "direction": "ASC"
-          }
-        ]
-      }, null, 2), -1);
-    </script>
-  </body>
+				bindQuery(query);
+			});
+
+			function validateQuery(query, dbFields, fieldTypes) {
+				if (
+					!query.where ||
+					!Array.isArray(query.where) ||
+					query.where.length === 0
+				) {
+					return "Error: Missing 'where' clause.";
+				}
+
+				// validate the `where` clause
+				for (const whereNode of query.where) {
+					if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
+						return "Error: Invalid operation in 'where' clause.";
+					}
+					if (typeof whereNode.key !== "string") {
+						return "Error: 'key' in 'where' clause must be a string.";
+					}
+
+					if (!dbFields.has(whereNode.key)) {
+						return `Error: key: ${whereNode.key} in 'where' clause does not exist in dataset.`;
+					}
+
+					if (typeof whereNode.value === "undefined") {
+						return "Error: 'value' in 'where' clause is missing.";
+					}
+
+					// todo: find out how to decode bigint field types. i.e. what is a 34n?
+					// assert `where` type
+				}
+
+				if (query.orderBy) {
+					// validate the `orderBy` clause
+					if (!Array.isArray(query.orderBy) || query.orderBy.length === 0) {
+						return "Error: Invalid 'orderby' clause.";
+					}
+
+					const orderBy = query.orderBy[0];
+
+					if (!["ASC", "DESC"].includes(orderBy.direction)) {
+						return "Error: Invalid direction in `orderBy`.";
+					}
+
+					if (orderBy.key !== query.where[0].key) {
+						return "Error: 'key' in `orderBy` must match `key` in `where` clause";
+					}
+				}
+
+				return "Valid Query";
+			}
+
+			async function bindQuery(query) {
+				const resultsElement = document.getElementById("results");
+				document.getElementById("next").disabled = true;
+
+				async function appendResult() {
+					const result = await query.next();
+					if (result.done) {
+						return;
+					}
+
+					const resultDiv = document.createElement("div");
+					resultDiv.classList.add("result-item");
+					resultDiv.textContent = JSON.stringify(result.value);
+					resultsElement.appendChild(resultDiv);
+				}
+
+				for (let i = 0; i < 10; i++) {
+					await appendResult();
+				}
+				while (true) {
+					document.getElementById("next").disabled = false;
+					await new Promise(
+						(resolve) => (document.getElementById("next").onclick = resolve)
+					);
+					document.getElementById("next").disabled = true;
+					await appendResult();
+				}
+			}
+		</script>
+		<style>
+			body,
+			html {
+				margin: 0;
+				padding: 0px 0px 4px 4px;
+			}
+			.flex-1 {
+				flex: 1;
+				display: flex;
+				gap: 0 30px;
+				height: 100vh;
+				width: 100vw;
+			}
+			.result-item {
+				padding: 4px 0;
+				cursor: pointer;
+			}
+			.result-item:hover {
+				background-color: yellow;
+			}
+			#fields {
+				max-height: calc(100vh - 50px);
+				overflow-y: auto;
+			}
+			#results {
+				max-height: calc(100vh - 500px);
+				overflow-y: auto;
+			}
+		</style>
+	</head>
+	<body>
+		<div>
+			<h1>
+				<a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
+				Green Cab Trip Data in 01/2023
+			</h1>
+			<div>
+				Download the raw data here:
+				<a href="green_tripdata_2023-01.jsonl">JSONL</a> -
+				<a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
+				<a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
+					>Source</a
+				>
+			</div>
+			<p>
+				Appendable is querying the JSONL and index files that GitHub pages hosts
+				<em>directly</em>. There is no server involved here!
+			</p>
+			<p>
+				Keep in mind that while the query syntax supports a lot of different
+				operations, Appendable doesn't support composite indexes yet. Therefore,
+				only one field at a time can be filtered on and that field must be used
+				for sorting.
+			</p>
+		</div>
+		<div class="flex-1">
+			<div>
+				<h2>Fields</h2>
+				<pre id="fields"></pre>
+			</div>
+			<div>
+				<h2>Query</h2>
+				<button id="execute">Execute</button>
+				<div
+					id="json-editor"
+					style="height: 300px; width: 600px; margin-top: 40px"
+				></div>
+				<h2>Results</h2>
+				<button id="next">Fetch more</button>
+				<pre id="results"></pre>
+			</div>
+		</div>
+		<script>
+			var editor = ace.edit("json-editor");
+			editor.session.setMode("ace/mode/json");
+			editor.setTheme("ace/theme/chrome");
+			editor.getSession().setTabSize(2);
+			editor.getSession().setUseSoftTabs(true);
+
+			// NOTE: when composite indexes get supported, remove this UX feature
+			// <---- start of UX feature ---->
+			let isProgramChange = false;
+			let lastEdited = "none";
+			let prevWhereKey = "trip_distance";
+			let prevOrderByKey = "trip_distance";
+
+			function updateKey(editorContent) {
+				try {
+					let query = JSON.parse(editorContent);
+					if (query.where && query.orderBy) {
+						const whereKey = query.where[0].key;
+						const orderByKey = query.orderBy[0].key;
+
+						if (lastEdited === "where") {
+							query.orderBy[0].key = whereKey;
+						} else if (lastEdited === "orderBy") {
+							query.where[0].key = orderByKey;
+						}
+
+						prevWhereKey = whereKey;
+						prevOrderByKey = orderByKey;
+
+						return JSON.stringify(query, null, 2);
+					}
+				} catch (e) {
+					console.log("Error parsing JSON:", e.message);
+					console.log("Incomplete string content:", editorContent);
+				}
+				return editorContent;
+			}
+
+			editor.getSession().on("change", function (e) {
+				if (isProgramChange) {
+					isProgramChange = false;
+					return;
+				}
+
+				const cursorPosition = editor.getCursorPosition();
+				const editorContent = editor.getSession().getValue();
+
+				let query;
+				try {
+					query = JSON.parse(editorContent);
+				} catch (e) {
+					return;
+				}
+
+				const currentWhereKey = query.where ? query.where[0].key : "";
+				const currentOrderByKey = query.orderBy ? query.orderBy[0].key : "";
+
+				if (currentWhereKey !== prevWhereKey) {
+					lastEdited = "where";
+				} else if (currentOrderByKey !== prevOrderByKey) {
+					lastEdited = "orderBy";
+				}
+
+				const updatedContent = updateKey(editorContent);
+
+				if (updatedContent !== editorContent) {
+					isProgramChange = true;
+
+					const doc = editor.getSession().getDocument();
+					doc.setValue(updatedContent);
+
+					editor.moveCursorToPosition(cursorPosition);
+					editor.clearSelection();
+				}
+			});
+
+			// <---- end of UX feature ---->
+
+			editor.setValue(
+				JSON.stringify(
+					{
+						where: [
+							{
+								operation: ">=",
+								key: "trip_distance",
+								value: 10,
+							},
+						],
+						orderBy: [
+							{
+								key: "trip_distance",
+								direction: "ASC",
+							},
+						],
+					},
+					null,
+					2
+				),
+				-1
+			);
+		</script>
+	</body>
 </html>
