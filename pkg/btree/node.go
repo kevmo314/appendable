@@ -13,6 +13,10 @@ type MemoryPointer struct {
 }
 
 type ReferencedValue struct {
+	// it is generally optional to set the DataPointer. if it is not set, the
+	// value is taken to be unreferenced and is stored directly in the node.
+	// if it is set, the value is used for comparison but the value is stored
+	// as a reference to the DataPointer.
 	DataPointer MemoryPointer
 	Value       []byte
 }
@@ -28,6 +32,21 @@ type BPTreeNode struct {
 func (n *BPTreeNode) leaf() bool {
 	// leafs contain the same number of pointers as keys
 	return len(n.Pointers) == len(n.Keys)
+}
+
+func (n *BPTreeNode) Size() int64 {
+	size := 4 // number of keys
+	for _, k := range n.Keys {
+		if k.DataPointer.Length > 0 {
+			size += 4 + 12 // length of key + length of pointer
+		} else {
+			size += 4 + len(k.Value)
+		}
+	}
+	for range n.Pointers {
+		size += 12
+	}
+	return int64(size)
 }
 
 func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
@@ -68,6 +87,9 @@ func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 			return 0, err
 		}
 		ct += 12
+	}
+	if ct != int(n.Size()) {
+		panic("size mismatch")
 	}
 	return int64(ct), nil
 }
