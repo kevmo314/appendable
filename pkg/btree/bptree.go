@@ -145,7 +145,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	for i := 0; i < len(path); i++ {
 		tr := path[i]
 		n := tr.node
-		if len(n.Keys) > t.tree.PageSize() {
+		if int(n.Size()) > t.tree.PageSize() {
 			// split the node
 			moffset, err := t.tree.NewPage()
 			if err != nil {
@@ -194,7 +194,8 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				j, _ := p.node.bsearch(midKey.Value)
 				if j != p.index {
 					// j should be equal to p.index...?
-					// panic("aww")
+					// if this panic never happens then we can probably remove the above bsearch.
+					panic("this assumption apparently isn't true")
 				}
 				// insert the key into the parent
 				if j == len(p.node.Keys) {
