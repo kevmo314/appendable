@@ -145,7 +145,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	for i := 0; i < len(path); i++ {
 		tr := path[i]
 		n := tr.node
-		if len(n.Keys) > t.tree.PageSize() {
+		if int(n.Size()) > t.tree.PageSize() {
 			// split the node
 			moffset, err := t.tree.NewPage()
 			if err != nil {
@@ -194,14 +194,15 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				j, _ := p.node.bsearch(midKey.Value)
 				if j != p.index {
 					// j should be equal to p.index...?
-					// panic("aww")
+					// if this panic never happens then we can probably remove the above bsearch.
+					panic("this assumption apparently isn't true")
 				}
 				// insert the key into the parent
 				if j == len(p.node.Keys) {
 					p.node.Keys = append(p.node.Keys, midKey)
 				} else {
 					p.node.Keys = append(p.node.Keys[:j+1], p.node.Keys[j:]...)
-					p.node.Keys[j+1] = midKey
+					p.node.Keys[j] = midKey
 				}
 				p.node.Pointers = append(p.node.Pointers[:j+1], p.node.Pointers[j:]...)
 				p.node.Pointers[j] = MemoryPointer{Offset: uint64(noffset), Length: uint32(nsize)}
@@ -335,3 +336,42 @@ type Entry struct {
 // 		}
 // 	}
 // }
+
+func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
+	// print the node itself
+	var buf bytes.Buffer
+	if !n.leaf() {
+		for i := range n.Pointers {
+			child, err := t.readNode(n.Pointers[i])
+			if err != nil {
+				return fmt.Sprintf("error: failed to read child node: %v", err)
+			}
+			buf.WriteString(t.recursiveString(child, indent+1))
+			if i < len(n.Pointers)-1 {
+				for i := 0; i < indent; i++ {
+					buf.WriteString("  ")
+				}
+				buf.WriteString(fmt.Sprintf("key %v\n", n.Keys[i]))
+			}
+		}
+	} else {
+		for i := range n.Pointers {
+			for i := 0; i < indent; i++ {
+				buf.WriteString("  ")
+			}
+			buf.WriteString(fmt.Sprintf("%v\n", n.Keys[i]))
+		}
+	}
+	return buf.String()
+}
+
+func (t *BPTree) String() string {
+	root, _, err := t.root()
+	if err != nil {
+		return fmt.Sprintf("error: failed to read root node: %v", err)
+	}
+	if root == nil {
+		return "empty tree"
+	}
+	return "b+ tree ---\n" + t.recursiveString(root, 0)
+}

@@ -4,12 +4,12 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"log"
 )
 
 type ReadWriteSeekPager interface {
 	io.ReadWriteSeeker
 
+	Page(int) (int64, error)
 	NewPage() (int64, error)
 	FreePage(int64) error
 
@@ -23,6 +23,8 @@ type PageFile struct {
 	// local cache of free pages to avoid reading from disk too often.
 	freePageIndexes [512]int64
 }
+
+var _ ReadWriteSeekPager = &PageFile{}
 
 const maxFreePageIndices = 512
 const pageSizeBytes = 4096 // 4kB by default.
@@ -55,11 +57,17 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	return pf, nil
 }
 
+func (pf *PageFile) Page(i int) (int64, error) {
+	if i < 0 {
+		return 0, errors.New("page index cannot be negative")
+	}
+	return int64(i) * int64(pf.pageSize), nil
+}
+
 func (pf *PageFile) NewPage() (int64, error) {
 	// if there are free pages, return the first one
 	for i := 0; i < len(pf.freePageIndexes); i++ {
 		if pf.freePageIndexes[i] != 0 {
-			log.Printf("found free page at index %d", i)
 			offset := pf.freePageIndexes[i]
 			// zero out this free page index on disk
 			if _, err := pf.ReadWriteSeeker.Seek(int64(i*8), io.SeekStart); err != nil {

@@ -26,6 +26,10 @@ func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
+func (m *LinkedMetaPage) BPTree() *BPTree {
+	return NewBPTree(m.rws, m)
+}
+
 func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	if _, err := m.rws.Seek(int64(m.offset)+24, io.SeekStart); err != nil {
 		return nil, err
