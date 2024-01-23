@@ -21,7 +21,7 @@ export class BPTreeNode {
 		resolver: RangeResolver
 	): Promise<{ node: BPTreeNode | null; bytesRead: number }> {
 		try {
-			let node = new BPTreeNode([], []);
+			const node = new BPTreeNode([], []);
 			let { data: sizeData } = await resolver({
 				start: mp.offset,
 				end: mp.offset + mp.length,
@@ -33,17 +33,11 @@ export class BPTreeNode {
 			let leaf = size < 0;
 			let absSize = Math.abs(size);
 
-			node.pointers = new Array(absSize + (leaf ? 0 : 1))
-				.fill(null)
-				.map(() => ({ offset: 0, length: 0 }));
-			node.keys = new Array(absSize).fill(null).map(() => ({
-				dataPointer: { offset: 0, length: 0 },
-				value: Buffer.alloc(0),
-			}));
-
+			node.pointers = [];
+			node.keys = [];
 			let currentOffset = 4;
 
-			for (let idx = 0; idx <= node.keys.length - 1; idx++) {
+			for (let idx = 0; idx <= absSize - 1; idx++) {
 				let { data: keyData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
@@ -64,29 +58,33 @@ export class BPTreeNode {
 					let dpOffset = pointerBuffer.readInt32BE(0);
 					let dpLength = pointerBuffer.readUInt32BE(4);
 
-					node.keys[idx].dataPointer = { offset: dpOffset, length: dpLength };
 					currentOffset += 8;
 
 					let { data: keyValue } = await resolver({
 						start: dpOffset,
 						end: dpOffset + dpLength - 1,
 					});
-					node.keys[idx].value = Buffer.from(keyValue);
-					node.keys[idx].dataPointer.length = dpLength;
+
+					node.keys.push({
+						value: Buffer.from(keyValue),
+						dataPointer: { offset: dpOffset, length: dpLength },
+					});
 				} else {
 					let { data: keyValue } = await resolver({
 						start: currentOffset,
 						end: currentOffset + l,
 					});
 
-					node.keys[idx].value = Buffer.from(keyValue);
-					node.keys[idx].dataPointer.length = l;
+					node.keys.push({
+						value: Buffer.from(keyValue),
+						dataPointer: { offset: currentOffset, length: l },
+					});
 
 					currentOffset += l;
 				}
 			}
 
-			for (let idx = 0; idx <= node.pointers.length - 1; idx++) {
+			for (let idx = 0; idx < absSize + (leaf ? 0 : 1); idx++) {
 				let { data: offsetData } = await resolver({
 					start: currentOffset,
 					end: currentOffset + 4,
@@ -100,12 +98,13 @@ export class BPTreeNode {
 					start: currentOffset,
 					end: currentOffset + 4,
 				});
+
 				let lengthBuffer = Buffer.from(lengthData);
 
 				let pointerLength = lengthBuffer.readUint32BE(0);
 				currentOffset += 4;
 
-				node.pointers[idx] = { offset: pointerOffset, length: pointerLength };
+				node.pointers.push({ offset: pointerOffset, length: pointerLength });
 			}
 
 			return { node, bytesRead: currentOffset };

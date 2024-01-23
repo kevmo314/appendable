@@ -221,5 +221,4 @@ describe("BPTree readNode method", () => {
 
 		expect(node).toBeNull();
 	});
-
 });
