@@ -1,6 +1,6 @@
 # Appendable
 
-Appendable is an append-only, schemaless, daemon-less database.
+Appendable is an append-only, schema-less, daemon-less database.
 
 Appendable doesn't require a conventional server, instead it generates an index
 file that you can host on your favorite static hosting site.
@@ -55,7 +55,7 @@ console.log(results); // contains data.jsonl queried with the above query.
 
 ## Getting Started
 
-TODO: implement a mini walkthrough.
+Check out the demo's <a href="https://github.com/kevmo314/appendable/blob/main/examples/README.md">README</a> to get started.
 
 ## Advanced Usage
 
