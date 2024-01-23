@@ -1,3 +1,4 @@
+import { FormatType } from ".";
 import { DataFile } from "./data-file";
 import { VersionedIndexFile } from "./index-file";
 
@@ -33,18 +34,27 @@ export function containsType(fieldType: bigint, desiredType: FieldType) {
 	return (fieldType & BigInt(desiredType)) !== BigInt(0);
 }
 
-function parseIgnoringSuffix(x: string) {
-	// TODO: implement a proper parser.
-	try {
-		return JSON.parse(x);
-	} catch (error) {
-		const e = error as Error;
-		let m = e.message.match(/position\s+(\d+)/);
-		if (m) {
-			x = x.slice(0, Number(m[1]));
-		}
+function parseIgnoringSuffix(x: string, format: FormatType) {
+	console.log("parseSuffix: ", x);
+	switch (format) {
+		case FormatType.Jsonl:
+			try {
+				console.log("parsing no error", JSON.parse(x));
+				return JSON.parse(x);
+			} catch (error) {
+				console.log("registered as an error");
+				const e = error as Error;
+				let m = e.message.match(/position\s+(\d+)/);
+				if (m) {
+					console.log(x.slice(0, Number(m[1])));
+					x = x.slice(0, Number(m[1]));
+				}
+			}
+			console.log(JSON.parse(x));
+			return JSON.parse(x);
+
+		case FormatType.Csv:
 	}
-	return JSON.parse(x);
 }
 
 function fieldRank(token: any) {
@@ -86,14 +96,16 @@ function cmp(a: any, b: any) {
 export class Database<T extends Schema> {
 	private constructor(
 		private dataFile: DataFile,
-		private indexFile: VersionedIndexFile<T>
+		private indexFile: VersionedIndexFile<T>,
+		private formatType: FormatType
 	) {}
 
 	static forDataFileAndIndexFile<T extends Schema>(
 		dataFile: DataFile,
-		indexFile: VersionedIndexFile<T>
+		indexFile: VersionedIndexFile<T>,
+		format: FormatType
 	) {
-		return new Database(dataFile, indexFile);
+		return new Database(dataFile, indexFile, format);
 	}
 
 	async fields() {
@@ -125,7 +137,8 @@ export class Database<T extends Schema> {
 							indexRecord.fieldStartByteOffset,
 							indexRecord.fieldStartByteOffset + indexRecord.fieldLength
 						);
-						const dataFieldValue = parseIgnoringSuffix(data);
+						console.log("data looks like: ", data);
+						const dataFieldValue = parseIgnoringSuffix(data, this.formatType);
 						console.log(mid, dataFieldValue);
 						if (cmp(value, dataFieldValue) < 0) {
 							end = mid;
@@ -149,7 +162,8 @@ export class Database<T extends Schema> {
 							await this.dataFile.get(
 								indexRecord.fieldStartByteOffset,
 								indexRecord.fieldStartByteOffset + indexRecord.fieldLength
-							)
+							),
+							this.formatType
 						);
 						if (cmp(value, dataFieldValue) < 0) {
 							end = mid;
@@ -209,7 +223,8 @@ export class Database<T extends Schema> {
 					await this.dataFile.get(
 						dataRecord.startByteOffset,
 						dataRecord.endByteOffset
-					)
+					),
+					this.formatType
 				);
 				yield dataFieldValue;
 			}

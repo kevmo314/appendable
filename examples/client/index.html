@@ -10,7 +10,8 @@
 		<script>
 			Appendable.init(
 				"green_tripdata_2023-01.jsonl",
-				"green_tripdata_2023-01.jsonl.index"
+				"green_tripdata_2023-01.jsonl.index",
+				Appendable.FormatType.Jsonl
 			).then(async (db) => {
 				let dbFields = new Set();
 				let fieldTypes = {};
