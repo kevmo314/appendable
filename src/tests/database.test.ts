@@ -1,6 +1,7 @@
 import { Database, FieldType, Query, containsType } from "../database";
 import { DataFile } from "../data-file";
 import { IndexFile, VersionedIndexFile } from "../index-file";
+import { FormatType } from "..";
 
 jest.mock("../data-file");
 jest.mock("../index-file");
@@ -25,7 +26,7 @@ describe("test query relation", () => {
 		} as jest.Mocked<VersionedIndexFile<any>>;
 
 		// instantiate a Database object with given mocked data file and index file
-		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile);
+		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile, FormatType.Jsonl);
 	});
 
 	/*
