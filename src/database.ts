@@ -35,7 +35,6 @@ export function containsType(fieldType: bigint, desiredType: FieldType) {
 }
 
 function parseIgnoringSuffix(x: string, format: FormatType) {
-	console.log("parseSuffix: ", x);
 	switch (format) {
 		case FormatType.Jsonl:
 			try {
@@ -54,7 +53,33 @@ function parseIgnoringSuffix(x: string, format: FormatType) {
 			return JSON.parse(x);
 
 		case FormatType.Csv:
+			try {
+				console.log("parsing no error", parseCsvLine(x));
+				return parseCsvLine(x);
+			} catch (error) {
+				console.log("registered as an error");
+				let lastCompleteLine = findLastCompleteCsvLine(x);
+				console.log(lastCompleteLine);
+				return parseCsvLine(lastCompleteLine);
+			}
 	}
+}
+
+export function parseCsvLine(line: string) {
+	console.log("parsing csv: ");
+	let fields: string[] = line.split(",");
+
+	fields.forEach((field) => {
+		if (field.length > 0) {
+			console.log("parsing: ", field);
+			return JSON.parse(field);
+		}
+	});
+}
+
+function findLastCompleteCsvLine(data: string) {
+	let lastNewlineIndex = data.lastIndexOf("\n");
+	return lastNewlineIndex >= 0 ? data.slice(0, lastNewlineIndex) : data;
 }
 
 function fieldRank(token: any) {
@@ -182,6 +207,7 @@ export class Database<T extends Schema> {
 		);
 		// group the field ranges by the field name and merge them into single ranges.
 		const fieldRangeMap = new Map<keyof T, [number, number]>();
+
 		for (const [key, value] of fieldRanges) {
 			const existing = fieldRangeMap.get(key);
 			if (existing) {
@@ -207,6 +233,8 @@ export class Database<T extends Schema> {
 				fieldRangesSorted.unshift(...fieldRangesSorted.splice(index, 1));
 			}
 		}
+
+		console.log("Field ranges: ", fieldRanges);
 		// evaluate the field ranges in order.
 		for (const [key, [start, end]] of fieldRangesSorted) {
 			// check if the iteration order should be reversed.
@@ -219,6 +247,8 @@ export class Database<T extends Schema> {
 				const dataRecord = await this.indexFile.dataRecord(
 					indexRecord.dataNumber
 				);
+
+				console.log(`Data record: `, dataRecord);
 				const dataFieldValue = parseIgnoringSuffix(
 					await this.dataFile.get(
 						dataRecord.startByteOffset,

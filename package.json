@@ -6,7 +6,7 @@
 	"scripts": {
 		"build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
 		"build-index": "go run cmd/main.go -jsonl examples/workspace/green_tripdata_2023-01.jsonl",
-		"serve:example": "cd examples/client && npx http-server",
+		"example": "cd examples/client && go run server.go",
 		"test": "jest"
 	},
 	"repository": {
@@ -24,7 +24,6 @@
 	},
 	"devDependencies": {
 		"@types/jest": "^29.5.11",
-		"http-server": "^14.1.1",
 		"prettier": "^3.2.1",
 		"ts-jest": "^29.1.1",
 		"ts-node": "^10.9.2"

@@ -52,8 +52,8 @@ cp ../../dist/appendable.min.js.map ../client
 Then run the development server:
 
 ```sh
-npm run serve:example
+npm run example
 ```
 
 
-You should see the example built on http://192.168.1.157:8080
+You should see the example built on http://localhost:8080
