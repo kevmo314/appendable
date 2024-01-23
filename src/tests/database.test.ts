@@ -1,4 +1,4 @@
-import { Database, Query } from "../database";
+import { Database, FieldType, Query, containsType } from "../database";
 import { DataFile } from "../data-file";
 import { IndexFile, VersionedIndexFile } from "../index-file";
 
@@ -92,5 +92,22 @@ describe("test query relation", () => {
 		}
 
 		expect(results).toEqual([25]);
+	});
+});
+
+describe("test field type", () => {
+	it("check valid type", async () => {
+		const testCases = [
+			{ fieldType: BigInt(2), desiredType: FieldType.Number, expected: true },
+			{ fieldType: BigInt(34), desiredType: FieldType.Null, expected: true },
+			{ fieldType: BigInt(2), desiredType: FieldType.Null, expected: false },
+			{ fieldType: BigInt(1), desiredType: FieldType.String, expected: true },
+		];
+
+		testCases.forEach(({ fieldType, desiredType, expected }) => {
+			const result = containsType(fieldType, desiredType);
+
+			expect(result).toEqual(expected);
+		});
 	});
 });
