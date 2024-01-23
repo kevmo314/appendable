@@ -65,11 +65,16 @@ function parseIgnoringSuffix(x: string, format: FormatType) {
 	}
 }
 
-function parseCsvLine(line: string) {
+export function parseCsvLine(line: string) {
 	console.log("parsing csv: ");
 	let fields: string[] = line.split(",");
 
-	return JSON.parse(fields[0]);
+	fields.forEach((field) => {
+		if (field.length > 0) {
+			console.log("parsing: ", field);
+			return JSON.parse(field);
+		}
+	});
 }
 
 function findLastCompleteCsvLine(data: string) {
