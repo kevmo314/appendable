@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
-		"build-index": "go run cmd/main.go -jsonl examples/workspace/green_tripdata_2023-01.jsonl",
+		"build-index": "go run cmd/main.go -csv examples/workspace/green_tripdata_2023-01.csv",
 		"serve:example": "cd examples/client && npx http-server",
 		"test": "jest"
 	},
