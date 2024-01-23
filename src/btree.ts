@@ -1,41 +1,38 @@
 import { BPTreeNode, MemoryPointer, compareBytes } from "./node";
 import { LengthIntegrityError, RangeResolver } from "./resolver";
 
-// taken from `buffer.go`
-interface MetaPage {
+export interface MetaPage {
 	root(): Promise<MemoryPointer>;
 }
 
-class BPTree {
+export class BPTree {
 	private tree: RangeResolver;
 	private meta: MetaPage;
-	private maxPageSize: number;
+	//private maxPageSize: number;
 
-	constructor(tree: RangeResolver, meta: MetaPage, maxPageSize: number) {
+	constructor(tree: RangeResolver, meta: MetaPage) {
 		this.tree = tree;
 		this.meta = meta;
-		this.maxPageSize = maxPageSize;
+		//this.maxPageSize = maxPageSize;
 	}
 
-	private async root(): Promise<[BPTreeNode | null, MemoryPointer]> {
+	private async root(): Promise<BPTreeNode | null> {
 		const mp = await this.meta.root();
 		if (!mp || mp.length === 0) {
-			return [null, mp];
+			return null;
 		}
 
 		const root = await this.readNode(mp);
 		if (!root) {
-			return [null, mp];
+			return null;
 		}
 
-		return [root, mp];
+		return root;
 	}
 
 	private async readNode(ptr: MemoryPointer): Promise<BPTreeNode | null> {
 		try {
-			const node = new BPTreeNode(this.tree, [], []);
-
-			const bytesRead = await node.readFrom();
+			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(ptr, this.tree);
 
 			if (!bytesRead || bytesRead !== ptr.length) {
 				return null;
@@ -90,7 +87,7 @@ class BPTree {
 	}
 
 	public async find(key: Uint8Array): Promise<[MemoryPointer, boolean]> {
-		let [rootNode, _] = await this.root();
+		let rootNode = await this.root();
 
 		if (!rootNode) {
 			return [{ offset: 0, length: 0 }, false];
