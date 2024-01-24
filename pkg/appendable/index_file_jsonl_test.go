@@ -9,6 +9,7 @@ import (
 )
 
 func TestAppendDataRowJSONL(t *testing.T) {
+
 	t.Run("no schema changes", func(t *testing.T) {
 
 		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":\"test1\"}\n")})

@@ -2,6 +2,8 @@ package appendable
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 	"testing"
 
@@ -21,9 +23,21 @@ jsonl <---> csv
 */
 func TestIndexFile(t *testing.T) {
 
+	originalLogger := slog.Default()
+
+	// Create a logger with Debug on
+	debugLevel := &slog.LevelVar{}
+	debugLevel.Set(slog.LevelDebug)
+	debugLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: debugLevel,
+	}))
+
+	slog.SetDefault(debugLogger)
+
+	defer slog.SetDefault(originalLogger)
+
 	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
 	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
-
 
 	t.Run("generate index file", func(t *testing.T) {
 		// jsonl
@@ -40,7 +54,7 @@ func TestIndexFile(t *testing.T) {
 		}
 
 		status, res := jif.compareTo(civ)
-    
+
 		if !status {
 			t.Errorf("Not equal\n%v", res)
 		}
@@ -49,21 +63,28 @@ func TestIndexFile(t *testing.T) {
 
 }
 
-func compareIndexRecord(ir1, ir2 *protocol.IndexRecord) (bool, string) {
+func compareIndexRecord(ir1, ir2 *protocol.IndexRecord, fieldType protocol.FieldType) (bool, string) {
 	if ir1.DataNumber != ir2.DataNumber {
 		return false, fmt.Sprintf("Index record data numbers do not align\ti1: %v, i2: %v", ir1.DataNumber, ir2.DataNumber)
 	}
 
-	/*
-			if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
-				return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
-			}
+	if fieldType&protocol.FieldTypeString != protocol.FieldTypeString {
+		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
+			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
+		}
 
 		if ir1.FieldLength != ir2.FieldLength {
 			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
+	} /* else {
+		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
+			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
+		}
 
-	*/
+		if ir1.FieldLength != ir2.FieldLength {
+			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
+		}
+	}*/
 	return true, ""
 }
 
@@ -90,7 +111,7 @@ func (i1 *Index) compareIndex(i2 *Index) (bool, string) {
 		}
 
 		for i := range records1 {
-			status, res := compareIndexRecord(&records1[i], &records2[i])
+			status, res := compareIndexRecord(&records1[i], &records2[i], i1.FieldType)
 			if !status {
 				return false, res
 			}
@@ -123,16 +144,15 @@ func (i1 *IndexFile) compareTo(i2 *IndexFile) (bool, string) {
 	if len(i1.EndByteOffsets) != len(i2.EndByteOffsets) {
 		return false, fmt.Sprintf("endbyteoffsets length not equal\ti1: %v, i2: %v", len(i1.EndByteOffsets), len(i2.EndByteOffsets))
 	}
-  
+
 	fmt.Printf("endbyteoffsets equal")
 
 	if len(i1.Checksums) != len(i2.Checksums) {
 		return false, fmt.Sprintf("checksums length not equal\ti1: %v, i2: %v", len(i1.Checksums), len(i2.Checksums))
 	}
 
-
 	fmt.Printf("checksums equal")
-  
+
 	/*
 		for i, _ := range i1.EndByteOffsets {
 			if i1.EndByteOffsets[i] != i2.EndByteOffsets[i] {
