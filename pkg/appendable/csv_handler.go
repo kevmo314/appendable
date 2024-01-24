@@ -18,6 +18,8 @@ type CSVHandler struct {
 }
 
 func (c CSVHandler) Synchronize(f *IndexFile) error {
+	f.Logger.Debug("Starting CSV synchronization")
+
 	var headers []string
 	var err error
 
@@ -52,9 +54,11 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
 		if isHeader {
+			f.Logger.Info("Parsing CSV headers")
 			dec := csv.NewReader(bytes.NewReader(line))
 			headers, err = dec.Read()
 			if err != nil {
+				f.Logger.Errorf("failed to parse CSV header: %w", err)
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
 			isHeader = false
@@ -62,14 +66,19 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
+		f.Logger.Debugf("Handling csv line %d", i)
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
+		f.Logger.Info("Succesfully processed", "line", i)
 	}
 
 	if fromNewIndexFile && len(f.EndByteOffsets) > 0 {
 		f.EndByteOffsets = f.EndByteOffsets[1:]
 		f.Checksums = f.Checksums[1:]
+
+		f.Logger.Debugf("trimming endbyte offsets and checksums.\n%d, %d", f.EndByteOffsets, f.Checksums)
 	}
 
+	f.Logger.Debug("Ending CSV synchronization")
 	return nil
 }
 
@@ -89,7 +98,6 @@ func fieldRankCsvField(fieldValue any) int {
 }
 
 func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
-
 	if fieldValue == "" {
 		return nil, protocol.FieldTypeNull
 	}
@@ -110,17 +118,22 @@ func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 }
 
 func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
+	i.Logger.Debugf("dataIndex: %d, dataOffset: %d", dataIndex, dataOffset)
 
 	record, err := dec.Read()
 
 	if err != nil {
+		i.Logger.Errorf("failed to read CSV record at index %d: %v", dataIndex, err)
 		return fmt.Errorf("failed to read CSV record at index %d: %w", dataIndex, err)
 	}
+
+	i.Logger.Debugf("CSV line read successfully: %v", record)
 
 	cumulativeLength := uint64(0)
 
 	for fieldIndex, fieldValue := range record {
 		if fieldIndex >= len(headers) {
+			i.Logger.Errorf("Field index %d is out of bounds with headers: %v", fieldIndex, headers)
 			return fmt.Errorf("field index %d is out of bounds with header", fieldIndex)
 		}
 
@@ -141,6 +154,7 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 				FieldStartByteOffset: uint64(fieldOffset),
 				FieldLength:          int(fieldLength),
 			})
+			i.Logger.Debugf("Appended index record for field '%s' with value '%v', with start '%d'", name, value, uint64(fieldOffset))
 
 		case protocol.FieldTypeNull:
 			for j := range i.Indexes {
@@ -148,8 +162,10 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 					i.Indexes[j].FieldType |= protocol.FieldTypeNull
 				}
 			}
+			i.Logger.Debugf("Marked field '%s' as nullable", name)
 
 		default:
+			i.Logger.Errorf("Encountered unexpected type '%T' for field '%s'", value, name)
 			return fmt.Errorf("unexpected type '%T'", value)
 		}
 

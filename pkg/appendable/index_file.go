@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
+	"go.uber.org/zap"
 )
 
 const CurrentVersion = 1
@@ -20,6 +21,8 @@ type IndexFile struct {
 
 	data io.ReadSeeker
 	tail int
+
+	Logger *zap.SugaredLogger
 }
 
 // Index is a representation of a single index.
