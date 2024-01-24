@@ -2,11 +2,12 @@ package appendable
 
 import (
 	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
-	"go.uber.org/zap"
 )
 
 /*
@@ -22,27 +23,22 @@ jsonl <---> csv
 */
 func TestIndexFile(t *testing.T) {
 
-	logger, err := zap.NewDevelopment()
-
-	if err != nil {
-		panic("cannot initialize zap logger: " + err.Error())
-	}
-
-	defer logger.Sync()
-	sugar := logger.Sugar()
+	var logLevel = new(slog.LevelVar)
+	logLevel.Set(slog.LevelDebug)
+	var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 
 	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
 	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
 
 	t.Run("generate index file", func(t *testing.T) {
 		// jsonl
-		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)}, sugar)
+		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)}, logger)
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)}, sugar)
+		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)}, logger)
 
 		if err != nil {
 			t.Fatal(err)
@@ -71,7 +67,15 @@ func compareIndexRecord(ir1, ir2 *protocol.IndexRecord, fieldType protocol.Field
 		if ir1.FieldLength != ir2.FieldLength {
 			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
-	}
+	} /*else {
+		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
+			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
+		}
+
+		if ir1.FieldLength != ir2.FieldLength {
+			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
+		}
+	}*/
 	return true, ""
 }
 

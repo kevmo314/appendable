@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
-	"go.uber.org/zap"
 )
 
 func main() {
@@ -21,25 +21,13 @@ func main() {
 
 	flag.Parse()
 
-	var logger *zap.Logger
-	var err error
+	var logLevel = new(slog.LevelVar)
 
 	if debugFlag {
-		logger, err = zap.NewDevelopment()
-
-		if err != nil {
-			panic("cannot initialize zap logger: " + err.Error())
-		}
-	} else {
-		logger, err = zap.NewProduction()
-
-		if err != nil {
-			panic("cannot initialize zap logger: " + err.Error())
-		}
+		logLevel.Set(slog.LevelDebug)
 	}
 
-	defer logger.Sync()
-	sugar := logger.Sugar()
+	var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 
 	var totalStart, readStart, writeStart time.Time
 	if showTimings {
@@ -77,21 +65,22 @@ func main() {
 			ReadSeeker: file,
 		}
 	default:
-		sugar.Fatal("Please specify the file type with -jsonl or -csv.")
+		logger.Error("Please specify the file type with -jsonl or -csv.")
+		os.Exit(1)
 	}
 	if showTimings {
 		readStart = time.Now()
 	}
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(dataHandler, sugar)
+	indexFile, err := appendable.NewIndexFile(dataHandler, logger)
 
 	if err != nil {
-		sugar.Panic(err)
+		panic(err)
 	}
 
 	if showTimings {
 		readDuration := time.Since(readStart)
-		sugar.Infof("Opening + synchronizing index file took: %s", readDuration)
+		logger.Info("Opening + synchronizing index file took", slog.Duration("duration", readDuration))
 	}
 
 	// Write the index file
@@ -100,27 +89,27 @@ func main() {
 	}
 	of, err := os.Create(args[0] + ".index")
 	if err != nil {
-		sugar.Panic(err)
+		panic(err)
 	}
-	sugar.Infof("Writing index file to %s", args[0]+".index")
+	logger.Info("Writing index file to", slog.String("path", args[0]+".index"))
 	bufof := bufio.NewWriter(of)
 	if err := indexFile.Serialize(bufof); err != nil {
-		sugar.Panic(err)
+		panic(err)
 	}
 	if err := bufof.Flush(); err != nil {
-		sugar.Panic(err)
+		panic(err)
 	}
 	if err := of.Close(); err != nil {
-		sugar.Panic(err)
+		panic(err)
 	}
 
 	if showTimings {
 		writeDuration := time.Since(writeStart)
-		sugar.Infof("Writing index file took: %s", writeDuration)
+		logger.Info("Writing index file took", slog.Duration("duration", writeDuration))
 
 		totalDuration := time.Since(totalStart)
-		sugar.Infof("Total execution time: %s", totalDuration)
+		logger.Info("Total execution time", slog.Duration("duration", totalDuration))
 	}
 
-	sugar.Info("Done!")
+	logger.Info("Done!")
 }

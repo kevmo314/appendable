@@ -5,13 +5,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/protocol"
-	"go.uber.org/zap"
 )
 
 type DataHandler interface {
@@ -19,7 +19,7 @@ type DataHandler interface {
 	Synchronize(f *IndexFile) error
 }
 
-func NewIndexFile(data DataHandler, logger *zap.SugaredLogger) (*IndexFile, error) {
+func NewIndexFile(data DataHandler, logger *slog.Logger) (*IndexFile, error) {
 	f := &IndexFile{
 		Version: CurrentVersion,
 		Indexes: []Index{},
@@ -29,7 +29,7 @@ func NewIndexFile(data DataHandler, logger *zap.SugaredLogger) (*IndexFile, erro
 	return f, data.Synchronize(f)
 }
 
-func ReadIndexFile(r io.Reader, data DataHandler, logger *zap.SugaredLogger) (*IndexFile, error) {
+func ReadIndexFile(r io.Reader, data DataHandler, logger *slog.Logger) (*IndexFile, error) {
 	f := &IndexFile{
 		Logger: logger,
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 
@@ -58,7 +59,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 			dec := csv.NewReader(bytes.NewReader(line))
 			headers, err = dec.Read()
 			if err != nil {
-				f.Logger.Errorf("failed to parse CSV header: %w", err)
+				f.Logger.Error("failed to parse CSV header", "error", err)
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
 			isHeader = false
@@ -66,7 +67,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
-		f.Logger.Debugf("Handling csv line %d", i)
+		f.Logger.Debug("Handling csv", "line", i)
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
 		f.Logger.Info("Succesfully processed", "line", i)
 	}
@@ -75,7 +76,7 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		f.EndByteOffsets = f.EndByteOffsets[1:]
 		f.Checksums = f.Checksums[1:]
 
-		f.Logger.Debugf("trimming endbyte offsets and checksums.\n%d, %d", f.EndByteOffsets, f.Checksums)
+		f.Logger.Debug("Trimming endbyte offsets and checksums", "endByteOffsets", slog.Any("endByteOffsets", f.EndByteOffsets), "checksums", slog.Any("checksums", f.Checksums))
 	}
 
 	f.Logger.Debug("Ending CSV synchronization")
@@ -118,22 +119,22 @@ func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 }
 
 func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
-	i.Logger.Debugf("dataIndex: %d, dataOffset: %d", dataIndex, dataOffset)
+	i.Logger.Debug("Processing CSV line", slog.Int("dataIndex", int(dataIndex)), slog.Int("dataOffset", int(dataOffset)))
 
 	record, err := dec.Read()
 
 	if err != nil {
-		i.Logger.Errorf("failed to read CSV record at index %d: %v", dataIndex, err)
+		i.Logger.Error("Failed to read CSV record at index", "dataIndex", dataIndex, "error", err)
 		return fmt.Errorf("failed to read CSV record at index %d: %w", dataIndex, err)
 	}
 
-	i.Logger.Debugf("CSV line read successfully: %v", record)
+	i.Logger.Debug("CSV line read successfully", "record", record)
 
 	cumulativeLength := uint64(0)
 
 	for fieldIndex, fieldValue := range record {
 		if fieldIndex >= len(headers) {
-			i.Logger.Errorf("Field index %d is out of bounds with headers: %v", fieldIndex, headers)
+			i.Logger.Error("Field index is out of bounds with headers", "fieldIndex", fieldIndex, "headers", slog.Any("headers", headers))
 			return fmt.Errorf("field index %d is out of bounds with header", fieldIndex)
 		}
 
@@ -154,7 +155,11 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 				FieldStartByteOffset: uint64(fieldOffset),
 				FieldLength:          int(fieldLength),
 			})
-			i.Logger.Debugf("Appended index record for field '%s' with value '%v', with start '%d'", name, value, uint64(fieldOffset))
+
+			i.Logger.Debug("Appended index record",
+				slog.String("field", name),
+				slog.Any("value", value),
+				slog.Int("start", int(fieldOffset)))
 
 		case protocol.FieldTypeNull:
 			for j := range i.Indexes {
@@ -162,10 +167,10 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 					i.Indexes[j].FieldType |= protocol.FieldTypeNull
 				}
 			}
-			i.Logger.Debugf("Marked field '%s' as nullable", name)
+			i.Logger.Debug("Marked field", "name", name)
 
 		default:
-			i.Logger.Errorf("Encountered unexpected type '%T' for field '%s'", value, name)
+			i.Logger.Error("Encountered unexpected type '%T' for field '%s'", value, name)
 			return fmt.Errorf("unexpected type '%T'", value)
 		}
 
