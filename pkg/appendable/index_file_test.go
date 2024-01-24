@@ -23,22 +23,31 @@ jsonl <---> csv
 */
 func TestIndexFile(t *testing.T) {
 
-	var logLevel = new(slog.LevelVar)
-	logLevel.Set(slog.LevelDebug)
-	var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+	originalLogger := slog.Default()
+
+	// Create a logger with Debug on
+	debugLevel := &slog.LevelVar{}
+	debugLevel.Set(slog.LevelDebug)
+	debugLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: debugLevel,
+	}))
+
+	slog.SetDefault(debugLogger)
+
+	defer slog.SetDefault(originalLogger)
 
 	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
 	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
 
 	t.Run("generate index file", func(t *testing.T) {
 		// jsonl
-		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)}, logger)
+		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)}, logger)
+		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 
 		if err != nil {
 			t.Fatal(err)
@@ -67,7 +76,7 @@ func compareIndexRecord(ir1, ir2 *protocol.IndexRecord, fieldType protocol.Field
 		if ir1.FieldLength != ir2.FieldLength {
 			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
-	} /*else {
+	} /* else {
 		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
 			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
 		}

@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"log/slog"
 	"sort"
 	"strings"
 
@@ -19,20 +18,17 @@ type DataHandler interface {
 	Synchronize(f *IndexFile) error
 }
 
-func NewIndexFile(data DataHandler, logger *slog.Logger) (*IndexFile, error) {
+func NewIndexFile(data DataHandler) (*IndexFile, error) {
 	f := &IndexFile{
 		Version: CurrentVersion,
 		Indexes: []Index{},
 		data:    data,
-		Logger:  logger,
 	}
 	return f, data.Synchronize(f)
 }
 
-func ReadIndexFile(r io.Reader, data DataHandler, logger *slog.Logger) (*IndexFile, error) {
-	f := &IndexFile{
-		Logger: logger,
-	}
+func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
+	f := &IndexFile{}
 
 	f.data = data
 

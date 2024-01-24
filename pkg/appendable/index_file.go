@@ -2,7 +2,6 @@ package appendable
 
 import (
 	"io"
-	"log/slog"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
 )
@@ -21,8 +20,6 @@ type IndexFile struct {
 
 	data io.ReadSeeker
 	tail int
-
-	Logger *slog.Logger
 }
 
 // Index is a representation of a single index.

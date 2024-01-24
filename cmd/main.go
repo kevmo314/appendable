@@ -21,13 +21,14 @@ func main() {
 
 	flag.Parse()
 
-	var logLevel = new(slog.LevelVar)
+	logLevel := &slog.LevelVar{}
 
 	if debugFlag {
 		logLevel.Set(slog.LevelDebug)
 	}
 
-	var logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
+	slog.SetDefault(logger)
 
 	var totalStart, readStart, writeStart time.Time
 	if showTimings {
@@ -72,7 +73,7 @@ func main() {
 		readStart = time.Now()
 	}
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(dataHandler, logger)
+	indexFile, err := appendable.NewIndexFile(dataHandler)
 
 	if err != nil {
 		panic(err)

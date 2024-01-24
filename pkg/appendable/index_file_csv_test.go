@@ -2,8 +2,6 @@ package appendable
 
 import (
 	"bytes"
-	"log/slog"
-	"os"
 	"strings"
 	"testing"
 
@@ -12,14 +10,12 @@ import (
 
 func TestAppendDataRowCSV(t *testing.T) {
 
-	var logger = slog.New(slog.NewTextHandler(os.Stderr, nil))
-
 	var mockCsv string = "header1\ntest1\n"
 	var mockCsv2 string = "header1\ntest1\ntest3\n"
 
 	t.Run("no schema changes", func(t *testing.T) {
 
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -30,7 +26,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)}, logger)
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -56,7 +52,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	})
 
 	t.Run("append index to existing", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +63,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)}, logger)
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -110,7 +106,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 
 	t.Run("multiple headers", func(t *testing.T) {
 
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("name,move\nmica,coyote\n")}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("name,move\nmica,coyote\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -121,7 +117,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("name,move\nmica,coyote\ngalvao,mount\n")}, logger)
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("name,move\nmica,coyote\ngalvao,mount\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -147,7 +143,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	})
 
 	t.Run("generate index file", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("")}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("")})
 
 		if err != nil {
 			t.Fatal(err)
@@ -159,7 +155,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		_, err = ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)}, logger)
+		_, err = ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +163,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	})
 
 	t.Run("existing index but different type", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("test\ntest1\n")}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("test\ntest1\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -178,7 +174,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("test\ntest1\n123\n")}, logger)
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("test\ntest1\n123\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -194,7 +190,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 	})
 
 	t.Run("existing index but nullable type", func(t *testing.T) {
-		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("test,test2\nomoplata,armbar\n")}, logger)
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("test,test2\nomoplata,armbar\n")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -205,7 +201,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("test,test2\nomoplata,armbar\n,singlelegx\n")}, logger)
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("test,test2\nomoplata,armbar\n,singlelegx\n")})
 		if err != nil {
 			t.Fatal(err)
 		}

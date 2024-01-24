@@ -19,7 +19,7 @@ type CSVHandler struct {
 }
 
 func (c CSVHandler) Synchronize(f *IndexFile) error {
-	f.Logger.Debug("Starting CSV synchronization")
+	slog.Debug("Starting CSV synchronization")
 
 	var headers []string
 	var err error
@@ -55,11 +55,11 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
 		if isHeader {
-			f.Logger.Info("Parsing CSV headers")
+			slog.Info("Parsing CSV headers")
 			dec := csv.NewReader(bytes.NewReader(line))
 			headers, err = dec.Read()
 			if err != nil {
-				f.Logger.Error("failed to parse CSV header", "error", err)
+				slog.Error("failed to parse CSV header", "error", err)
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
 			isHeader = false
@@ -67,19 +67,19 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		}
 
 		dec := csv.NewReader(bytes.NewReader(line))
-		f.Logger.Debug("Handling csv", "line", i)
+		slog.Debug("Handling csv", "line", i)
 		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
-		f.Logger.Info("Succesfully processed", "line", i)
+		slog.Info("Succesfully processed", "line", i)
 	}
 
 	if fromNewIndexFile && len(f.EndByteOffsets) > 0 {
 		f.EndByteOffsets = f.EndByteOffsets[1:]
 		f.Checksums = f.Checksums[1:]
 
-		f.Logger.Debug("Trimming endbyte offsets and checksums", "endByteOffsets", slog.Any("endByteOffsets", f.EndByteOffsets), "checksums", slog.Any("checksums", f.Checksums))
+		slog.Debug("Trimming endbyte offsets and checksums", "endByteOffsets", slog.Any("endByteOffsets", f.EndByteOffsets), "checksums", slog.Any("checksums", f.Checksums))
 	}
 
-	f.Logger.Debug("Ending CSV synchronization")
+	slog.Debug("Ending CSV synchronization")
 	return nil
 }
 
@@ -119,22 +119,22 @@ func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
 }
 
 func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
-	i.Logger.Debug("Processing CSV line", slog.Int("dataIndex", int(dataIndex)), slog.Int("dataOffset", int(dataOffset)))
+	slog.Debug("Processing CSV line", slog.Int("dataIndex", int(dataIndex)), slog.Int("dataOffset", int(dataOffset)))
 
 	record, err := dec.Read()
 
 	if err != nil {
-		i.Logger.Error("Failed to read CSV record at index", "dataIndex", dataIndex, "error", err)
+		slog.Error("Failed to read CSV record at index", "dataIndex", dataIndex, "error", err)
 		return fmt.Errorf("failed to read CSV record at index %d: %w", dataIndex, err)
 	}
 
-	i.Logger.Debug("CSV line read successfully", "record", record)
+	slog.Debug("CSV line read successfully", "record", record)
 
 	cumulativeLength := uint64(0)
 
 	for fieldIndex, fieldValue := range record {
 		if fieldIndex >= len(headers) {
-			i.Logger.Error("Field index is out of bounds with headers", "fieldIndex", fieldIndex, "headers", slog.Any("headers", headers))
+			slog.Error("Field index is out of bounds with headers", "fieldIndex", fieldIndex, "headers", slog.Any("headers", headers))
 			return fmt.Errorf("field index %d is out of bounds with header", fieldIndex)
 		}
 
@@ -156,7 +156,7 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 				FieldLength:          int(fieldLength),
 			})
 
-			i.Logger.Debug("Appended index record",
+			slog.Debug("Appended index record",
 				slog.String("field", name),
 				slog.Any("value", value),
 				slog.Int("start", int(fieldOffset)))
@@ -167,10 +167,10 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 					i.Indexes[j].FieldType |= protocol.FieldTypeNull
 				}
 			}
-			i.Logger.Debug("Marked field", "name", name)
+			slog.Debug("Marked field", "name", name)
 
 		default:
-			i.Logger.Error("Encountered unexpected type '%T' for field '%s'", value, name)
+			slog.Error("Encountered unexpected type '%T' for field '%s'", value, name)
 			return fmt.Errorf("unexpected type '%T'", value)
 		}
 
