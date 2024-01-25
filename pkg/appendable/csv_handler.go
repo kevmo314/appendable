@@ -32,7 +32,9 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		isHeader = true
 		fromNewIndexFile = true
 	} else {
+		slog.Debug("indexes already exist, not parsing headers")
 		for _, index := range f.Indexes {
+			isHeader = false
 			headers = append(headers, index.FieldName)
 		}
 	}
@@ -50,8 +52,10 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 			start = f.EndByteOffsets[existingCount-1]
 		}
 
-		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
+		slog.Debug("", slog.Uint64("start", start))
 
+		slog.Debug("adding", slog.Any("endbyteoffset", start+uint64(len(line))), slog.Any("line", line))
+		f.EndByteOffsets = append(f.EndByteOffsets, start+uint64(len(line))+1)
 		f.Checksums = append(f.Checksums, xxhash.Sum64(line))
 
 		if isHeader {
@@ -68,7 +72,15 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 
 		dec := csv.NewReader(bytes.NewReader(line))
 		slog.Debug("Handling csv", "line", i)
-		f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
+
+		if fromNewIndexFile {
+
+			f.handleCSVLine(dec, headers, []string{}, uint64(existingCount)-1, start)
+		} else {
+
+			f.handleCSVLine(dec, headers, []string{}, uint64(existingCount), start)
+		}
+
 		slog.Info("Succesfully processed", "line", i)
 	}
 
@@ -79,7 +91,9 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 		slog.Debug("Trimming endbyte offsets and checksums", "endByteOffsets", slog.Any("endByteOffsets", f.EndByteOffsets), "checksums", slog.Any("checksums", f.Checksums))
 	}
 
+	slog.Debug("indexes", slog.Any("", f.Indexes))
 	slog.Debug("Ending CSV synchronization")
+	slog.Debug("=========")
 	return nil
 }
 
@@ -174,7 +188,7 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 			return fmt.Errorf("unexpected type '%T'", value)
 		}
 
-		cumulativeLength += fieldLength
+		cumulativeLength += fieldLength + 1
 	}
 
 	return nil

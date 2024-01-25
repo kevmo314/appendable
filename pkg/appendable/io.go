@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -32,6 +33,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 
 	f.data = data
 
+	slog.Debug("Starting ReadIndexFile")
+
 	// read the version
 	version, err := encoding.ReadByte(r)
 	if err != nil {
@@ -49,6 +52,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 		if ifh.DataCount, err = encoding.ReadUint64(r); err != nil {
 			return nil, fmt.Errorf("failed to read index file header: %w", err)
 		}
+
+		slog.Debug("headers", slog.Any("ifh", ifh))
 
 		// read the index headers
 		f.Indexes = []Index{}
@@ -72,10 +77,14 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			index.IndexRecords = make(map[any][]protocol.IndexRecord)
 			f.Indexes = append(f.Indexes, index)
 			br += encoding.SizeString(index.FieldName) + binary.Size(ft) + binary.Size(uint64(0))
+
+			slog.Debug("", slog.Any("ih", index), slog.Any("recordCount", recordCount))
 		}
 		if br != int(ifh.IndexLength) {
 			return nil, fmt.Errorf("expected to read %d bytes, read %d bytes", ifh.IndexLength, br)
 		}
+
+		slog.Debug("Reading index headers done")
 
 		// read the index records
 		for i, index := range f.Indexes {
@@ -105,6 +114,8 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 				if err != nil {
 					return nil, fmt.Errorf("failed to read index record: %w", err)
 				}
+
+				slog.Debug("read index record", slog.Any("index", index.FieldName), slog.Any("any", value), slog.Any("record", ir))
 
 				switch value.(type) {
 				case nil, bool, int, int8, int16, int32, int64, float32, float64, string:
@@ -173,7 +184,7 @@ func ReadIndexFile(r io.Reader, data DataHandler) (*IndexFile, error) {
 			return nil, fmt.Errorf("failed to seek data file: %w", err)
 		}
 	}
-
+	slog.Debug("======")
 	return f, data.Synchronize(f)
 }
 
