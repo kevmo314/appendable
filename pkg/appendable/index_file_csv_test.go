@@ -2,6 +2,9 @@ package appendable
 
 import (
 	"bytes"
+	"fmt"
+	"log/slog"
+	"os"
 	"strings"
 	"testing"
 
@@ -9,6 +12,19 @@ import (
 )
 
 func TestAppendDataRowCSV(t *testing.T) {
+
+	originalLogger := slog.Default()
+
+	// Create a logger with Debug on
+	debugLevel := &slog.LevelVar{}
+	debugLevel.Set(slog.LevelDebug)
+	debugLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: debugLevel,
+	}))
+
+	slog.SetDefault(debugLogger)
+
+	defer slog.SetDefault(originalLogger)
 
 	var mockCsv string = "header1\ntest1\n"
 	var mockCsv2 string = "header1\ntest1\ntest3\n"
@@ -51,6 +67,30 @@ func TestAppendDataRowCSV(t *testing.T) {
 		}
 	})
 
+	t.Run("check end + start byte offsets multiple", func(t *testing.T) {
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(i.Indexes) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 1", len(i.Indexes))
+		}
+
+		if len(i.Indexes[0].IndexRecords) != 2 {
+			t.Errorf("got len(i.Indexes[0].IndexRecords) = %d, want 2", len(i.Indexes[0].IndexRecords))
+		}
+
+		if i.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("header1\n")) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want 7", i.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset)
+		}
+
+		if i.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("header1\ntest1\n")) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].FieldStartByteOffset = %d, want %d", i.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset, uint64(len("header\ntest1\n")))
+		}
+
+	})
+
 	t.Run("append index to existing", func(t *testing.T) {
 		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
 		if err != nil {
@@ -74,6 +114,7 @@ func TestAppendDataRowCSV(t *testing.T) {
 		}
 
 		if len(j.Indexes[0].IndexRecords) != 2 {
+			fmt.Printf("index records look like %v", j.Indexes[0].IndexRecords)
 			t.Errorf("got len(j.Indexes[0].IndexRecords) = %d, want 2", len(j.Indexes[0].IndexRecords))
 		}
 
@@ -90,17 +131,17 @@ func TestAppendDataRowCSV(t *testing.T) {
 		if j.Indexes[0].IndexRecords["test1"][0].DataNumber != 0 {
 			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].DataNumber = %d, want 0", j.Indexes[0].IndexRecords["test1"][0].DataNumber)
 		}
-		if j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("{\"test\":")) {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want 10", j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset)
+		if j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset != uint64(len("header1\n")) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test1\"][0].FieldStartByteOffset = %d, want %d", j.Indexes[0].IndexRecords["test1"][0].FieldStartByteOffset, uint64(len("header\n")))
 		}
 
-		if j.Indexes[0].IndexRecords["test3"][0].DataNumber != 0 {
+		if j.Indexes[0].IndexRecords["test3"][0].DataNumber != 1 {
 			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].DataNumber = %d, want 1", j.Indexes[0].IndexRecords["test3"][0].DataNumber)
 		}
 
 		// verify byte offset calculation
-		if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("header\ntest1\n")+1) {
-			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].FieldStartByteOffset = %d, want 14", j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset)
+		if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("header1\ntest1\n")) {
+			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].FieldStartByteOffset = %d, want %d", j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset, uint64(len("header\ntest1\n")))
 		}
 	})
 
@@ -140,6 +181,8 @@ func TestAppendDataRowCSV(t *testing.T) {
 		if j.EndByteOffsets[1] != uint64(len("name,move\nmica,coyote\ngalvao,mount\n")) {
 			t.Errorf("got i.DataRanges[1].EndByteOffset = %d, want %d", j.EndByteOffsets[1], uint64(len("name,move\nmica,coyote\ngalvao,mount\n")))
 		}
+
+		fmt.Printf("index file looks like: %v", j.Indexes)
 	})
 
 	t.Run("generate index file", func(t *testing.T) {

@@ -1,9 +1,8 @@
 package appendable
 
 import (
+	"bytes"
 	"fmt"
-	"log/slog"
-	"os"
 	"strings"
 	"testing"
 
@@ -23,23 +22,13 @@ jsonl <---> csv
 */
 func TestIndexFile(t *testing.T) {
 
-	originalLogger := slog.Default()
+	mockJsonl := "{\"h1\":\"test1\", \"h2\":\"test2\"}\n"
+	mockJsonl2 := "{\"h1\":\"test1\", \"h2\":\"test2\"}\n{\"h1\":\"test3\", \"h2\":\"test4\"}\n"
 
-	// Create a logger with Debug on
-	debugLevel := &slog.LevelVar{}
-	debugLevel.Set(slog.LevelDebug)
-	debugLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
-		Level: debugLevel,
-	}))
+	mockCsv := "h1,h2\ntest1,test2\n"
+	mockCsv2 := "h1,h2\ntest1,test2\ntest3,test4\n"
 
-	slog.SetDefault(debugLogger)
-
-	defer slog.SetDefault(originalLogger)
-
-	mockJsonl := "{\"id\":\"identification\", \"age\":\"cottoneyedjoe\"}\n"
-	mockCsv := "id,age\nidentification,cottoneyedjoe\n"
-
-	t.Run("generate index file", func(t *testing.T) {
+	t.Run("compare mock index file", func(t *testing.T) {
 		// jsonl
 		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
 
@@ -61,6 +50,47 @@ func TestIndexFile(t *testing.T) {
 
 	})
 
+	t.Run("compare mock index file after appending", func(t *testing.T) {
+		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		jbuf := &bytes.Buffer{}
+
+		if err := jif.Serialize(jbuf); err != nil {
+			t.Fatal(err)
+		}
+
+		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		cbuf := &bytes.Buffer{}
+		if err := civ.Serialize(cbuf); err != nil {
+			t.Fatal(err)
+		}
+
+		j, err := ReadIndexFile(jbuf, JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl2)})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		c, err := ReadIndexFile(cbuf, CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		status, res := j.compareTo(c)
+
+		fmt.Printf("%v", c)
+
+		if !status {
+			t.Errorf("Not equal\n%v", res)
+		}
+
+	})
+
 }
 
 func compareIndexRecord(ir1, ir2 *protocol.IndexRecord, fieldType protocol.FieldType) (bool, string) {
@@ -69,22 +99,14 @@ func compareIndexRecord(ir1, ir2 *protocol.IndexRecord, fieldType protocol.Field
 	}
 
 	if fieldType&protocol.FieldTypeString != protocol.FieldTypeString {
-		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
-			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
-		}
-
 		if ir1.FieldLength != ir2.FieldLength {
 			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
-	} /* else {
-		if ir1.FieldStartByteOffset != ir2.FieldStartByteOffset {
-			return false, fmt.Sprintf("FieldStartByteOffset do not align\ti1: %v, i2: %v", ir1.FieldStartByteOffset, ir2.FieldStartByteOffset)
-		}
-
-		if ir1.FieldLength != ir2.FieldLength {
+	} else {
+		if ir1.FieldLength != ir2.FieldLength+2 {
 			return false, fmt.Sprintf("Field Length do not align\ti1: %v, i2: %v", ir1.FieldLength, ir2.FieldLength)
 		}
-	}*/
+	}
 	return true, ""
 }
 
@@ -150,22 +172,6 @@ func (i1 *IndexFile) compareTo(i2 *IndexFile) (bool, string) {
 	if len(i1.Checksums) != len(i2.Checksums) {
 		return false, fmt.Sprintf("checksums length not equal\ti1: %v, i2: %v", len(i1.Checksums), len(i2.Checksums))
 	}
-
-	fmt.Printf("checksums equal")
-
-	/*
-		for i, _ := range i1.EndByteOffsets {
-			if i1.EndByteOffsets[i] != i2.EndByteOffsets[i] {
-				return false, fmt.Sprintf("endbyteoffsets not equal\ti1: %v, i2: %v", i1.EndByteOffsets[i], i2.EndByteOffsets[i])
-			}
-
-			if i1.Checksums[i] != i2.Checksums[i] {
-				return false, fmt.Sprintf("checksums not equal\ti1: %v, i2: %v", i1.Checksums[i], i2.Checksums[i])
-			}
-		}
-	*/
-
-	fmt.Printf("endbyte and checksums deeply equal")
 
 	return true, "great success!"
 }

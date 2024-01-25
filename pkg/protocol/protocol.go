@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 )
 
@@ -139,6 +140,8 @@ func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
 	if _, err := r.Seek(offset, io.SeekStart); err != nil {
 		return nil, fmt.Errorf("failed to seek to original offset: %w", err)
 	}
+
+	slog.Debug("fields", slog.Any("F", fields), slog.Any("len", len(fields)))
 
 	return fields[0], nil
 }
