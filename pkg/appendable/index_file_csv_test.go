@@ -169,6 +169,10 @@ func TestAppendDataRowCSV(t *testing.T) {
 				if keyType != "float64" {
 					t.Errorf("i keytype is %v", keyType)
 				}
+
+				if index.FieldType != protocol.FieldTypeNumber {
+					t.Errorf("index field type is not number. actual: %v", index.FieldType)
+				}
 			}
 		}
 
@@ -177,6 +181,10 @@ func TestAppendDataRowCSV(t *testing.T) {
 				keyType := reflect.TypeOf(key).String()
 				if keyType != "float64" {
 					t.Errorf("j keytype is %v", keyType)
+				}
+
+				if index.FieldType != protocol.FieldTypeNumber {
+					t.Errorf("index field type is not number. actual: %v", index.FieldType)
 				}
 			}
 		}
