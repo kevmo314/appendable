@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"strconv"
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
@@ -98,38 +97,23 @@ func (c CSVHandler) Synchronize(f *IndexFile) error {
 }
 
 func fieldRankCsvField(fieldValue any) int {
+	slog.Debug("serialize", slog.Any("fieldValue", fieldValue))
 	switch fieldValue.(type) {
 	case nil:
+		slog.Debug("nil", slog.Any("fieldValue", fieldValue))
 		return 1
 	case bool:
+		slog.Debug("bool", slog.Any("fieldValue", fieldValue))
 		return 2
 	case int, int8, int16, int32, int64, float32, float64:
+		slog.Debug("number", slog.Any("fieldValue", fieldValue))
 		return 3
 	case string:
+		slog.Debug("string", slog.Any("fieldValue", fieldValue))
 		return 4
 	default:
 		panic("unknown type")
 	}
-}
-
-func inferCSVField(fieldValue string) (interface{}, protocol.FieldType) {
-	if fieldValue == "" {
-		return nil, protocol.FieldTypeNull
-	}
-
-	if i, err := strconv.Atoi(fieldValue); err == nil {
-		return i, protocol.FieldTypeNumber
-	}
-
-	if f, err := strconv.ParseFloat(fieldValue, 64); err == nil {
-		return f, protocol.FieldTypeNumber
-	}
-
-	if b, err := strconv.ParseBool(fieldValue); err == nil {
-		return b, protocol.FieldTypeBoolean
-	}
-
-	return fieldValue, protocol.FieldTypeString
 }
 
 func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []string, dataIndex, dataOffset uint64) error {
@@ -158,10 +142,11 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 		fieldOffset := dataOffset + cumulativeLength
 		fieldLength := uint64(len(fieldValue))
 
-		value, fieldType := inferCSVField(fieldValue)
+		value, fieldType := protocol.InferCSVField(fieldValue)
 
 		switch fieldType {
 		case protocol.FieldTypeBoolean, protocol.FieldTypeString, protocol.FieldTypeNumber:
+
 			tree := i.Indexes[i.findIndex(name, value)].IndexRecords
 
 			tree[value] = append(tree[value], protocol.IndexRecord{

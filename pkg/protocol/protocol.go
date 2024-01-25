@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -122,6 +124,30 @@ type IndexRecord struct {
 	FieldLength int
 }
 
+func InferCSVField(fieldValue string) (interface{}, FieldType) {
+	if fieldValue == "" {
+		return nil, FieldTypeNull
+	}
+
+	if i, err := strconv.Atoi(fieldValue); err == nil {
+
+		fmt.Printf("\n%v is a integer\n", fieldValue)
+		return float64(i), FieldTypeNumber
+	}
+
+	if f, err := strconv.ParseFloat(fieldValue, 64); err == nil {
+
+		fmt.Printf("\n%v is a float\n", fieldValue)
+		return float64(f), FieldTypeNumber
+	}
+
+	if b, err := strconv.ParseBool(fieldValue); err == nil {
+		return b, FieldTypeBoolean
+	}
+
+	return fieldValue, FieldTypeString
+}
+
 func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
 	offset, err := r.Seek(0, io.SeekCurrent)
 	if err != nil {
@@ -142,8 +168,10 @@ func (i IndexRecord) CSVField(r io.ReadSeeker) (any, error) {
 	}
 
 	slog.Debug("fields", slog.Any("F", fields), slog.Any("len", len(fields)))
+	slog.Debug("CSVField", slog.Any("fields", fields), slog.Any("firstField", fields[0]), slog.Any("firstFieldType", reflect.TypeOf(fields[0]).String()))
 
-	return fields[0], nil
+	field, _ := InferCSVField(fields[0])
+	return field, nil
 }
 
 func (i IndexRecord) Token(r io.ReadSeeker) (json.Token, error) {
