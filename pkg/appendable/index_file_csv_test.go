@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -143,6 +144,43 @@ func TestAppendDataRowCSV(t *testing.T) {
 		if j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset != uint64(len("header1\ntest1\n")) {
 			t.Errorf("got i.Indexes[0].IndexRecords[\"test3\"][0].FieldStartByteOffset = %d, want %d", j.Indexes[0].IndexRecords["test3"][0].FieldStartByteOffset, uint64(len("header\ntest1\n")))
 		}
+	})
+
+	t.Run("assert correct types", func(t *testing.T) {
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("n1,n2\n3.4,3\n")})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := &bytes.Buffer{}
+
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		j, err := ReadIndexFile(buf, CSVHandler{ReadSeeker: strings.NewReader("n1,n2\n3.4,3\n4.3,4")})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for _, index := range i.Indexes {
+			for key := range index.IndexRecords {
+				keyType := reflect.TypeOf(key).String()
+				if keyType != "float64" {
+					t.Errorf("i keytype is %v", keyType)
+				}
+			}
+		}
+
+		for _, index := range j.Indexes {
+			for key := range index.IndexRecords {
+				keyType := reflect.TypeOf(key).String()
+				if keyType != "float64" {
+					t.Errorf("j keytype is %v", keyType)
+				}
+			}
+		}
+
 	})
 
 	t.Run("multiple headers", func(t *testing.T) {

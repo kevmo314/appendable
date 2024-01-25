@@ -3,6 +3,9 @@ package appendable
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -22,21 +25,34 @@ jsonl <---> csv
 */
 func TestIndexFile(t *testing.T) {
 
-	mockJsonl := "{\"h1\":\"test1\", \"h2\":\"test2\"}\n"
-	mockJsonl2 := "{\"h1\":\"test1\", \"h2\":\"test2\"}\n{\"h1\":\"test3\", \"h2\":\"test4\"}\n"
+	originalLogger := slog.Default()
 
-	mockCsv := "h1,h2\ntest1,test2\n"
-	mockCsv2 := "h1,h2\ntest1,test2\ntest3,test4\n"
+	// Create a logger with Debug on
+	debugLevel := &slog.LevelVar{}
+	debugLevel.Set(slog.LevelDebug)
+	debugLogger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: debugLevel,
+	}))
+
+	slog.SetDefault(debugLogger)
+
+	defer slog.SetDefault(originalLogger)
+
+	mockJsonl := "{\"h1\":\"test1\", \"h2\":37.3}\n"
+	mockJsonl2 := "{\"h1\":\"test1\", \"h2\":37.3}\n{\"h1\":\"test3\", \"h2\":4}\n"
+
+	mockCsv := "h1,h2\ntest1,37.3\n"
+	mockCsv2 := "h1,h2\ntest1,37.3\ntest3,4\n"
 
 	t.Run("compare mock index file", func(t *testing.T) {
 		// jsonl
-		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl)})
+		jif, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader(mockJsonl2)})
 
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv)})
+		civ, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader(mockCsv2)})
 
 		if err != nil {
 			t.Fatal(err)
@@ -128,8 +144,23 @@ func (i1 *Index) compareIndex(i2 *Index) (bool, string) {
 
 	for key, records1 := range i1.IndexRecords {
 		records2, ok := i2.IndexRecords[key]
+
+		var keysAndTypesI1, keysAndTypesI2 []string
+
+		// Iterate through i1.IndexRecords to collect keys and their types
+		for key := range i1.IndexRecords {
+			keyType := reflect.TypeOf(key).String() // Get the type of the key as a string
+			keysAndTypesI1 = append(keysAndTypesI1, fmt.Sprintf("%v (%s)", key, keyType))
+		}
+
+		// Iterate through i2.IndexRecords to collect keys and their types
+		for key := range i2.IndexRecords {
+			keyType := reflect.TypeOf(key).String() // Get the type of the key as a string
+			keysAndTypesI2 = append(keysAndTypesI2, fmt.Sprintf("%v (%s)", key, keyType))
+		}
+
 		if !ok {
-			return false, fmt.Sprintf("key doesn't exist in i2\tkey found in i1: %v\n%v\t%v", key, i1.IndexRecords, i2.IndexRecords)
+			return false, fmt.Sprintf("key doesn't exist in i2\tkey found in i1: %v\n%v\t%v\n%v\t%v", key, i1.IndexRecords, i2.IndexRecords, keysAndTypesI1, keysAndTypesI2)
 		}
 
 		for i := range records1 {
