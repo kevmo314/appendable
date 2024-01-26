@@ -1,6 +1,51 @@
 import { FormatType } from ".";
 import { DataFile } from "./data-file";
-import { VersionedIndexFile } from "./index-file";
+import { IndexFile, VersionedIndexFile } from "./index-file";
+
+const wef = {
+	VendorID: 2,
+	lpep_pickup_datetime: 1673548681,
+	lpep_dropoff_datetime: 1673550579,
+	store_and_fwd_flag: "N",
+	RatecodeID: 1,
+	PULocationID: 223,
+	DOLocationID: 92,
+	passenger_count: 1,
+	trip_distance: 10,
+	fare_amount: 41.5,
+	extra: 2.5,
+	mta_tax: 0.5,
+	tip_amount: 0,
+	tolls_amount: 0,
+	ehail_fee: null,
+	improvement_surcharge: 1,
+	total_amount: 45.5,
+	payment_type: 2,
+	trip_type: 1,
+	congestion_surcharge: 0,
+};
+
+const fields = [
+	"VendorID",
+	"lpep_pickup_datetime",
+	"lpep_dropoff_datetime",
+	"store_and_fwd_flag",
+	"RatecodeID",
+	"PULocationID",
+	"DOLocationID",
+	"passenger_count",
+	"trip_distance",
+	"fare_amount",
+	"extra",
+	"mta_tax",
+	"tip_amount",
+	"tolls_amount",
+	"improvement_surcharge",
+	"total_amount",
+	"payment_type",
+	"trip_type",
+	"congestion_surcharge",
+];
 
 type Schema = {
 	[key: string]: {};
@@ -34,7 +79,11 @@ export function containsType(fieldType: bigint, desiredType: FieldType) {
 	return (fieldType & BigInt(desiredType)) !== BigInt(0);
 }
 
-function parseIgnoringSuffix(x: string, format: FormatType) {
+function parseIgnoringSuffix(
+	x: string,
+	format: FormatType,
+	headerFields: string[]
+) {
 	switch (format) {
 		case FormatType.Jsonl:
 			try {
@@ -54,32 +103,52 @@ function parseIgnoringSuffix(x: string, format: FormatType) {
 
 		case FormatType.Csv:
 			try {
-				console.log("parsing no error", parseCsvLine(x));
-				return parseCsvLine(x);
+				return JSON.parse(x);
 			} catch (error) {
-				console.log("registered as an error");
-				let lastCompleteLine = findLastCompleteCsvLine(x);
-				console.log(lastCompleteLine);
-				return parseCsvLine(lastCompleteLine);
+				const fields = x.split(",");
+
+				const e = error as Error;
+				if (fields.length === 2) {
+					console.log("initial value: x", x);
+
+					let m = e.message.match(/position\s+(\d+)/);
+					console.log("m", m);
+					if (m) {
+						console.log("inside m");
+						console.log(x.slice(0, Number(m[1])));
+						x = x.slice(0, Number(m[1]));
+					}
+					return JSON.parse(x);
+				} else {
+					const newlinePos = x.indexOf("\n");
+					const result = newlinePos !== -1 ? x.substring(0, newlinePos) : x;
+
+					const csvFields = result.split(",");
+
+					console.log(headerFields);
+					console.log(csvFields);
+
+					// assert lengths are equal
+					if (csvFields.length === headerFields.length) {
+						console.log("equal");
+						return buildJsonFromCsv(csvFields, headerFields);
+					} else {
+						console.log("not equal");
+						return result;
+					}
+				}
 			}
 	}
 }
 
-export function parseCsvLine(line: string) {
-	console.log("parsing csv: ");
-	let fields: string[] = line.split(",");
-
-	fields.forEach((field) => {
-		if (field.length > 0) {
-			console.log("parsing: ", field);
-			return JSON.parse(field);
-		}
-	});
-}
-
-function findLastCompleteCsvLine(data: string) {
-	let lastNewlineIndex = data.lastIndexOf("\n");
-	return lastNewlineIndex >= 0 ? data.slice(0, lastNewlineIndex) : data;
+function buildJsonFromCsv(csvFields: string[], headerFields: string[]) {
+	return headerFields.reduce<{ [key: string]: string }>(
+		(acc, header, index) => {
+			acc[header] = csvFields[index];
+			return acc;
+		},
+		{}
+	);
 }
 
 function fieldRank(token: any) {
@@ -144,6 +213,7 @@ export class Database<T extends Schema> {
 		}
 		// convert each of the where nodes into a range of field values.
 		const headers = await this.indexFile.indexHeaders();
+		const headerFields = headers.map((header) => header.fieldName);
 		const fieldRanges = await Promise.all(
 			(query.where ?? []).map(async ({ key, value, operation }) => {
 				const header = headers.find((header) => header.fieldName === key);
@@ -162,8 +232,11 @@ export class Database<T extends Schema> {
 							indexRecord.fieldStartByteOffset,
 							indexRecord.fieldStartByteOffset + indexRecord.fieldLength
 						);
-						console.log("data looks like: ", data);
-						const dataFieldValue = parseIgnoringSuffix(data, this.formatType);
+						const dataFieldValue = parseIgnoringSuffix(
+							data,
+							this.formatType,
+							headerFields
+						);
 						console.log(mid, dataFieldValue);
 						if (cmp(value, dataFieldValue) < 0) {
 							end = mid;
@@ -188,7 +261,8 @@ export class Database<T extends Schema> {
 								indexRecord.fieldStartByteOffset,
 								indexRecord.fieldStartByteOffset + indexRecord.fieldLength
 							),
-							this.formatType
+							this.formatType,
+							headerFields
 						);
 						if (cmp(value, dataFieldValue) < 0) {
 							end = mid;
@@ -234,7 +308,6 @@ export class Database<T extends Schema> {
 			}
 		}
 
-		console.log("Field ranges: ", fieldRanges);
 		// evaluate the field ranges in order.
 		for (const [key, [start, end]] of fieldRangesSorted) {
 			// check if the iteration order should be reversed.
@@ -254,7 +327,8 @@ export class Database<T extends Schema> {
 						dataRecord.startByteOffset,
 						dataRecord.endByteOffset
 					),
-					this.formatType
+					this.formatType,
+					headerFields
 				);
 				yield dataFieldValue;
 			}

@@ -1,6 +1,7 @@
 package appendable
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/kevmo314/appendable/pkg/protocol"
@@ -39,6 +40,8 @@ func fieldType(data any) protocol.FieldType {
 		return protocol.FieldTypeBoolean
 	case []any:
 		return protocol.FieldTypeArray
+	case nil:
+		return protocol.FieldTypeNull
 	default:
 		return protocol.FieldTypeObject
 	}
@@ -53,8 +56,11 @@ func (i *IndexFile) findIndex(name string, value any) int {
 			break
 		}
 	}
+
 	// if the index doesn't exist, create it
 	ft := fieldType(value)
+
+	fmt.Printf("\n\nCREATING NEW INDEX: %v, type: %T\n\n", value, ft)
 	if match == -1 {
 		index := Index{
 			FieldName: name,

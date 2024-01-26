@@ -1,6 +1,6 @@
-import { Database, FieldType, Query, containsType, parseCsvLine } from "../database";
+import { Database, FieldType, Query, containsType } from "../database";
 import { DataFile } from "../data-file";
-import { IndexFile, VersionedIndexFile } from "../index-file";
+import { VersionedIndexFile } from "../index-file";
 import { FormatType } from "..";
 
 jest.mock("../data-file");
@@ -112,20 +112,3 @@ describe("test field type", () => {
 		});
 	});
 });
-
-
-describe("test parsing csv", () => {
-
-	it("check csv parse", async() => {
-		const testCases = [
-			{ data: "151,1", expected: 151},
-			{ data: ",95,5", expected: 95}
-		];
-
-		testCases.forEach(({ data, expected}) => {
-			let csv = parseCsvLine(data)	
-			console.log(csv)
-		})
-
-	})
-})

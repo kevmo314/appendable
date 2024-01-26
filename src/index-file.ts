@@ -1,228 +1,233 @@
 import { LengthIntegrityError, RangeResolver } from "./resolver";
 
-export class IndexFile {
-  static async forUrl<T = any>(url: string) {
-    return await IndexFile.forResolver<T>(
-      async ({ start, end, expectedLength }) => {
-        const response = await fetch(url, {
-          headers: { Range: `bytes=${start}-${end}` },
-        });
-        const totalLength = Number(
-          response.headers.get("Content-Range")!.split("/")[1]
-        );
-        if (expectedLength && totalLength !== expectedLength) {
-          throw new LengthIntegrityError();
-        }
-        return {
-          data: await response.arrayBuffer(),
-          totalLength: totalLength,
-        };
-      }
-    );
-  }
+export type Header = {
+	fieldName: string;
+	fieldType: bigint;
+	indexRecordCount: bigint;
+};
 
-  static async forResolver<T = any>(
-    resolver: RangeResolver
-  ): Promise<VersionedIndexFile<T>> {
-    const response = await resolver({ start: 0, end: 0 });
-    const version = new DataView(response.data).getUint8(0);
-    switch (version) {
-      case 1:
-        return new IndexFileV1<T>(async (start, end) => {
-          return (
-            await resolver({
-              start,
-              end,
-              expectedLength: response.totalLength,
-            })
-          ).data;
-        });
-      default:
-        throw new Error("invalid version");
-    }
-  }
+export class IndexFile {
+	static async forUrl<T = any>(url: string) {
+		return await IndexFile.forResolver<T>(
+			async ({ start, end, expectedLength }) => {
+				const response = await fetch(url, {
+					headers: { Range: `bytes=${start}-${end}` },
+				});
+				const totalLength = Number(
+					response.headers.get("Content-Range")!.split("/")[1]
+				);
+				if (expectedLength && totalLength !== expectedLength) {
+					throw new LengthIntegrityError();
+				}
+				return {
+					data: await response.arrayBuffer(),
+					totalLength: totalLength,
+				};
+			}
+		);
+	}
+
+	static async forResolver<T = any>(
+		resolver: RangeResolver
+	): Promise<VersionedIndexFile<T>> {
+		const response = await resolver({ start: 0, end: 0 });
+		const version = new DataView(response.data).getUint8(0);
+		switch (version) {
+			case 1:
+				return new IndexFileV1<T>(async (start, end) => {
+					return (
+						await resolver({
+							start,
+							end,
+							expectedLength: response.totalLength,
+						})
+					).data;
+				});
+			default:
+				throw new Error("invalid version");
+		}
+	}
 }
 
 function decodeFloatingInt16(x: number) {
-  const exponent = x >> 11;
-  const mantissa = x & 0x7ff;
-  return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
+	const exponent = x >> 11;
+	const mantissa = x & 0x7ff;
+	return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
 }
 
 export interface VersionedIndexFile<T> {
-  indexFileHeader(): Promise<{
-    indexLength: number;
-    dataCount: number;
-  }>;
-  indexHeaders(): Promise<
-    {
-      fieldName: string;
-      fieldType: bigint;
-      indexRecordCount: bigint;
-    }[]
-  >;
-  indexRecord(
-    field: keyof T,
-    offset: number
-  ): Promise<{
-    dataNumber: number;
-    fieldStartByteOffset: number;
-    fieldLength: number;
-  }>;
-  dataRecord(
-    offset: number
-  ): Promise<{ startByteOffset: number; endByteOffset: number }>;
+	indexFileHeader(): Promise<{
+		indexLength: number;
+		dataCount: number;
+	}>;
+	indexHeaders(): Promise<
+		{
+			fieldName: string;
+			fieldType: bigint;
+			indexRecordCount: bigint;
+		}[]
+	>;
+	indexRecord(
+		field: keyof T,
+		offset: number
+	): Promise<{
+		dataNumber: number;
+		fieldStartByteOffset: number;
+		fieldLength: number;
+	}>;
+	dataRecord(
+		offset: number
+	): Promise<{ startByteOffset: number; endByteOffset: number }>;
 }
 
 class IndexFileV1<T> implements VersionedIndexFile<T> {
-  private _indexFileHeader?: {
-    indexLength: number;
-    dataCount: number;
-  };
-  private _indexHeaders?: {
-    fieldName: string;
-    fieldType: bigint;
-    indexRecordCount: bigint;
-  }[];
+	private _indexFileHeader?: {
+		indexLength: number;
+		dataCount: number;
+	};
+	private _indexHeaders?: {
+		fieldName: string;
+		fieldType: bigint;
+		indexRecordCount: bigint;
+	}[];
 
-  private static INDEX_RECORD_SIZE = 18;
+	private static INDEX_RECORD_SIZE = 18;
 
-  constructor(
-    private resolver: (start: number, end: number) => Promise<ArrayBuffer>
-  ) {}
+	constructor(
+		private resolver: (start: number, end: number) => Promise<ArrayBuffer>
+	) {}
 
-  async indexFileHeader() {
-    if (this._indexFileHeader) {
-      return this._indexFileHeader;
-    }
-    const header = new DataView(await this.resolver(1, 16));
-    this._indexFileHeader = {
-      indexLength: Number(header.getBigUint64(0)),
-      dataCount: Number(header.getBigUint64(8)),
-    };
-    return this._indexFileHeader;
-  }
+	async indexFileHeader() {
+		if (this._indexFileHeader) {
+			return this._indexFileHeader;
+		}
+		const header = new DataView(await this.resolver(1, 16));
+		this._indexFileHeader = {
+			indexLength: Number(header.getBigUint64(0)),
+			dataCount: Number(header.getBigUint64(8)),
+		};
+		return this._indexFileHeader;
+	}
 
-  async indexHeaders() {
-    if (this._indexHeaders) {
-      return this._indexHeaders;
-    }
-    const indexFileHeader = await this.indexFileHeader();
-    const buffer = await this.resolver(17, indexFileHeader.indexLength + 16);
-    const data = new DataView(buffer);
-    const headers: {
-      fieldName: string;
-      fieldType: bigint;
-      indexRecordCount: bigint;
-    }[] = [];
-    let offset = 0;
-    while (offset < indexFileHeader.indexLength) {
-      const fieldNameLength = data.getUint32(offset);
-      offset += 4;
-      const fieldName = new TextDecoder("utf-8").decode(
-        buffer.slice(offset, offset + fieldNameLength)
-      );
-      offset += fieldNameLength;
-      const fieldType = data.getBigUint64(offset);
-      offset += 8;
-      const indexRecordCount = data.getBigUint64(offset);
-      offset += 8;
-      headers.push({
-        fieldName,
-        fieldType,
-        indexRecordCount,
-      });
-    }
-    if (offset !== indexFileHeader.indexLength) {
-      throw new Error(
-        `Inaccurate header read, offset = ${offset} but indexFileHeader.indexLength = ${indexFileHeader.indexLength}. This could indicate that the index file is corrupt.`
-      );
-    }
-    this._indexHeaders = headers;
-    return headers;
-  }
+	async indexHeaders() {
+		if (this._indexHeaders) {
+			return this._indexHeaders;
+		}
 
-  async indexRecord(field: keyof T, offset: number) {
-    if (offset < 0) {
-      throw new Error("offset out of range");
-    }
-    const headers = await this.indexHeaders();
-    const headerIndex = headers.findIndex(
-      (header) => header.fieldName === field
-    );
-    if (headerIndex === -1) {
-      throw new Error("field not found");
-    }
-    const header = headers[headerIndex];
-    if (offset >= Number(header.indexRecordCount)) {
-      throw new Error("offset out of range");
-    }
+		const indexFileHeader = await this.indexFileHeader();
+		const buffer = await this.resolver(17, indexFileHeader.indexLength + 16);
+		const data = new DataView(buffer);
+		const headers: Header[] = [];
+		let offset = 0;
+		while (offset < indexFileHeader.indexLength) {
+			const fieldNameLength = data.getUint32(offset);
+			offset += 4;
+			const fieldName = new TextDecoder("utf-8").decode(
+				buffer.slice(offset, offset + fieldNameLength)
+			);
+			offset += fieldNameLength;
+			const fieldType = data.getBigUint64(offset);
+			offset += 8;
+			const indexRecordCount = data.getBigUint64(offset);
+			offset += 8;
+			console.log("pushing ", fieldName);
+			headers.push({
+				fieldName,
+				fieldType,
+				indexRecordCount,
+			});
+		}
+		if (offset !== indexFileHeader.indexLength) {
+			throw new Error(
+				`Inaccurate header read, offset = ${offset} but indexFileHeader.indexLength = ${indexFileHeader.indexLength}. This could indicate that the index file is corrupt.`
+			);
+		}
+		this._indexHeaders = headers;
+		return headers;
+	}
 
-    const indexFileHeader = await this.indexFileHeader();
-    const indexRecordsStart = 17 + indexFileHeader.indexLength;
-    const headerOffset = headers.slice(0, headerIndex).reduce((acc, header) => {
-      return (
-        acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
-      );
-    }, 0);
-    const recordOffset =
-      indexRecordsStart + headerOffset + offset * IndexFileV1.INDEX_RECORD_SIZE;
-    const buffer = await this.resolver(
-      recordOffset,
-      recordOffset + IndexFileV1.INDEX_RECORD_SIZE
-    );
-    const data = new DataView(buffer);
+	async indexRecord(field: keyof T, offset: number) {
+		if (offset < 0) {
+			throw new Error("offset out of range");
+		}
+		const headers = await this.indexHeaders();
+		console.log("headers: ", headers);
+		const headerIndex = headers.findIndex(
+			(header) => header.fieldName === field
+		);
+		if (headerIndex === -1) {
+			throw new Error("field not found");
+		}
+		const header = headers[headerIndex];
+		if (offset >= Number(header.indexRecordCount)) {
+			throw new Error("offset out of range");
+		}
 
-    const dataNumber = data.getBigUint64(0);
-    const fieldStartByteOffset = data.getBigUint64(8);
-    const fieldLength = decodeFloatingInt16(data.getUint16(16));
+		const indexFileHeader = await this.indexFileHeader();
+		const indexRecordsStart = 17 + indexFileHeader.indexLength;
+		const headerOffset = headers.slice(0, headerIndex).reduce((acc, header) => {
+			return (
+				acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
+			);
+		}, 0);
+		const recordOffset =
+			indexRecordsStart + headerOffset + offset * IndexFileV1.INDEX_RECORD_SIZE;
+		const buffer = await this.resolver(
+			recordOffset,
+			recordOffset + IndexFileV1.INDEX_RECORD_SIZE
+		);
+		const data = new DataView(buffer);
 
-    return {
-      dataNumber: Number(dataNumber),
-      fieldStartByteOffset: Number(fieldStartByteOffset),
-      fieldLength: fieldLength,
-    };
-  }
+		const dataNumber = data.getBigUint64(0);
+		const fieldStartByteOffset = data.getBigUint64(8);
+		const fieldLength = decodeFloatingInt16(data.getUint16(16));
 
-  async dataRecord(offset: number) {
-    if (offset < 0) {
-      throw new Error("offset out of range");
-    }
-    const indexFileHeader = await this.indexFileHeader();
-    if (offset >= indexFileHeader.dataCount) {
-      throw new Error("offset out of range");
-    }
-    const headers = await this.indexHeaders();
-    const indexRecordsLength = headers.reduce((acc, header) => {
-      return (
-        acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
-      );
-    }, 0);
-    const start = 17 + indexFileHeader.indexLength + indexRecordsLength;
-    // fetch the byte offsets. if offset is 0, we can just fetch the first 8 bytes.
-    if (offset === 0) {
-      const buffer = await this.resolver(
-        start + offset * 8,
-        start + offset * 8 + 8
-      );
-      const data = new DataView(buffer);
-      const endByteOffset = data.getBigUint64(0);
-      return {
-        startByteOffset: 0,
-        endByteOffset: Number(endByteOffset),
-      };
-    }
+		return {
+			dataNumber: Number(dataNumber),
+			fieldStartByteOffset: Number(fieldStartByteOffset),
+			fieldLength: fieldLength,
+		};
+	}
 
-    const buffer = await this.resolver(
-      start + (offset - 1) * 8,
-      start + offset * 8 + 8
-    );
-    const data = new DataView(buffer);
-    const startByteOffset = data.getBigUint64(0);
-    const endByteOffset = data.getBigUint64(8);
-    return {
-      startByteOffset: Number(startByteOffset),
-      endByteOffset: Number(endByteOffset),
-    };
-  }
+	async dataRecord(offset: number) {
+		if (offset < 0) {
+			throw new Error("offset out of range");
+		}
+		const indexFileHeader = await this.indexFileHeader();
+		if (offset >= indexFileHeader.dataCount) {
+			throw new Error("offset out of range");
+		}
+		const headers = await this.indexHeaders();
+		const indexRecordsLength = headers.reduce((acc, header) => {
+			return (
+				acc + Number(header.indexRecordCount) * IndexFileV1.INDEX_RECORD_SIZE
+			);
+		}, 0);
+		const start = 17 + indexFileHeader.indexLength + indexRecordsLength;
+		// fetch the byte offsets. if offset is 0, we can just fetch the first 8 bytes.
+		if (offset === 0) {
+			const buffer = await this.resolver(
+				start + offset * 8,
+				start + offset * 8 + 8
+			);
+			const data = new DataView(buffer);
+			const endByteOffset = data.getBigUint64(0);
+			return {
+				startByteOffset: 0,
+				endByteOffset: Number(endByteOffset),
+			};
+		}
+
+		const buffer = await this.resolver(
+			start + (offset - 1) * 8,
+			start + offset * 8 + 8
+		);
+		const data = new DataView(buffer);
+		const startByteOffset = data.getBigUint64(0);
+		const endByteOffset = data.getBigUint64(8);
+		return {
+			startByteOffset: Number(startByteOffset),
+			endByteOffset: Number(endByteOffset),
+		};
+	}
 }

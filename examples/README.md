@@ -25,7 +25,11 @@ python3 fetch_jsonl.py
 Then run the indexing process:
 
 ```sh
-npm run build-index
+# for jsonl:
+npm run build-index-jsonl 
+
+# or for csv:
+npm run build-index-csv
 ```
 
 Copy the `.jsonl` and index file to `/client`
@@ -33,6 +37,12 @@ Copy the `.jsonl` and index file to `/client`
 ```sh
 cp green_tripdata_2023-01.jsonl ../client
 cp green_tripdata_2023-01.jsonl.index ../client
+```
+
+or for csv:
+```sh
+cp green_tripdata_2023-01.csv ../client
+cp green_tripdata_2023-01.csv.index ../client
 ```
 
 Build the AppendableDB client library:
