@@ -3,11 +3,13 @@ package btree
 import (
 	"reflect"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
 func TestMultiBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -23,7 +25,7 @@ func TestMultiBPTree(t *testing.T) {
 	})
 
 	t.Run("reset tree", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -46,7 +48,7 @@ func TestMultiBPTree(t *testing.T) {
 	})
 
 	t.Run("insert a second page", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +87,7 @@ func TestMultiBPTree(t *testing.T) {
 	})
 
 	t.Run("duplicate next pointer", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -108,7 +110,7 @@ func TestMultiBPTree(t *testing.T) {
 	})
 
 	t.Run("starts with empty metadata", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -127,7 +129,7 @@ func TestMultiBPTree(t *testing.T) {
 	})
 
 	t.Run("storing metadata works", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
