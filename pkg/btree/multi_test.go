@@ -14,13 +14,16 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		exists, err := tree.Exists()
 		if err != nil {
 			t.Fatal(err)
 		}
 		if exists {
-			t.Fatal("expected not found")
+			t.Fatalf("expected not found, got page %v", tree)
 		}
 	})
 
@@ -30,7 +33,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +59,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -92,7 +101,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +127,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -134,7 +149,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewMultiBPTree(p, uint64(p.PageSize()))
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
@@ -147,6 +165,108 @@ func TestMultiBPTree(t *testing.T) {
 		}
 		if !reflect.DeepEqual(metadata, []byte("hello")) {
 			t.Fatalf("got %v want %v", metadata, []byte("hello"))
+		}
+	})
+
+	t.Run("setting metadata too large fails", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.SetMetadata(make([]byte, 4096)); err == nil {
+			t.Fatal("expected error")
+		}
+	})
+
+	t.Run("collect pages", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+
+		// Create a linked list of LinkedMetaPages
+		page1, err := tree.AddNext()
+		if err != nil {
+			t.Fatal(err)
+		}
+		page2, err := page1.AddNext()
+		if err != nil {
+			t.Fatal(err)
+		}
+		page3, err := page2.AddNext()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Collect the pages
+		collectedPages, err := page1.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Verify the collected pages
+		expectedPages := []*LinkedMetaPage{page1, page2, page3}
+		if !reflect.DeepEqual(collectedPages, expectedPages) {
+			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		}
+	})
+
+	t.Run("singular list", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+		collectedPages, err := tree.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+		expectedPages := []*LinkedMetaPage{tree}
+		if !reflect.DeepEqual(collectedPages, expectedPages) {
+			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		}
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tree, err := NewMultiBPTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		collectedPages, err := tree.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if collectedPages != nil {
+			t.Fatalf("got %v, want nil", collectedPages)
 		}
 	})
 }
