@@ -1,4 +1,10 @@
-import { Database, FieldType, Query, containsType, parseCsvLine } from "../database";
+import {
+	Database,
+	FieldType,
+	Query,
+	containsType,
+	parseCsvLine,
+} from "../database";
 import { DataFile } from "../data-file";
 import { IndexFile, VersionedIndexFile } from "../index-file";
 import { FormatType } from "..";
@@ -26,7 +32,11 @@ describe("test query relation", () => {
 		} as jest.Mocked<VersionedIndexFile<any>>;
 
 		// instantiate a Database object with given mocked data file and index file
-		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile, FormatType.Jsonl);
+		database = Database.forDataFileAndIndexFile(
+			mockDataFile,
+			mockIndexFile,
+			FormatType.Jsonl
+		);
 	});
 
 	/*
@@ -113,19 +123,16 @@ describe("test field type", () => {
 	});
 });
 
-
 describe("test parsing csv", () => {
-
-	it("check csv parse", async() => {
+	it("check csv parse", async () => {
 		const testCases = [
-			{ data: "151,1", expected: 151},
-			{ data: ",95,5", expected: 95}
+			{ data: "151,1", expected: 151 },
+			{ data: ",95,5", expected: 95 },
 		];
 
-		testCases.forEach(({ data, expected}) => {
-			let csv = parseCsvLine(data)	
-			console.log(csv)
-		})
-
-	})
-})
+		testCases.forEach(({ data, expected }) => {
+			let csv = parseCsvLine(data);
+			console.log(csv);
+		});
+	});
+});
