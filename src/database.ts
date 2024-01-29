@@ -17,9 +17,12 @@ type OrderBy<T extends Schema> = {
 	direction: "ASC" | "DESC";
 };
 
+type SelectField<T extends Schema> = keyof T;
+
 export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
 	orderBy?: OrderBy<T>[];
+	select?: SelectField<T>[];
 };
 
 export enum FieldType {
@@ -256,7 +259,7 @@ export class Database<T extends Schema> {
 				);
 
 				console.log(`Data record: `, dataRecord);
-				const dataFieldValue = parseIgnoringSuffix(
+				const parsedFieldValue = parseIgnoringSuffix(
 					await this.dataFile.get(
 						dataRecord.startByteOffset,
 						dataRecord.endByteOffset
@@ -264,6 +267,26 @@ export class Database<T extends Schema> {
 					this.formatType,
 					headerFields
 				);
+
+				let dataFieldValue = parsedFieldValue;
+
+				if (query.select && query.select.length > 0) {
+					if (
+						typeof parsedFieldValue === "object" &&
+						parsedFieldValue !== null
+					) {
+						dataFieldValue = query.select.reduce(
+							(acc, field) => {
+								if (field in parsedFieldValue) {
+									acc[field] = parsedFieldValue[field];
+								}
+								return acc;
+							},
+							{} as Pick<T, keyof T>
+						);
+					}
+				}
+
 				yield dataFieldValue;
 			}
 		}

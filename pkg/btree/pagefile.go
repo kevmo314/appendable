@@ -61,7 +61,8 @@ func (pf *PageFile) Page(i int) (int64, error) {
 	if i < 0 {
 		return 0, errors.New("page index cannot be negative")
 	}
-	return int64(i) * int64(pf.pageSize), nil
+	// i + 1 because the first page is reserved for the free page indexes
+	return int64(i+1) * int64(pf.pageSize), nil
 }
 
 func (pf *PageFile) NewPage() (int64, error) {

@@ -141,6 +141,19 @@
 					}
 				}
 
+				if (query.select) {
+					// validate the `selectFields` clause
+					if (!Array.isArray(query.select) || query.select.length === 0) {
+						return "Error: Invalid 'selectFields' clause.";
+					}
+
+					for (const field of query.select) {
+						if (!dbFields.has(field)) {
+							return `Error: 'key': ${field} in 'selectFields' clause does not exist in dataset.`;
+						}
+					}
+				}
+
 				return "Valid Query";
 			}
 
@@ -238,7 +251,7 @@
 				<button id="execute">Execute</button>
 				<div
 					id="json-editor"
-					style="height: 300px; width: 600px; margin-top: 40px"
+					style="height: 400px; width: 600px; margin-top: 40px"
 				></div>
 				<h2>Results</h2>
 				<button id="next">Fetch more</button>
@@ -339,6 +352,14 @@
 								key: "trip_distance",
 								direction: "ASC",
 							},
+						],
+						select: [
+							"VendorID",
+							"trip_distance",
+							"passenger_count",
+							"fare_amount",
+							"tip_amount",
+							"mta_tax",
 						],
 					},
 					null,
