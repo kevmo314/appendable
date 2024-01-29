@@ -29,15 +29,15 @@ jobs:
           # Fetch the data in workspace
           cd examples/workspace
           python3 -m pip install -r requirements.txt
-          python3 fetch_jsonl.py
+          python3 fetch_csv.py
           cd -
 
           # Build the index
-          go run cmd/main.go -jsonl examples/workspace/green_tripdata_2023-01.jsonl
+          go run cmd/main.go -csv examples/workspace/green_tripdata_2023-01.csv
 
           # Copy to client
-          cp examples/workspace/green_tripdata_2023-01.jsonl examples/client
-          cp examples/workspace/green_tripdata_2023-01.jsonl.index examples/client
+          cp examples/workspace/green_tripdata_2023-01.csv examples/client
+          cp examples/workspace/green_tripdata_2023-01.csv.index examples/client
 
           # Build the js lib
           npm ci

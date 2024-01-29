@@ -84,14 +84,6 @@ func main() {
 		logger.Info("Opening + synchronizing index file took", slog.Duration("duration", readDuration))
 	}
 
-	var indexHeaders []string
-
-	for _, index := range indexFile.Indexes {
-		indexHeaders = append(indexHeaders, index.FieldName)
-	}
-
-	fmt.Printf("index headers: %v, len: %v\n", indexHeaders, len(indexHeaders))
-
 	// Write the index file
 	if showTimings {
 		writeStart = time.Now()
