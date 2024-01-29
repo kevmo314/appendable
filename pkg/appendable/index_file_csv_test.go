@@ -191,6 +191,30 @@ func TestAppendDataRowCSV(t *testing.T) {
 
 	})
 
+	t.Run("record null columns", func(t *testing.T) {
+
+		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("null1,null2\n,\n,\n,\n,\n")})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := &bytes.Buffer{}
+
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Printf("index file looks like: %v", i.Indexes)
+
+		if len(i.Indexes) != 2 {
+			t.Errorf("got len(i.Indexes) = %d, want 2", len(i.Indexes))
+		}
+
+		if i.Indexes[0].FieldType != protocol.FieldTypeNull {
+			t.Errorf("got %d, wanted protocol.FieldTypeNull", i.Indexes[0].FieldType)
+		}
+	})
+
 	t.Run("multiple headers", func(t *testing.T) {
 
 		i, err := NewIndexFile(CSVHandler{ReadSeeker: strings.NewReader("name,move\nmica,coyote\n")})

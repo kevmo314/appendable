@@ -39,6 +39,8 @@ func fieldType(data any) protocol.FieldType {
 		return protocol.FieldTypeBoolean
 	case []any:
 		return protocol.FieldTypeArray
+	case nil:
+		return protocol.FieldTypeNull
 	default:
 		return protocol.FieldTypeObject
 	}
@@ -53,8 +55,10 @@ func (i *IndexFile) findIndex(name string, value any) int {
 			break
 		}
 	}
+
 	// if the index doesn't exist, create it
 	ft := fieldType(value)
+
 	if match == -1 {
 		index := Index{
 			FieldName: name,

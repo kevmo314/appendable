@@ -147,12 +147,27 @@ func (i *IndexFile) handleJSONLObject(dec *json.Decoder, path []string, dataInde
 					return fmt.Errorf("unexpected token '%v'", value)
 				}
 			case nil:
+
+				found := false
+
 				// set the field to nullable if it's not already
 				for j := range i.Indexes {
 					if i.Indexes[j].FieldName == name {
 						i.Indexes[j].FieldType |= protocol.FieldTypeNull
+						found = true
 					}
 				}
+
+				if !found {
+					tree := i.Indexes[i.findIndex(name, value)].IndexRecords
+					// append this record to the list of records for this value
+					tree[value] = append(tree[value], protocol.IndexRecord{
+						DataNumber:           dataIndex,
+						FieldStartByteOffset: dataOffset + uint64(fieldOffset),
+						FieldLength:          int(dec.InputOffset() - fieldOffset),
+					})
+				}
+
 			default:
 				return fmt.Errorf("unexpected type '%T'", value)
 			}
