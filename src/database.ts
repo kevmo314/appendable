@@ -22,7 +22,7 @@ type SelectField<T extends Schema> = keyof T;
 export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
 	orderBy?: OrderBy<T>[];
-	selectFields?: SelectField<T>[];
+	select?: SelectField<T>[];
 };
 
 export enum FieldType {
@@ -261,17 +261,21 @@ export class Database<T extends Schema> {
 				);
 
 				let dataFieldValue = parsedFieldValue;
-				if (query.selectFields && query.selectFields.length > 0) {
+
+				if (query.select && query.select.length > 0) {
 					if (
 						typeof parsedFieldValue === "object" &&
 						parsedFieldValue !== null
 					) {
-						dataFieldValue = query.selectFields.reduce((acc, field) => {
-							if (field in parsedFieldValue) {
-								acc[field] = parsedFieldValue[field];
-							}
-							return acc;
-						}, {} as Partial<T>);
+						dataFieldValue = query.select.reduce(
+							(acc, field) => {
+								if (field in parsedFieldValue) {
+									acc[field] = parsedFieldValue[field];
+								}
+								return acc;
+							},
+							{} as Pick<T, keyof T>
+						);
 					}
 				}
 
