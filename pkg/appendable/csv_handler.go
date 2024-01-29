@@ -147,6 +147,12 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 
 		switch fieldType {
 		case protocol.FieldTypeBoolean, protocol.FieldTypeString, protocol.FieldTypeNumber:
+			tree := i.Indexes[i.findIndex(name, value)].IndexRecords
+			tree[value] = append(tree[value], protocol.IndexRecord{
+				DataNumber:           dataIndex,
+				FieldStartByteOffset: uint64(fieldOffset),
+				FieldLength:          int(fieldLength),
+			})
 			slog.Debug("Appended index record",
 				slog.String("field", name),
 				slog.Any("value", value),
@@ -154,11 +160,22 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 
 		case protocol.FieldTypeNull:
 
+			found := false
 			for j := range i.Indexes {
 				if i.Indexes[j].FieldName == name {
-					fmt.Printf("null for field name %v\n", i.Indexes[j].FieldName)
 					i.Indexes[j].FieldType |= protocol.FieldTypeNull
+
+					found = true
 				}
+			}
+
+			if !found {
+				tree := i.Indexes[i.findIndex(name, value)].IndexRecords
+				tree[value] = append(tree[value], protocol.IndexRecord{
+					DataNumber:           dataIndex,
+					FieldStartByteOffset: uint64(fieldOffset),
+					FieldLength:          int(fieldLength),
+				})
 			}
 
 			slog.Debug("Marked field", "name", name)
@@ -167,13 +184,6 @@ func (i *IndexFile) handleCSVLine(dec *csv.Reader, headers []string, path []stri
 			slog.Error("Encountered unexpected type '%T' for field '%s'", value, name)
 			return fmt.Errorf("unexpected type '%T'", value)
 		}
-
-		tree := i.Indexes[i.findIndex(name, value)].IndexRecords
-		tree[value] = append(tree[value], protocol.IndexRecord{
-			DataNumber:           dataIndex,
-			FieldStartByteOffset: uint64(fieldOffset),
-			FieldLength:          int(fieldLength),
-		})
 
 		cumulativeLength += fieldLength + 1
 	}

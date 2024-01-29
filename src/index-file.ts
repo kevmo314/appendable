@@ -130,7 +130,6 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 			offset += 8;
 			const indexRecordCount = data.getBigUint64(offset);
 			offset += 8;
-			console.log("pushing ", fieldName);
 			headers.push({
 				fieldName,
 				fieldType,

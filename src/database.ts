@@ -2,51 +2,6 @@ import { FormatType } from ".";
 import { DataFile } from "./data-file";
 import { IndexFile, VersionedIndexFile } from "./index-file";
 
-const wef = {
-	VendorID: 2,
-	lpep_pickup_datetime: 1673548681,
-	lpep_dropoff_datetime: 1673550579,
-	store_and_fwd_flag: "N",
-	RatecodeID: 1,
-	PULocationID: 223,
-	DOLocationID: 92,
-	passenger_count: 1,
-	trip_distance: 10,
-	fare_amount: 41.5,
-	extra: 2.5,
-	mta_tax: 0.5,
-	tip_amount: 0,
-	tolls_amount: 0,
-	ehail_fee: null,
-	improvement_surcharge: 1,
-	total_amount: 45.5,
-	payment_type: 2,
-	trip_type: 1,
-	congestion_surcharge: 0,
-};
-
-const fields = [
-	"VendorID",
-	"lpep_pickup_datetime",
-	"lpep_dropoff_datetime",
-	"store_and_fwd_flag",
-	"RatecodeID",
-	"PULocationID",
-	"DOLocationID",
-	"passenger_count",
-	"trip_distance",
-	"fare_amount",
-	"extra",
-	"mta_tax",
-	"tip_amount",
-	"tolls_amount",
-	"improvement_surcharge",
-	"total_amount",
-	"payment_type",
-	"trip_type",
-	"congestion_surcharge",
-];
-
 type Schema = {
 	[key: string]: {};
 };
@@ -87,10 +42,8 @@ function parseIgnoringSuffix(
 	switch (format) {
 		case FormatType.Jsonl:
 			try {
-				console.log("parsing no error", JSON.parse(x));
 				return JSON.parse(x);
 			} catch (error) {
-				console.log("registered as an error");
 				const e = error as Error;
 				let m = e.message.match(/position\s+(\d+)/);
 				if (m) {
@@ -102,40 +55,21 @@ function parseIgnoringSuffix(
 			return JSON.parse(x);
 
 		case FormatType.Csv:
-			try {
+			const fields = x.split(",");
+
+			if (fields.length === 2) {
+				x = fields[0];
 				return JSON.parse(x);
-			} catch (error) {
-				const fields = x.split(",");
+			} else {
+				const newlinePos = x.indexOf("\n");
+				const result = newlinePos !== -1 ? x.substring(0, newlinePos) : x;
+				const csvFields = result.split(",");
 
-				const e = error as Error;
-				if (fields.length === 2) {
-					console.log("initial value: x", x);
-
-					let m = e.message.match(/position\s+(\d+)/);
-					console.log("m", m);
-					if (m) {
-						console.log("inside m");
-						console.log(x.slice(0, Number(m[1])));
-						x = x.slice(0, Number(m[1]));
-					}
-					return JSON.parse(x);
+				// assert lengths are equal
+				if (csvFields.length === headerFields.length) {
+					return buildJsonFromCsv(csvFields, headerFields);
 				} else {
-					const newlinePos = x.indexOf("\n");
-					const result = newlinePos !== -1 ? x.substring(0, newlinePos) : x;
-
-					const csvFields = result.split(",");
-
-					console.log(headerFields);
-					console.log(csvFields);
-
-					// assert lengths are equal
-					if (csvFields.length === headerFields.length) {
-						console.log("equal");
-						return buildJsonFromCsv(csvFields, headerFields);
-					} else {
-						console.log("not equal");
-						return result;
-					}
+					return result;
 				}
 			}
 	}

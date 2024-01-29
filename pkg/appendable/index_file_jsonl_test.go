@@ -2,6 +2,7 @@ package appendable
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -302,6 +303,30 @@ func TestAppendDataRowJSONL(t *testing.T) {
 
 		if j.Indexes[0].FieldType != protocol.FieldTypeNull|protocol.FieldTypeString {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want protocol.FieldTypeNullableString", j.Indexes[0].FieldType)
+		}
+	})
+
+	t.Run("record null columns", func(t *testing.T) {
+
+		i, err := NewIndexFile(JSONLHandler{ReadSeeker: strings.NewReader("{\"test\":null}\n{\"test\":null}")})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		buf := &bytes.Buffer{}
+
+		if err := i.Serialize(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		fmt.Printf("index file looks like: %v", i.Indexes)
+
+		if len(i.Indexes) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 1", len(i.Indexes))
+		}
+
+		if i.Indexes[0].FieldType != protocol.FieldTypeNull {
+			t.Errorf("got %d, wanted protocol.FieldTypeNull", i.Indexes[0].FieldType)
 		}
 	})
 }
