@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"math/rand"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
 type testMetaPage struct {
@@ -21,7 +23,7 @@ func (m *testMetaPage) Root() (MemoryPointer, error) {
 
 func TestBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -38,7 +40,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("insert creates a root", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -60,7 +62,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("insert into root", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -95,7 +97,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("split root", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -156,7 +158,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("split intermediate", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -180,7 +182,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("insertion test", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -210,7 +212,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	t.Run("random insertion test", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := buftest.NewSeekableBuffer()
 		p, err := NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
@@ -246,7 +248,7 @@ func TestBPTree(t *testing.T) {
 	})
 
 	// t.Run("bulk insert", func(t *testing.T) {
-	// 	b := newSeekableBuffer()
+	// 	b := buftest.NewSeekableBuffer()
 	// 	tree :=NewBPTree(b, 2)
 	// 	if err != nil {
 	// 		t.Fatal(err)

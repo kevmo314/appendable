@@ -3,11 +3,13 @@ package btree
 import (
 	"io"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
 func TestPageFile(t *testing.T) {
 	t.Run("allocates first page", func(t *testing.T) {
-		buf := newSeekableBuffer()
+		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
@@ -22,7 +24,7 @@ func TestPageFile(t *testing.T) {
 	})
 
 	t.Run("page size reuses page without allocation", func(t *testing.T) {
-		buf := newSeekableBuffer()
+		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
@@ -45,7 +47,7 @@ func TestPageFile(t *testing.T) {
 	})
 
 	t.Run("page size allocates second page", func(t *testing.T) {
-		buf := newSeekableBuffer()
+		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
@@ -71,7 +73,7 @@ func TestPageFile(t *testing.T) {
 	})
 
 	t.Run("new page seeks to page", func(t *testing.T) {
-		buf := newSeekableBuffer()
+		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
@@ -90,7 +92,7 @@ func TestPageFile(t *testing.T) {
 	})
 
 	t.Run("free page reuses page", func(t *testing.T) {
-		buf := newSeekableBuffer()
+		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)

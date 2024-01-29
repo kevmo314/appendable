@@ -1,4 +1,4 @@
-package btree
+package buftest
 
 import (
 	"io"
@@ -7,7 +7,7 @@ import (
 
 func TestSeekableBuffer(t *testing.T) {
 	t.Run("Write", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		n, err := b.Write([]byte("hello"))
 		if err != nil {
 			t.Fatal(err)
@@ -21,7 +21,7 @@ func TestSeekableBuffer(t *testing.T) {
 	})
 
 	t.Run("write to end", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		if _, err := b.Write([]byte("hello")); err != nil {
 			t.Fatal(err)
 		}
@@ -37,7 +37,7 @@ func TestSeekableBuffer(t *testing.T) {
 	})
 
 	t.Run("Seek", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		if _, err := b.Write([]byte("helloo")); err != nil {
 			t.Fatal(err)
 		}
@@ -53,7 +53,7 @@ func TestSeekableBuffer(t *testing.T) {
 	})
 
 	t.Run("Read", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		if _, err := b.Write([]byte("hello")); err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func TestSeekableBuffer(t *testing.T) {
 	})
 
 	t.Run("read from middle", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		if _, err := b.Write([]byte("hello")); err != nil {
 			t.Fatal(err)
 		}
@@ -95,7 +95,7 @@ func TestSeekableBuffer(t *testing.T) {
 	})
 
 	t.Run("truncate", func(t *testing.T) {
-		b := newSeekableBuffer()
+		b := NewSeekableBuffer()
 		if _, err := b.Write([]byte("hello")); err != nil {
 			t.Fatal(err)
 		}
