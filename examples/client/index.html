@@ -141,6 +141,22 @@
 					}
 				}
 
+				if (query.selectFields) {
+					// validate the `selectFields` clause
+					if (
+						!Array.isArray(query.selectFields) ||
+						query.selectFields.length === 0
+					) {
+						return "Error: Invalid 'selectFields' clause.";
+					}
+
+					for (const field of query.selectFields) {
+						if (!dbFields.has(field)) {
+							return `Error: 'key': ${field} in 'selectFields' clause does not exist in dataset.`;
+						}
+					}
+				}
+
 				return "Valid Query";
 			}
 
@@ -340,6 +356,7 @@
 								direction: "ASC",
 							},
 						],
+						selectFields: ["VendorID", "trip_distance", "passenger_count", "fare_amount", "tip_amount", "mta_tax"],
 					},
 					null,
 					2
