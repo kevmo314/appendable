@@ -26,7 +26,11 @@ describe("test query relation", () => {
 		} as jest.Mocked<VersionedIndexFile<any>>;
 
 		// instantiate a Database object with given mocked data file and index file
-		database = Database.forDataFileAndIndexFile(mockDataFile, mockIndexFile, FormatType.Jsonl);
+		database = Database.forDataFileAndIndexFile(
+			mockDataFile,
+			mockIndexFile,
+			FormatType.Jsonl
+		);
 	});
 
 	/*
@@ -112,3 +116,4 @@ describe("test field type", () => {
 		});
 	});
 });
+
