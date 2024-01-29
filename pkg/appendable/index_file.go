@@ -25,6 +25,7 @@ type IndexFile struct {
 	dataHandler DataHandler
 }
 
+<<<<<<< HEAD
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
 	pf, err := btree.NewPageFile(f)
 	if err != nil {
@@ -60,6 +61,29 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 		} else {
 			return &IndexFile{tree: tree, dataHandler: dataHandler}, nil
 		}
+=======
+// Index is a representation of a single index.
+type Index struct {
+	FieldName    string
+	FieldType    protocol.FieldType
+	IndexRecords map[any][]protocol.IndexRecord
+}
+
+func fieldType(data any) protocol.FieldType {
+	switch data.(type) {
+	case string:
+		return protocol.FieldTypeString
+	case int, int8, int16, int32, int64, float32, float64:
+		return protocol.FieldTypeNumber
+	case bool:
+		return protocol.FieldTypeBoolean
+	case []any:
+		return protocol.FieldTypeArray
+	case nil:
+		return protocol.FieldTypeNull
+	default:
+		return protocol.FieldTypeObject
+>>>>>>> 6e50d4a (CSV demo + support null fields (#67))
 	}
 }
 
@@ -114,6 +138,7 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 		if !exists {
 			break
 		}
+<<<<<<< HEAD
 		buf, err := next.Metadata()
 		if err != nil {
 			return nil, fmt.Errorf("failed to read metadata: %w", err)
@@ -121,6 +146,17 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 		metadata := &IndexMeta{}
 		if err := metadata.UnmarshalBinary(buf); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+=======
+	}
+
+	// if the index doesn't exist, create it
+	ft := fieldType(value)
+
+	if match == -1 {
+		index := Index{
+			FieldName: name,
+			FieldType: ft,
+>>>>>>> 6e50d4a (CSV demo + support null fields (#67))
 		}
 
 		uniqueFieldNames[metadata.FieldName] = true
