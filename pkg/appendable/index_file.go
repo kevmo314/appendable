@@ -1,72 +1,148 @@
 package appendable
 
 import (
+	"fmt"
 	"io"
 
-	"github.com/kevmo314/appendable/pkg/protocol"
+	"github.com/kevmo314/appendable/pkg/btree"
 )
 
 const CurrentVersion = 1
 
+type DataFile interface {
+	io.ReadSeeker
+	io.ReaderAt
+}
+
+type DataHandler interface {
+	Synchronize(f *IndexFile, df DataFile) error
+	Format() Format
+}
+
 // IndexFile is a representation of the entire index file.
 type IndexFile struct {
-	Version protocol.Version
-
-	// There is exactly one IndexHeader for each field in the data file.
-	Indexes []Index
-
-	EndByteOffsets []uint64
-	Checksums      []uint64
-
-	data io.ReadSeeker
-	tail int
+	tree        *btree.LinkedMetaPage
+	dataHandler DataHandler
 }
 
-// Index is a representation of a single index.
-type Index struct {
-	FieldName    string
-	FieldType    protocol.FieldType
-	IndexRecords map[any][]protocol.IndexRecord
-}
-
-func fieldType(data any) protocol.FieldType {
-	switch data.(type) {
-	case string:
-		return protocol.FieldTypeString
-	case int, int8, int16, int32, int64, float32, float64:
-		return protocol.FieldTypeNumber
-	case bool:
-		return protocol.FieldTypeBoolean
-	case []any:
-		return protocol.FieldTypeArray
-	default:
-		return protocol.FieldTypeObject
+func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
+	pf, err := btree.NewPageFile(f)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create page file: %w", err)
+	}
+	tree, err := btree.NewMultiBPTree(pf, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
+	}
+	// ensure the first page is written.
+	for i := 0; ; i++ {
+		exists, err := tree.Exists()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+		if !exists {
+			if err := tree.Reset(); err != nil {
+				return nil, fmt.Errorf("failed to reset meta page: %w", err)
+			}
+			metadata := &FileMeta{
+				Version: CurrentVersion,
+				Format:  dataHandler.Format(),
+			}
+			buf, err := metadata.MarshalBinary()
+			if err != nil {
+				return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+			}
+			if err := tree.SetMetadata(buf); err != nil {
+				return nil, fmt.Errorf("failed to set metadata: %w", err)
+			}
+		} else if i > 1 {
+			panic("expected to only reset the first page once")
+		} else {
+			return &IndexFile{tree: tree, dataHandler: dataHandler}, nil
+		}
 	}
 }
 
-func (i *IndexFile) findIndex(name string, value any) int {
-	// find the index for the field
-	match := -1
-	for j := range i.Indexes {
-		if i.Indexes[j].FieldName == name {
-			match = j
+func (i *IndexFile) Metadata() (*FileMeta, error) {
+	// the first page consists of associated metadata for the tree
+	buf, err := i.tree.Metadata()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read metadata: %w", err)
+	}
+	metadata := &FileMeta{}
+	return metadata, metadata.UnmarshalBinary(buf)
+}
+
+func (i *IndexFile) SetMetadata(metadata *FileMeta) error {
+	buf, err := metadata.MarshalBinary()
+	if err != nil {
+		return fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+	return i.tree.SetMetadata(buf)
+}
+
+func (i *IndexFile) Indexes() (*btree.LinkedMetaPage, error) {
+	return i.tree.Next()
+}
+
+func (i *IndexFile) IsEmpty() (bool, error) {
+	n, err := i.tree.Next()
+	if err != nil {
+		return false, fmt.Errorf("failed to get next meta page: %w", err)
+	}
+	exists, err := n.Exists()
+	if err != nil {
+		return false, fmt.Errorf("failed to check if meta page exists: %w", err)
+	}
+	return !exists, nil
+}
+
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.LinkedMetaPage, error) {
+	mp := i.tree
+	for {
+		// this is done in an odd order to avoid needing to keep track of the previous page
+		next, err := mp.Next()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get next meta page: %w", err)
+		}
+		exists, err := next.Exists()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+		if !exists {
 			break
 		}
-	}
-	// if the index doesn't exist, create it
-	ft := fieldType(value)
-	if match == -1 {
-		index := Index{
-			FieldName: name,
-			FieldType: ft,
+		buf, err := next.Metadata()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read metadata: %w", err)
 		}
-		index.IndexRecords = make(map[any][]protocol.IndexRecord)
-		i.Indexes = append(i.Indexes, index)
-		return len(i.Indexes) - 1
-	} else if i.Indexes[match].FieldType != ft {
-		// update the field type if necessary
-		i.Indexes[match].FieldType |= ft
+		metadata := &IndexMeta{}
+		if err := metadata.UnmarshalBinary(buf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+		}
+		if metadata.FieldName == name && metadata.FieldType == fieldType {
+			return next, nil
+		}
+		mp = next
 	}
-	return match
+	// we haven't found the index, so we need to create it
+	next, err := mp.AddNext()
+	if err != nil {
+		return nil, fmt.Errorf("failed to add next meta page: %w", err)
+	}
+	metadata := &IndexMeta{}
+	metadata.FieldName = name
+	metadata.FieldType = fieldType
+	buf, err := metadata.MarshalBinary()
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+	}
+	return next, next.SetMetadata(buf)
+}
 
+// Synchronize will synchronize the index file with the data file.
+// This is a convenience method and is equivalent to calling
+// Synchronize() on the data handler itself.
+func (i *IndexFile) Synchronize(df DataFile) error {
+	return i.dataHandler.Synchronize(i, df)
 }

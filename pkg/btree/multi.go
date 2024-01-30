@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"encoding"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -37,8 +38,18 @@ func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
-func (m *LinkedMetaPage) BPTree() *BPTree {
-	return NewBPTree(m.rws, m)
+// BPTree returns a B+ tree that uses this meta page as the root
+// of the tree. If data is not nil, then it will be used as the
+// data source for the tree.
+//
+// Generally, passing data is required, however if the tree
+// consists of only inlined values, it is not necessary.
+func (m *LinkedMetaPage) BPTree(data io.ReaderAt) *BPTree {
+	t := NewBPTree(m.rws, m)
+	if data != nil {
+		t.Data = data
+	}
+	return t
 }
 
 func (m *LinkedMetaPage) Metadata() ([]byte, error) {
@@ -54,6 +65,14 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	return buf[4 : 4+length], nil
 }
 
+func (m *LinkedMetaPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
+	md, err := m.Metadata()
+	if err != nil {
+		return err
+	}
+	return bu.UnmarshalBinary(md)
+}
+
 func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 	if len(data) > m.rws.PageSize()-24 {
 		return errors.New("metadata too large")
@@ -67,6 +86,14 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 		return err
 	}
 	return nil
+}
+
+func (m *LinkedMetaPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
+	buf, err := bm.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return m.SetMetadata(buf)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
@@ -88,7 +115,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if curr.offset != ^uint64(0) {
 		return nil, errors.New("next pointer already exists")
 	}
-	offset, err := m.rws.NewPage()
+	offset, err := m.rws.NewPage(nil)
 	if err != nil {
 		return nil, err
 	}

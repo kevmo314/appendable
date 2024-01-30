@@ -14,7 +14,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset, err := pf.NewPage()
+		offset, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -23,52 +23,66 @@ func TestPageFile(t *testing.T) {
 		}
 	})
 
-	t.Run("page size reuses page without allocation", func(t *testing.T) {
+	t.Run("page size allocates pages", func(t *testing.T) {
 		buf := buftest.NewSeekableBuffer()
 		pf, err := NewPageFile(buf)
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage()
+		offset1, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if offset1 != pageSizeBytes {
 			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
 		}
-		// since no data has been written, this page should be reused.
-		offset2, err := pf.NewPage()
+		// check the seek location
+		n, err := buf.Seek(0, io.SeekCurrent)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if offset2 != pageSizeBytes {
-			t.Fatalf("expected offset %d, got %d", pageSizeBytes*2, offset2)
+		if n != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, n)
 		}
-	})
-
-	t.Run("page size allocates second page", func(t *testing.T) {
-		buf := buftest.NewSeekableBuffer()
-		pf, err := NewPageFile(buf)
-		if err != nil {
-			t.Fatal(err)
-		}
-		offset1, err := pf.NewPage()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if offset1 != pageSizeBytes {
-			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
-		}
-		// need to write at least one byte to trigger a new page.
-		if _, err := pf.Write(make([]byte, 1)); err != nil {
-			t.Fatal(err)
-		}
-		offset2, err := pf.NewPage()
+		offset2, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if offset2 != pageSizeBytes*2 {
 			t.Fatalf("expected offset %d, got %d", pageSizeBytes*2, offset2)
+		}
+		m, err := buf.Seek(0, io.SeekCurrent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if m != pageSizeBytes*2 {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes*2, m)
+		}
+	})
+
+	t.Run("page size allocates page with data", func(t *testing.T) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data := []byte("hello")
+		offset1, err := pf.NewPage(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if offset1 != pageSizeBytes {
+			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset1)
+		}
+		if _, err := pf.Seek(offset1, io.SeekStart); err != nil {
+			t.Fatal(err)
+		}
+		buf2 := make([]byte, len(data))
+		if _, err := pf.Read(buf2); err != nil {
+			t.Fatal(err)
+		}
+		if string(buf2) != string(data) {
+			t.Fatalf("expected %s, got %s", string(data), string(buf2))
 		}
 	})
 
@@ -78,7 +92,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage()
+		offset1, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +111,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage()
+		offset1, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,23 +122,74 @@ func TestPageFile(t *testing.T) {
 		if _, err := pf.Write(make([]byte, 1)); err != nil {
 			t.Fatal(err)
 		}
-		offset2, err := pf.NewPage()
+		offset2, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if offset2 != pageSizeBytes*2 {
-			t.Fatalf("expected offset %d, got %d", pageSizeBytes, offset2)
+			t.Fatalf("expected offset %d, got %d", 2*pageSizeBytes, offset2)
 		}
 
 		if err := pf.FreePage(offset1); err != nil {
 			t.Fatal(err)
 		}
-		offset3, err := pf.NewPage()
+		offset3, err := pf.NewPage(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if offset3 != offset1 {
 			t.Fatalf("expected offset %d, got %d", offset2, offset3)
+		}
+	})
+
+	t.Run("free page behaves like a circular buffer", func(t *testing.T) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offsets := make([]int64, 0, 10)
+		for i := 0; i < 10; i++ {
+			offset, err := pf.NewPage(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if i > 0 && offset != offsets[i-1]+pageSizeBytes {
+				t.Fatalf("expected offset %d, got %d", offsets[i-1]+pageSizeBytes, offset)
+			}
+			offsets = append(offsets, offset)
+		}
+		for i := 0; i < 10; i++ {
+			if err := pf.FreePage(offsets[i]); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for i := 0; i < 10; i++ {
+			offset, err := pf.NewPage(nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if offset != offsets[i] {
+				t.Fatalf("expected offset %d, got %d", offsets[i], offset)
+			}
+		}
+	})
+
+	t.Run("cannot double free a page", func(t *testing.T) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offset, err := pf.NewPage(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := pf.FreePage(offset); err != nil {
+			t.Fatal(err)
+		}
+		if err := pf.FreePage(offset); err == nil {
+			t.Fatal("expected error")
 		}
 	})
 }
