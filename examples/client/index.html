@@ -15,6 +15,7 @@
 			).then(async (db) => {
 				let dbFields = new Set();
 				let fieldTypes = {};
+				let queryHeaders = [];
 
 				// populate fields
 				db.fields().then((fields) => {
@@ -53,14 +54,17 @@
 					}
 
 					const query = db.query(queryJson);
-					bindQuery(query);
+					let queryHeaders = queryJson.select ?? Array.from(dbFields);
+					bindQuery(query, queryHeaders);
 				};
 
 				document.getElementById("results").innerHTML = "";
 
-				const query = db.query(JSON.parse(editor.getValue()));
+				const queryJson = JSON.parse(editor.getValue());
+				queryHeaders = queryJson.select ?? Array.from(dbFields);
 
-				bindQuery(query);
+				const query = db.query(JSON.parse(editor.getValue()));
+				bindQuery(query, queryHeaders);
 			});
 
 			function validateQuery(query, dbFields, fieldTypes) {
@@ -157,7 +161,20 @@
 				return "Valid Query";
 			}
 
-			async function bindQuery(query) {
+			async function bindQuery(query, headers) {
+				const resultsHeaderElement = document.getElementById("results-header");
+				resultsHeaderElement.innerHTML = "";
+
+				resultsHeaderElement.style.display = "grid";
+				resultsHeaderElement.style.gridTemplateColumns = `repeat(${headers.length}, minmax(	0, 4fr))`;
+
+				headers.forEach((header) => {
+					const headerDiv = document.createElement("div");
+					headerDiv.textContent = header;
+					headerDiv.classList.add("header-item");
+					resultsHeaderElement.appendChild(headerDiv);
+				});
+
 				const resultsElement = document.getElementById("results");
 				document.getElementById("next").disabled = true;
 
@@ -167,10 +184,21 @@
 						return;
 					}
 
-					const resultDiv = document.createElement("div");
-					resultDiv.classList.add("result-item");
-					resultDiv.textContent = JSON.stringify(result.value);
-					resultsElement.appendChild(resultDiv);
+					const resultRow = document.createElement("div");
+					resultRow.classList.add("result-row");
+					resultRow.style.display = "grid";
+					resultRow.style.gridTemplateColumns = `repeat(${headers.length}, minmax(0, 4fr))`;
+
+					headers.forEach((header) => {
+						const cellDiv = document.createElement("div");
+						cellDiv.classList.add("result-cell");
+						cellDiv.textContent = result.value[header]
+							? result.value[header]
+							: "";
+						resultRow.appendChild(cellDiv);
+					});
+
+					resultsElement.appendChild(resultRow);
 				}
 
 				for (let i = 0; i < 10; i++) {
@@ -199,20 +227,29 @@
 				height: 100vh;
 				width: 100vw;
 			}
-			.result-item {
-				padding: 4px 0;
+			.result-row {
 				cursor: pointer;
 			}
-			.result-item:hover {
+			.result-row:hover {
 				background-color: yellow;
 			}
 			#fields {
 				max-height: calc(100vh - 50px);
 				overflow-y: auto;
 			}
-			#results {
-				max-height: calc(100vh - 500px);
-				overflow-y: auto;
+			#results-header {
+				width: max-content;
+			}
+
+			.header-item,
+			.result-cell {
+				padding: 4px;
+				text-align: left;
+				min-width: 200px;
+			}
+			.header-item {
+				background-color: #f0f0f0;
+				font-weight: bold;
 			}
 		</style>
 	</head>
@@ -225,7 +262,7 @@
 			<div>
 				Download the raw data here:
 				<a href="green_tripdata_2023-01.jsonl">JSONL</a> -
-				<a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
+				<a href="green_tripdata_2023-01.csv.index">Appendable Index</a> -
 				<a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
 					>Source</a
 				>
@@ -255,7 +292,10 @@
 				></div>
 				<h2>Results</h2>
 				<button id="next">Fetch more</button>
-				<pre id="results"></pre>
+				<div>
+					<pre id="results-header"></pre>
+					<pre id="results"></pre>
+				</div>
 			</div>
 		</div>
 		<script>
