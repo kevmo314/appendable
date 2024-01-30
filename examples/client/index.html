@@ -13,15 +13,13 @@
 				"green_tripdata_2023-01.csv.index",
 				Appendable.FormatType.Csv
 			).then(async (db) => {
-				let dbFields = new Set();
-				let fieldTypes = {};
+				let dbFields = [];
 				let queryHeaders = [];
 
 				// populate fields
 				db.fields().then((fields) => {
 					fields.map((field) => {
-						dbFields.add(field.fieldName);
-						fieldTypes[field.fieldName] = field.fieldType;
+						dbFields.push(field.fieldName);
 					});
 
 					document.getElementById("fields").innerHTML = JSON.stringify(
@@ -38,128 +36,29 @@
 				});
 
 				// then execute the query
-				document.getElementById("execute").onclick = () => {
+				document.getElementById("execute").onclick = async () => {
 					document.getElementById("results").innerHTML = "";
 					const queryJson = JSON.parse(editor.getValue());
 
-					const validationResult = validateQuery(
-						queryJson,
-						dbFields,
-						fieldTypes
-					);
-
-					if (validationResult !== "Valid Query") {
-						document.getElementById("results").innerHTML = validationResult;
-						return;
+					try {
+						const query = await db.query(queryJson);
+						let queryHeaders = queryJson.select ?? dbFields;
+						await bindQuery(query, queryHeaders);
+					} catch (error) {
+						console.log("error: ", error);
+						document.getElementById("results-header").innerHTML = "";
+						document.getElementById("results").innerHTML = error.message;
 					}
-
-					const query = db.query(queryJson);
-					let queryHeaders = queryJson.select ?? Array.from(dbFields);
-					bindQuery(query, queryHeaders);
 				};
 
 				document.getElementById("results").innerHTML = "";
 
 				const queryJson = JSON.parse(editor.getValue());
-				queryHeaders = queryJson.select ?? Array.from(dbFields);
+				queryHeaders = queryJson.select ?? dbFields;
 
 				const query = db.query(JSON.parse(editor.getValue()));
-				bindQuery(query, queryHeaders);
+				await bindQuery(query, queryHeaders);
 			});
-
-			function validateQuery(query, dbFields, fieldTypes) {
-				if (
-					!query.where ||
-					!Array.isArray(query.where) ||
-					query.where.length === 0
-				) {
-					return "Error: Missing 'where' clause.";
-				}
-
-				// validate the `where` clause
-				for (const whereNode of query.where) {
-					if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
-						return "Error: Invalid operation in 'where' clause.";
-					}
-					if (typeof whereNode.key !== "string") {
-						return "Error: 'key' in 'where' clause must be a string.";
-					}
-
-					if (!dbFields.has(whereNode.key)) {
-						return `Error: key: ${whereNode.key} in 'where' clause does not exist in dataset.`;
-					}
-
-					if (typeof whereNode.value === "undefined") {
-						return "Error: 'value' in 'where' clause is missing.";
-					}
-
-					const fieldType = fieldTypes[whereNode.key];
-
-					if (whereNode.value === null) {
-						if (
-							!Appendable.containsType(fieldType, Appendable.FieldType.Null)
-						) {
-							return `Error: 'key: ${whereNode.key} does not have type: null.`;
-						}
-					}
-					if (typeof whereNode.value === "boolean") {
-						if (
-							!Appendable.containsType(fieldType, Appendable.FieldType.Boolean)
-						) {
-							return `Error: 'key: ${whereNode.key} does not have type: boolean.`;
-						}
-					}
-					if (
-						typeof whereNode.value === "number" ||
-						typeof whereNode.value === "bigint"
-					) {
-						if (
-							!Appendable.containsType(fieldType, Appendable.FieldType.Number)
-						) {
-							return `Error: 'key: ${whereNode.key} does not have type: number.`;
-						}
-					}
-					if (typeof whereNode.value === "string") {
-						if (
-							!Appendable.containsType(fieldType, Appendable.FieldType.String)
-						) {
-							return `Error: 'key: ${whereNode.key} does not have type: string.`;
-						}
-					}
-				}
-
-				if (query.orderBy) {
-					// validate the `orderBy` clause
-					if (!Array.isArray(query.orderBy) || query.orderBy.length === 0) {
-						return "Error: Invalid 'orderby' clause.";
-					}
-
-					const orderBy = query.orderBy[0];
-
-					if (!["ASC", "DESC"].includes(orderBy.direction)) {
-						return "Error: Invalid direction in `orderBy`.";
-					}
-
-					if (orderBy.key !== query.where[0].key) {
-						return "Error: 'key' in `orderBy` must match `key` in `where` clause";
-					}
-				}
-
-				if (query.select) {
-					// validate the `selectFields` clause
-					if (!Array.isArray(query.select) || query.select.length === 0) {
-						return "Error: Invalid 'selectFields' clause.";
-					}
-
-					for (const field of query.select) {
-						if (!dbFields.has(field)) {
-							return `Error: 'key': ${field} in 'selectFields' clause does not exist in dataset.`;
-						}
-					}
-				}
-
-				return "Valid Query";
-			}
 
 			async function bindQuery(query, headers) {
 				const resultsHeaderElement = document.getElementById("results-header");
@@ -236,6 +135,10 @@
 			#fields {
 				max-height: calc(100vh - 50px);
 				overflow-y: auto;
+			}
+			#results {
+				overflow-y: auto;
+				max-height: calc(100vh - 670px);
 			}
 			#results-header {
 				width: max-content;
