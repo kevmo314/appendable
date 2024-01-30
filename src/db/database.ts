@@ -7,18 +7,18 @@ export type Schema = {
 	[key: string]: {};
 };
 
-type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
+export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
 	operation: "<" | "<=" | "==" | ">=" | ">";
 	key: keyof T;
 	value: T[K];
 };
 
-type OrderBy<T extends Schema> = {
+export type OrderBy<T extends Schema> = {
 	key: keyof T;
 	direction: "ASC" | "DESC";
 };
 
-type SelectField<T extends Schema> = keyof T;
+export type SelectField<T extends Schema> = keyof T;
 
 export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
