@@ -54,28 +54,16 @@
 					}
 
 					const query = db.query(queryJson);
-
-					let queryHeaders = [];
-					if (queryJson.select) {
-						queryHeaders = queryJson.select;
-					} else {
-						queryHeaders = Array.from(dbFields);
-					}
-
+					let queryHeaders = queryJson.select ?? Array.from(dbFields);
 					bindQuery(query, queryHeaders);
 				};
 
 				document.getElementById("results").innerHTML = "";
 
 				const queryJson = JSON.parse(editor.getValue());
-				if (queryJson.select) {
-					queryHeaders = queryJson.select;
-				} else {
-					queryHeaders = Array.from(dbFields);
-				}
+				queryHeaders = queryJson.select ?? Array.from(dbFields);
 
 				const query = db.query(JSON.parse(editor.getValue()));
-
 				bindQuery(query, queryHeaders);
 			});
 
