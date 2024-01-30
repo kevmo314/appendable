@@ -1,8 +1,9 @@
-import { FormatType } from ".";
-import { DataFile } from "./data-file";
-import { IndexFile, VersionedIndexFile } from "./index-file";
+import { FormatType } from "..";
+import { DataFile } from "../data-file";
+import { IndexFile, VersionedIndexFile } from "../index-file";
+import { validateQuery } from "./query-validation";
 
-type Schema = {
+export type Schema = {
 	[key: string]: {};
 };
 
@@ -30,11 +31,6 @@ export enum FieldType {
 	Number = 1 << 1,
 	Boolean = 1 << 4,
 	Null = 1 << 5,
-}
-
-// given a fieldType and the desired type, this function performs a bitwise operation to test membership
-export function containsType(fieldType: bigint, desiredType: FieldType) {
-	return (fieldType & BigInt(desiredType)) !== BigInt(0);
 }
 
 function parseIgnoringSuffix(
@@ -151,6 +147,13 @@ export class Database<T extends Schema> {
 		// convert each of the where nodes into a range of field values.
 		const headers = await this.indexFile.indexHeaders();
 		const headerFields = headers.map((header) => header.fieldName);
+
+		try {
+			await validateQuery(query, headers);
+		} catch (error) {
+			throw new Error(`Query validation failed: ${(error as Error).message}`);
+		}
+
 		const fieldRanges = await Promise.all(
 			(query.where ?? []).map(async ({ key, value, operation }) => {
 				const header = headers.find((header) => header.fieldName === key);
