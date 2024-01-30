@@ -161,12 +161,6 @@ func (pf *PageFile) FreePage(offset int64) error {
 	if pf.freePageCount == len(pf.freePageIndexes) {
 		return errors.New("free page index is full")
 	}
-	// ensure it's not already in the free page index
-	for i := 0; i < pf.freePageCount; i++ {
-		if pf.freePageIndexes[(pf.freePageHead-pf.freePageCount+i+len(pf.freePageIndexes))%len(pf.freePageIndexes)] == offset {
-			return errors.New("page is already free")
-		}
-	}
 	// push to the head
 	pf.freePageIndexes[pf.freePageHead] = offset
 	pf.freePageHead = (pf.freePageHead + 1) % len(pf.freePageIndexes)

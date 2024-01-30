@@ -116,10 +116,6 @@ func handleJSONLObject(f *appendable.IndexFile, r io.ReaderAt, dec *json.Decoder
 
 			name := strings.Join(append(path, key), ".")
 
-			if name != "VendorID" {
-				continue
-			}
-
 			page, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
 			if err != nil {
 				return fmt.Errorf("failed to find or create index: %w", err)

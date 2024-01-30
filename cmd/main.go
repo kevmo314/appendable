@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"runtime/pprof"
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -23,20 +22,6 @@ func main() {
 	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
 
 	flag.Parse()
-	f, err := os.Create("pprof.out")
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close() // error handling omitted for example
-	if err := pprof.StartCPUProfile(f); err != nil {
-		panic(err)
-	}
-	go func() {
-		<-time.After(30 * time.Second)
-		pprof.StopCPUProfile()
-		os.Exit(0)
-	}()
-
 	logLevel := &slog.LevelVar{}
 
 	if debugFlag {

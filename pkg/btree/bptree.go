@@ -48,7 +48,6 @@ func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
 	if root == nil {
 		return MemoryPointer{}, false, nil
 	}
-	log.Printf("finding for key %v at root %#v", key, rootOffset)
 	path, err := t.traverse(key, root, rootOffset)
 	if err != nil {
 		return MemoryPointer{}, false, err
@@ -81,9 +80,9 @@ type TraversalRecord struct {
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
-func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]*TraversalRecord, error) {
+func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
 	if node.leaf() {
-		return []*TraversalRecord{{node: node, ptr: ptr}}, nil
+		return []TraversalRecord{{node: node, ptr: ptr}}, nil
 	}
 	for i, k := range node.Keys {
 		if bytes.Compare(key, k.Value) < 0 {
@@ -101,7 +100,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]*T
 			if err != nil {
 				return nil, err
 			}
-			return append(path, &TraversalRecord{node: node, index: i, ptr: node.Pointers[i]}), nil
+			return append(path, TraversalRecord{node: node, index: i, ptr: ptr}), nil
 		}
 	}
 	if node.Pointers[len(node.Pointers)-1].Offset == ptr.Offset {
@@ -115,7 +114,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]*T
 	if err != nil {
 		return nil, err
 	}
-	return append(path, &TraversalRecord{node: node, index: len(node.Keys), ptr: node.Pointers[len(node.Pointers)-1]}), nil
+	return append(path, TraversalRecord{node: node, index: len(node.Keys), ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
@@ -139,7 +138,6 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
 
-	log.Printf("traversing for key %v at root %v", key.Value, rootOffset)
 	path, err := t.traverse(key.Value, root, rootOffset)
 	if err != nil {
 		return err
@@ -223,7 +221,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
-				p := &BPTreeNode{Data: t.Data, Pointers: []MemoryPointer{rootOffset}}
+				p := &BPTreeNode{Data: t.Data}
 				p.Keys = []ReferencedValue{midKey}
 				p.Pointers = []MemoryPointer{
 					{Offset: uint64(noffset), Length: uint32(len(nbuf))},
