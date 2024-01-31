@@ -19,13 +19,10 @@ export class QueryBuilder<T extends Schema> {
 	constructor(private database: Database<T>) {}
 
 	/**
-	 * Executes the constructed query and returns an asychronous generator.
-	 * @yields {Promise<IteratorResult<T, any>>} Query result.
+	 * Executes the constructed query
 	 */
-	async *get() {
-		for await (const item of this.database.query(this.queryObject)) {
-			yield item;
-		}
+	get() {
+		return this.database.query(this.queryObject);
 	}
 
 	/**
