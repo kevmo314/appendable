@@ -140,7 +140,6 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 			throw new Error("offset out of range");
 		}
 		const headers = await this.indexHeaders();
-		console.log("headers: ", headers);
 		const headerIndex = headers.findIndex(
 			(header) => header.fieldName === field
 		);

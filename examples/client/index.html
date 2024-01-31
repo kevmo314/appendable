@@ -6,6 +6,7 @@
 			type="text/javascript"
 			charset="utf-8"
 		></script>
+		<link rel="stylesheet" href="styles.css" />
 		<script src="appendable.min.js"></script>
 		<script>
 			Appendable.init(
@@ -14,7 +15,6 @@
 				Appendable.FormatType.Csv
 			).then(async (db) => {
 				let dbFields = [];
-				let queryHeaders = [];
 
 				// populate fields
 				db.fields().then((fields) => {
@@ -37,27 +37,59 @@
 
 				// then execute the query
 				document.getElementById("execute").onclick = async () => {
+					document.getElementById("results-header").innerHTML = "";
 					document.getElementById("results").innerHTML = "";
-					const queryJson = JSON.parse(editor.getValue());
 
-					try {
-						const query = await db.query(queryJson);
-						let queryHeaders = queryJson.select ?? dbFields;
-						await bindQuery(query, queryHeaders);
-					} catch (error) {
-						console.log("error: ", error);
-						document.getElementById("results-header").innerHTML = "";
-						document.getElementById("results").innerHTML = error.message;
+					const editorContent = editor.getValue();
+
+					if (window.activeEditor === "json") {
+						const queryJson = JSON.parse(editorContent);
+						try {
+							const query = await db.query(queryJson);
+							let queryHeaders = queryJson.select ?? dbFields;
+							await bindQuery(query, queryHeaders);
+						} catch (error) {
+							console.log("error: ", error);
+							document.getElementById("results-header").innerHTML = "";
+							document.getElementById("results").innerHTML = error.message;
+						}
+					} else if (window.activeEditor === "javascript") {
+						function extractSelect(content) {
+							const selectRegex = /\.select\(\s*\[([^\]]*)\]\s*\)/;
+							const match = content.match(selectRegex);
+
+							if (match && match[1]) {
+								const headersContent = match[1].trim();
+								const headers = headersContent
+									.split(",")
+									.map((e) => e.trim().replace(/['"`]/g, ""));
+
+								return headers;
+							}
+
+							return null;
+						}
+
+						try {
+							const query = await eval(editorContent);
+
+							const queryHeaders = extractSelect(editorContent) ?? dbFields;
+
+							if (query) {
+								await bindQuery(query, queryHeaders);
+							}
+						} catch (error) {
+							console.log("error: ", error);
+							document.getElementById("results-header").innerHTML = "";
+							document.getElementById("results").innerHTML = error.message;
+						}
 					}
 				};
 
-				document.getElementById("results").innerHTML = "";
-
 				const queryJson = JSON.parse(editor.getValue());
-				queryHeaders = queryJson.select ?? dbFields;
+				const query = await db.query(JSON.parse(editor.getValue()));
 
-				const query = db.query(JSON.parse(editor.getValue()));
-				await bindQuery(query, queryHeaders);
+				await bindQuery(query, queryJson.select);
 			});
 
 			async function bindQuery(query, headers) {
@@ -113,48 +145,6 @@
 				}
 			}
 		</script>
-		<style>
-			body,
-			html {
-				margin: 0;
-				padding: 0px 0px 4px 4px;
-			}
-			.flex-1 {
-				flex: 1;
-				display: flex;
-				gap: 0 30px;
-				height: 100vh;
-				width: 100vw;
-			}
-			.result-row {
-				cursor: pointer;
-			}
-			.result-row:hover {
-				background-color: yellow;
-			}
-			#fields {
-				max-height: calc(100vh - 50px);
-				overflow-y: auto;
-			}
-			#results {
-				overflow-y: auto;
-				max-height: calc(100vh - 670px);
-			}
-			#results-header {
-				width: max-content;
-			}
-
-			.header-item,
-			.result-cell {
-				padding: 4px;
-				text-align: left;
-				min-width: 200px;
-			}
-			.header-item {
-				background-color: #f0f0f0;
-				font-weight: bold;
-			}
-		</style>
 	</head>
 	<body>
 		<div>
@@ -188,12 +178,14 @@
 			</div>
 			<div>
 				<h2>Query</h2>
-				<button id="execute">Execute</button>
-				<div
-					id="json-editor"
-					style="height: 400px; width: 600px; margin-top: 40px"
-				></div>
+				<div>
+					<button id="jsonTab">json</button>
+					<button id="jsTab">javascript</button>
+					<div id="editor" style="height: 400px; width: 628px"></div>
+				</div>
 				<h2>Results</h2>
+
+				<button id="execute">Execute</button>
 				<button id="next">Fetch more</button>
 				<div>
 					<pre id="results-header"></pre>
@@ -201,115 +193,6 @@
 				</div>
 			</div>
 		</div>
-		<script>
-			var editor = ace.edit("json-editor");
-			editor.session.setMode("ace/mode/json");
-			editor.setTheme("ace/theme/chrome");
-			editor.getSession().setTabSize(2);
-			editor.getSession().setUseSoftTabs(true);
-
-			// NOTE: when composite indexes get supported, remove this UX feature
-			// <---- start of UX feature ---->
-			let isProgramChange = false;
-			let lastEdited = "none";
-			let prevWhereKey = "trip_distance";
-			let prevOrderByKey = "trip_distance";
-
-			function updateKey(editorContent) {
-				try {
-					let query = JSON.parse(editorContent);
-					if (query.where && query.orderBy) {
-						const whereKey = query.where[0].key;
-						const orderByKey = query.orderBy[0].key;
-
-						if (lastEdited === "where") {
-							query.orderBy[0].key = whereKey;
-						} else if (lastEdited === "orderBy") {
-							query.where[0].key = orderByKey;
-						}
-
-						prevWhereKey = whereKey;
-						prevOrderByKey = orderByKey;
-
-						return JSON.stringify(query, null, 2);
-					}
-				} catch (e) {
-					console.log("Error parsing JSON:", e.message);
-					console.log("Incomplete string content:", editorContent);
-				}
-				return editorContent;
-			}
-
-			editor.getSession().on("change", function (e) {
-				if (isProgramChange) {
-					isProgramChange = false;
-					return;
-				}
-
-				const cursorPosition = editor.getCursorPosition();
-				const editorContent = editor.getSession().getValue();
-
-				let query;
-				try {
-					query = JSON.parse(editorContent);
-				} catch (e) {
-					return;
-				}
-
-				const currentWhereKey = query.where ? query.where[0].key : "";
-				const currentOrderByKey = query.orderBy ? query.orderBy[0].key : "";
-
-				if (currentWhereKey !== prevWhereKey) {
-					lastEdited = "where";
-				} else if (currentOrderByKey !== prevOrderByKey) {
-					lastEdited = "orderBy";
-				}
-
-				const updatedContent = updateKey(editorContent);
-
-				if (updatedContent !== editorContent) {
-					isProgramChange = true;
-
-					const doc = editor.getSession().getDocument();
-					doc.setValue(updatedContent);
-
-					editor.moveCursorToPosition(cursorPosition);
-					editor.clearSelection();
-				}
-			});
-
-			// <---- end of UX feature ---->
-
-			editor.setValue(
-				JSON.stringify(
-					{
-						where: [
-							{
-								operation: ">=",
-								key: "trip_distance",
-								value: 10,
-							},
-						],
-						orderBy: [
-							{
-								key: "trip_distance",
-								direction: "ASC",
-							},
-						],
-						select: [
-							"VendorID",
-							"trip_distance",
-							"passenger_count",
-							"fare_amount",
-							"tip_amount",
-							"mta_tax",
-						],
-					},
-					null,
-					2
-				),
-				-1
-			);
-		</script>
+		<script src="editor.js"></script>
 	</body>
 </html>
