@@ -35,6 +35,8 @@ function validateWhere<T extends Schema>(
 		throw new Error("Missing 'where' clause.");
 	}
 
+	console.log("validating where: ", where);
+
 	for (const whereNode of where) {
 		if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
 			throw new Error("Invalid operation in 'where' clause.");
@@ -114,6 +116,7 @@ function validateOrderBy<T extends Schema>(
 	whereKey: string
 ): void {
 	if (orderBy) {
+		console.log("validating orderBy: ", orderBy);
 		if (!Array.isArray(orderBy) || orderBy.length === 0) {
 			throw new Error("Invalid 'orderBy' clause.");
 		}
@@ -143,8 +146,9 @@ function validateSelect<T extends Schema>(
 	headers: Header[]
 ): void {
 	if (select) {
+		console.log("validating select: ", select);
 		if (!Array.isArray(select) || select.length === 0) {
-			throw new Error("Invalid 'selectFields' clause");
+			throw new Error("Invalid 'select' clause");
 		}
 
 		for (const field of select) {
@@ -152,7 +156,7 @@ function validateSelect<T extends Schema>(
 
 			if (!header) {
 				throw new Error(
-					`'key': ${field as string} in 'selectFields' clause does not exist in dataset.`
+					`'key': ${field as string} in 'select' clause does not exist in dataset.`
 				);
 			}
 		}

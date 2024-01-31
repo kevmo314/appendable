@@ -1,0 +1,39 @@
+body,
+html {
+	margin: 0;
+	padding: 0px 0px 4px 4px;
+}
+.flex-1 {
+	flex: 1;
+	display: flex;
+	gap: 0 30px;
+	height: 100vh;
+	width: 100vw;
+}
+.result-row {
+	cursor: pointer;
+}
+.result-row:hover {
+	background-color: yellow;
+}
+#fields {
+	max-height: calc(100vh - 50px);
+	overflow-y: auto;
+}
+#results {
+	overflow-y: auto;
+	max-height: calc(100vh - 670px);
+}
+#results-header {
+	width: max-content;
+}
+.header-item,
+.result-cell {
+	padding: 4px;
+	text-align: left;
+	min-width: 200px;
+}
+.header-item {
+	background-color: #f0f0f0;
+	font-weight: bold;
+}

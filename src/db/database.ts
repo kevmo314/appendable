@@ -1,6 +1,7 @@
 import { FormatType } from "..";
 import { DataFile } from "../data-file";
 import { IndexFile, VersionedIndexFile } from "../index-file";
+import { QueryBuilder } from "./query-builder";
 import { validateQuery } from "./query-validation";
 
 export type Schema = {
@@ -24,6 +25,7 @@ export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
 	orderBy?: OrderBy<T>[];
 	select?: SelectField<T>[];
+	limit?: number;
 };
 
 export enum FieldType {
@@ -293,5 +295,13 @@ export class Database<T extends Schema> {
 				yield dataFieldValue;
 			}
 		}
+	}
+
+	where(
+		key: keyof T,
+		operation: WhereNode<T>["operation"],
+		value: T[keyof T]
+	): QueryBuilder<T> {
+		return new QueryBuilder(this).where(key, operation, value);
 	}
 }
