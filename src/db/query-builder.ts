@@ -19,6 +19,35 @@ export class QueryBuilder<T extends Schema> {
 	constructor(private database: Database<T>) {}
 
 	/**
+	 * clone ensures each method call that modifies the query returns a new instance. This ensures each query has it's own unique state.
+	 *
+	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
+	 */
+	private clone(): QueryBuilder<T> {
+		const clone = new QueryBuilder<T>(this.database);
+		clone.queryObject = {
+			where: this.queryObject.where ? [...this.queryObject.where] : [],
+			orderBy: this.queryObject.orderBy
+				? [...this.queryObject.orderBy]
+				: undefined,
+			select: this.queryObject.select
+				? [...this.queryObject.select]
+				: undefined,
+			limit: this.queryObject.limit,
+		};
+		return clone;
+	}
+
+	/**
+	 * Retrieves an immutable copy of the current query.
+	 *
+	 * @returns {Query<T>} The Query instance.
+	 */
+	toQuery(): Query<T> {
+		return this.clone().queryObject;
+	}
+
+	/**
 	 * Executes the constructed query
 	 */
 	get() {
@@ -38,8 +67,9 @@ export class QueryBuilder<T extends Schema> {
 		operation: WhereNode<T>["operation"],
 		value: T[keyof T]
 	): QueryBuilder<T> {
-		this.queryObject.where?.push({ key, operation, value });
-		return this;
+		const currQuery = this.clone();
+		currQuery.queryObject.where?.push({ key, operation, value });
+		return currQuery;
 	}
 
 	/**
@@ -50,11 +80,12 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	orderBy(key: keyof T, direction: OrderBy<T>["direction"]): QueryBuilder<T> {
-		this.queryObject.orderBy
-			? this.queryObject.orderBy.push({ key, direction })
-			: (this.queryObject.orderBy = [{ key, direction }]);
+		const currQuery = this.clone();
+		currQuery.queryObject.orderBy
+			? currQuery.queryObject.orderBy.push({ key, direction })
+			: (currQuery.queryObject.orderBy = [{ key, direction }]);
 
-		return this;
+		return currQuery;
 	}
 
 	/**
@@ -64,8 +95,9 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	select(keys: (keyof T)[]): QueryBuilder<T> {
-		this.queryObject.select = keys;
-		return this;
+		const currQuery = this.clone();
+		currQuery.queryObject.select = keys;
+		return currQuery;
 	}
 
 	/**
@@ -75,7 +107,8 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	limit(limit: number): QueryBuilder<T> {
-		this.queryObject.limit = limit;
-		return this;
+		const currQuery = this.clone();
+		currQuery.queryObject.limit = limit;
+		return currQuery;
 	}
 }
