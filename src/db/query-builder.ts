@@ -19,6 +19,24 @@ export class QueryBuilder<T extends Schema> {
 	constructor(private database: Database<T>) {}
 
 	/**
+	 * Retrieves an immutable copy of the current query.
+	 *
+	 * @returns {Query<T>} The Query instance.
+	 */
+	toQuery(): Query<T> {
+		return {
+			where: this.queryObject.where ? [...this.queryObject.where] : [],
+			orderBy: this.queryObject.orderBy
+				? [...this.queryObject.orderBy]
+				: undefined,
+			select: this.queryObject.select
+				? [...this.queryObject.select]
+				: undefined,
+			limit: this.queryObject.limit,
+		};
+	}
+
+	/**
 	 * Executes the constructed query
 	 */
 	get() {
@@ -38,10 +56,13 @@ export class QueryBuilder<T extends Schema> {
 		operation: WhereNode<T>["operation"],
 		value: T[keyof T]
 	): QueryBuilder<T> {
-		this.queryObject.where?.push({ key, operation, value });
-		return this;
+		const newQuery = new QueryBuilder<T>(this.database);
+		newQuery.queryObject = {
+			...this.queryObject,
+			where: [...(this.queryObject.where || []), { key, operation, value }],
+		};
+		return newQuery;
 	}
-
 	/**
 	 * Adds an 'orderBy' clause to the query.
 	 *
@@ -50,11 +71,12 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	orderBy(key: keyof T, direction: OrderBy<T>["direction"]): QueryBuilder<T> {
-		this.queryObject.orderBy
-			? this.queryObject.orderBy.push({ key, direction })
-			: (this.queryObject.orderBy = [{ key, direction }]);
-
-		return this;
+		const newQuery = new QueryBuilder<T>(this.database);
+		newQuery.queryObject = {
+			...this.queryObject,
+			orderBy: [...(this.queryObject.orderBy || []), { key, direction }],
+		};
+		return newQuery;
 	}
 
 	/**
@@ -64,8 +86,12 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	select(keys: (keyof T)[]): QueryBuilder<T> {
-		this.queryObject.select = keys;
-		return this;
+		const newQuery = new QueryBuilder<T>(this.database);
+		newQuery.queryObject = {
+			...this.queryObject,
+			select: keys,
+		};
+		return newQuery;
 	}
 
 	/**
@@ -75,7 +101,11 @@ export class QueryBuilder<T extends Schema> {
 	 * @returns {QueryBuilder<T>} The QueryBuilder instance.
 	 */
 	limit(limit: number): QueryBuilder<T> {
-		this.queryObject.limit = limit;
-		return this;
+		const newQuery = new QueryBuilder<T>(this.database);
+		newQuery.queryObject = {
+			...this.queryObject,
+			limit: limit,
+		};
+		return newQuery;
 	}
 }
