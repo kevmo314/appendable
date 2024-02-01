@@ -246,10 +246,10 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[1].BPTree().Find(123) = nil, want non-nil")
 		}
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":123}")) {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
+			t.Errorf("got i.Indexes[1].BPTree().Find(123)= %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
 		}
 
 		md2 := &appendable.IndexMeta{}
