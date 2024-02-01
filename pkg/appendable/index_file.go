@@ -97,6 +97,44 @@ func (i *IndexFile) IsEmpty() (bool, error) {
 	return !exists, nil
 }
 
+func (i *IndexFile) IndexFieldNames() ([]string, error) {
+	uniqueFieldNames := make(map[string]bool)
+
+	mp := i.tree
+
+	for {
+		next, err := mp.Next()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get next meta page: %w", err)
+		}
+		exists, err := next.Exists()
+		if err != nil {
+			return nil, fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+		if !exists {
+			break
+		}
+		buf, err := next.Metadata()
+		if err != nil {
+			return nil, fmt.Errorf("failed to read metadata: %w", err)
+		}
+		metadata := &IndexMeta{}
+		if err := metadata.UnmarshalBinary(buf); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+		}
+
+		uniqueFieldNames[metadata.FieldName] = true
+		mp = next
+	}
+
+	var fieldNames []string
+	for fieldName := range uniqueFieldNames {
+		fieldNames = append(fieldNames, fieldName)
+	}
+
+	return fieldNames, nil
+}
+
 func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.LinkedMetaPage, error) {
 	mp := i.tree
 	for {
