@@ -553,4 +553,51 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeNull", md2.FieldType)
 		}
 	})
+
+	t.Run("recognize null fields", func(t *testing.T) {
+		r1 := strings.NewReader("{\"nullheader\":null}\n")
+		r2 := strings.NewReader("{\"nullheader\":null}\n{\"nullheader\":null}\n")
+
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err := i.Synchronize(r1); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := i.Synchronize(r2); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		}
+		buf1, err := collected[0].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+		md1 := &appendable.IndexMeta{}
+
+		if err := md1.UnmarshalBinary(buf1); err != nil {
+			t.Fatal(err)
+		}
+
+		if md1.FieldName != "nullheader" || md1.FieldType != appendable.FieldTypeNull {
+			t.Errorf("expected md1.FieldName nullheader, got: %v\nexpected field type to be null, got: %v", md1.FieldName, md1.FieldType)
+		}
+	})
 }
