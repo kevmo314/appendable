@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"encoding"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -27,18 +28,28 @@ func (m *LinkedMetaPage) Root() (MemoryPointer, error) {
 		return MemoryPointer{}, err
 	}
 	var mp MemoryPointer
-	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
+	return mp, binary.Read(m.rws, binary.BigEndian, &mp)
 }
 
 func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err
 	}
-	return binary.Write(m.rws, binary.LittleEndian, mp)
+	return binary.Write(m.rws, binary.BigEndian, mp)
 }
 
-func (m *LinkedMetaPage) BPTree() *BPTree {
-	return NewBPTree(m.rws, m)
+// BPTree returns a B+ tree that uses this meta page as the root
+// of the tree. If data is not nil, then it will be used as the
+// data source for the tree.
+//
+// Generally, passing data is required, however if the tree
+// consists of only inlined values, it is not necessary.
+func (m *LinkedMetaPage) BPTree(data io.ReaderAt) *BPTree {
+	t := NewBPTree(m.rws, m)
+	if data != nil {
+		t.Data = data
+	}
+	return t
 }
 
 func (m *LinkedMetaPage) Metadata() ([]byte, error) {
@@ -50,8 +61,16 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 		return nil, err
 	}
 	// the first four bytes represents the length
-	length := binary.LittleEndian.Uint32(buf[:4])
+	length := binary.BigEndian.Uint32(buf[:4])
 	return buf[4 : 4+length], nil
+}
+
+func (m *LinkedMetaPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
+	md, err := m.Metadata()
+	if err != nil {
+		return err
+	}
+	return bu.UnmarshalBinary(md)
 }
 
 func (m *LinkedMetaPage) SetMetadata(data []byte) error {
@@ -62,11 +81,19 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 		return err
 	}
 	buf := append(make([]byte, 4), data...)
-	binary.LittleEndian.PutUint32(buf, uint32(len(data)))
+	binary.BigEndian.PutUint32(buf, uint32(len(data)))
 	if _, err := m.rws.Write(buf); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (m *LinkedMetaPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
+	buf, err := bm.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	return m.SetMetadata(buf)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
@@ -74,7 +101,7 @@ func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
 		return nil, err
 	}
 	var next MemoryPointer
-	if err := binary.Read(m.rws, binary.LittleEndian, &next); err != nil {
+	if err := binary.Read(m.rws, binary.BigEndian, &next); err != nil {
 		return nil, err
 	}
 	return &LinkedMetaPage{rws: m.rws, offset: next.Offset}, nil
@@ -88,7 +115,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if curr.offset != ^uint64(0) {
 		return nil, errors.New("next pointer already exists")
 	}
-	offset, err := m.rws.NewPage()
+	offset, err := m.rws.NewPage(nil)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +127,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
+	if err := binary.Write(m.rws, binary.BigEndian, next.offset); err != nil {
 		return nil, err
 	}
 	return next, nil

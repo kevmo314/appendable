@@ -3,6 +3,7 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 )
 
@@ -49,56 +50,56 @@ func (n *BPTreeNode) Size() int64 {
 	return int64(size)
 }
 
-func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
+func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	size := int32(len(n.Keys))
+	buf := make([]byte, n.Size())
 	// set the first bit to 1 if it's a leaf
 	if n.leaf() {
-		if err := binary.Write(w, binary.BigEndian, -size); err != nil {
-			return 0, err
-		}
+		binary.BigEndian.PutUint32(buf[:4], uint32(-size))
 	} else {
-		if err := binary.Write(w, binary.BigEndian, size); err != nil {
-			return 0, err
-		}
+		binary.BigEndian.PutUint32(buf[:4], uint32(size))
+	}
+	if size == 0 {
+		panic("writing empty node")
 	}
 	ct := 4
 	for _, k := range n.Keys {
 		if k.DataPointer.Length > 0 {
-			if err := binary.Write(w, binary.BigEndian, uint32(0)); err != nil {
-				return 0, err
-			}
-			if err := binary.Write(w, binary.BigEndian, k.DataPointer); err != nil {
-				return 0, err
-			}
+			binary.BigEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
+			binary.BigEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
+			binary.BigEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
 			ct += 4 + 12
 		} else {
-			if err := binary.Write(w, binary.BigEndian, uint32(len(k.Value))); err != nil {
-				return 0, err
-			}
-			m, err := w.Write(k.Value)
-			if err != nil {
-				return 0, err
+			binary.BigEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
+			m := copy(buf[ct+4:ct+4+len(k.Value)], k.Value)
+			if m != len(k.Value) {
+				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
 			}
 			ct += m + 4
 		}
 	}
 	for _, p := range n.Pointers {
-		if err := binary.Write(w, binary.BigEndian, p); err != nil {
-			return 0, err
-		}
+		binary.BigEndian.PutUint64(buf[ct:ct+8], p.Offset)
+		binary.BigEndian.PutUint32(buf[ct+8:ct+12], p.Length)
 		ct += 12
 	}
 	if ct != int(n.Size()) {
 		panic("size mismatch")
 	}
-	return int64(ct), nil
+	return buf, nil
 }
 
-func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
-	var size int32
-	if err := binary.Read(r, binary.BigEndian, &size); err != nil {
+func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
+	buf, err := n.MarshalBinary()
+	if err != nil {
 		return 0, err
 	}
+	m, err := w.Write(buf)
+	return int64(m), err
+}
+
+func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
+	size := int32(binary.BigEndian.Uint32(buf[:4]))
 	leaf := size < 0
 	if leaf {
 		n.Pointers = make([]MemoryPointer, -size)
@@ -107,40 +108,47 @@ func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
 		n.Pointers = make([]MemoryPointer, size+1)
 		n.Keys = make([]ReferencedValue, size)
 	}
+	if size == 0 {
+		panic("empty node")
+	}
+
 	m := 4
 	for i := range n.Keys {
-		var l uint32
-		if err := binary.Read(r, binary.BigEndian, &l); err != nil {
-			return 0, err
-		}
-		if l == 0 {
+		l := binary.BigEndian.Uint32(buf[m : m+4])
+		if l == ^uint32(0) {
 			// read the key out of the memory pointer stored at this position
-			if err := binary.Read(r, binary.BigEndian, n.Keys[i].DataPointer); err != nil {
-				return 0, err
-			}
+			n.Keys[i].DataPointer.Offset = binary.BigEndian.Uint64(buf[m+4 : m+12])
+			n.Keys[i].DataPointer.Length = binary.BigEndian.Uint32(buf[m+12 : m+16])
 			n.Keys[i].Value = make([]byte, n.Keys[i].DataPointer.Length)
 			if _, err := n.Data.ReadAt(n.Keys[i].Value, int64(n.Keys[i].DataPointer.Offset)); err != nil {
-				return 0, err
+				return fmt.Errorf("failed to read key: %w", err)
 			}
 			m += 4 + 12
 		} else {
 			n.Keys[i].Value = make([]byte, l)
-			if _, err := io.ReadFull(r, n.Keys[i].Value); err != nil {
-				return 0, err
+			if o := copy(n.Keys[i].Value, buf[m+4:m+4+int(l)]); o != int(l) {
+				return fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
 			}
 			m += 4 + int(l)
 		}
 	}
 	for i := range n.Pointers {
-		if err := binary.Read(r, binary.BigEndian, &n.Pointers[i].Offset); err != nil {
-			return 0, err
-		}
-		if err := binary.Read(r, binary.BigEndian, &n.Pointers[i].Length); err != nil {
-			return 0, err
-		}
+		n.Pointers[i].Offset = binary.BigEndian.Uint64(buf[m : m+8])
+		n.Pointers[i].Length = binary.BigEndian.Uint32(buf[m+8 : m+12])
 		m += 12
 	}
-	return int64(m), nil
+	return nil
+}
+
+func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
+	buf := make([]byte, pageSizeBytes)
+	if _, err := r.Read(buf); err != nil && err != io.EOF {
+		return 0, err
+	}
+	if err := n.UnmarshalBinary(buf); err != nil {
+		return 0, err
+	}
+	return pageSizeBytes, nil
 }
 
 func (n *BPTreeNode) bsearch(key []byte) (int, bool) {
