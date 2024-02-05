@@ -65,8 +65,8 @@ func main() {
 	switch {
 	case jsonlFlag:
 		dataHandler = handlers.JSONLHandler{}
-	// case csvFlag:
-	// 	dataHandler = handlers.CSVHandler{}
+	case csvFlag:
+		dataHandler = handlers.CSVHandler{}
 	default:
 		logger.Error("Please specify the file type with -jsonl or -csv.")
 		os.Exit(1)

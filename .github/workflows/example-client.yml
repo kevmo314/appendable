@@ -33,11 +33,10 @@ jobs:
           cd -
 
           # Build the index
-          go run cmd/main.go -csv examples/workspace/green_tripdata_2023-01.csv
+          go run cmd/main.go -i examples/client/green_tripdata_2023-01.csv.index -csv examples/workspace/green_tripdata_2023-01.csv
 
           # Copy to client
           cp examples/workspace/green_tripdata_2023-01.csv examples/client
-          cp examples/workspace/green_tripdata_2023-01.csv.index examples/client
 
           # Build the js lib
           npm ci
