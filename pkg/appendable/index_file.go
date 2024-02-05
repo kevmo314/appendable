@@ -25,7 +25,6 @@ type IndexFile struct {
 	dataHandler DataHandler
 }
 
-<<<<<<< HEAD
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
 	pf, err := btree.NewPageFile(f)
 	if err != nil {
