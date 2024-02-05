@@ -1,2 +1,5 @@
 dist
 node_modules
+
+examples/workspace/data.index
+examples/workspace/green_tripdata_2023-01.jsonl

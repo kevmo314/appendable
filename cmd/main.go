@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -9,18 +8,20 @@ import (
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
+	"github.com/kevmo314/appendable/pkg/handlers"
 )
 
 func main() {
 	var debugFlag, jsonlFlag, csvFlag, showTimings bool
+	var indexFilename string
 
 	flag.BoolVar(&debugFlag, "debug", false, "Use logger that prints at the debug-level")
 	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
 	flag.BoolVar(&csvFlag, "csv", false, "Use CSV handler")
 	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
+	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
 
 	flag.Parse()
-
 	logLevel := &slog.LevelVar{}
 
 	if debugFlag {
@@ -35,7 +36,6 @@ func main() {
 		totalStart = time.Now()
 	}
 
-	// index := flag.String("i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.Usage = func() {
 		fmt.Printf("Usage: %s [-t] [-i index] [-I index] filename\n", os.Args[0])
 		flag.PrintDefaults()
@@ -48,7 +48,13 @@ func main() {
 		flag.Usage()
 	}
 
-	// Open the file
+	// open the index file
+	indexFile, err := os.OpenFile(indexFilename, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		panic(err)
+	}
+
+	// Open the data file
 	file, err := os.Open(args[0])
 	if err != nil {
 		panic(err)
@@ -58,13 +64,9 @@ func main() {
 
 	switch {
 	case jsonlFlag:
-		dataHandler = appendable.JSONLHandler{
-			ReadSeeker: file,
-		}
-	case csvFlag:
-		dataHandler = appendable.CSVHandler{
-			ReadSeeker: file,
-		}
+		dataHandler = handlers.JSONLHandler{}
+	// case csvFlag:
+	// 	dataHandler = handlers.CSVHandler{}
 	default:
 		logger.Error("Please specify the file type with -jsonl or -csv.")
 		os.Exit(1)
@@ -73,9 +75,12 @@ func main() {
 		readStart = time.Now()
 	}
 	// Open the index file
-	indexFile, err := appendable.NewIndexFile(dataHandler)
-
+	i, err := appendable.NewIndexFile(indexFile, dataHandler)
 	if err != nil {
+		panic(err)
+	}
+
+	if err := i.Synchronize(file); err != nil {
 		panic(err)
 	}
 
@@ -87,21 +92,6 @@ func main() {
 	// Write the index file
 	if showTimings {
 		writeStart = time.Now()
-	}
-	of, err := os.Create(args[0] + ".index")
-	if err != nil {
-		panic(err)
-	}
-	logger.Info("Writing index file to", slog.String("path", args[0]+".index"))
-	bufof := bufio.NewWriter(of)
-	if err := indexFile.Serialize(bufof); err != nil {
-		panic(err)
-	}
-	if err := bufof.Flush(); err != nil {
-		panic(err)
-	}
-	if err := of.Close(); err != nil {
-		panic(err)
 	}
 
 	if showTimings {
