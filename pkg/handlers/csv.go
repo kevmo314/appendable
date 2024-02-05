@@ -178,7 +178,7 @@ func handleCSVLine(f *appendable.IndexFile, r io.ReaderAt, dec *csv.Reader, head
 		switch fieldType {
 		case appendable.FieldTypeFloat64:
 			buf := make([]byte, 8)
-			binary.LittleEndian.PutUint64(buf, math.Float64bits(value.(float64)))
+			binary.BigEndian.PutUint64(buf, math.Float64bits(value.(float64)))
 			if err := page.BPTree(r).Insert(btree.ReferencedValue{Value: buf}, data); err != nil {
 				return fmt.Errorf("failed to insert into b+tree: %w", err)
 			}

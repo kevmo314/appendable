@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"fmt"
 	"io"
 	"testing"
 
@@ -185,9 +186,11 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		fmt.Printf("pageCount: %v\nindexes: %v", pf.freePageCount, len(pf.freePageIndexes))
 		if err := pf.FreePage(offset); err != nil {
 			t.Fatal(err)
 		}
+		fmt.Printf("pageCount: %v\nindexes: %v", pf.freePageCount, len(pf.freePageIndexes))
 		if err := pf.FreePage(offset); err == nil {
 			t.Fatal("expected error")
 		}

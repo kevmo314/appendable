@@ -95,7 +95,7 @@ type FileMeta struct {
 func (m *FileMeta) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 9)
 	buf[0] = byte(m.Version)
-	binary.LittleEndian.PutUint64(buf[1:], m.ReadOffset)
+	binary.BigEndian.PutUint64(buf[1:], m.ReadOffset)
 	return buf, nil
 }
 
@@ -104,7 +104,7 @@ func (m *FileMeta) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
 	m.Version = Version(buf[0])
-	m.ReadOffset = binary.LittleEndian.Uint64(buf[1:])
+	m.ReadOffset = binary.BigEndian.Uint64(buf[1:])
 	return nil
 }
 

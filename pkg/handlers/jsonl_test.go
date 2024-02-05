@@ -240,7 +240,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		v2 := make([]byte, 8)
-		binary.LittleEndian.PutUint64(v2, math.Float64bits(123))
+		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
 		mp2, found, err := collected[1].BPTree(r2).Find(v2)
 		if err != nil {
 			t.Fatal(err)
