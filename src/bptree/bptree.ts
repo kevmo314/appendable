@@ -1,22 +1,25 @@
 import { BPTreeNode, MemoryPointer, compareBytes } from "./node";
-import { LengthIntegrityError, RangeResolver } from "./resolver";
+import { LengthIntegrityError, RangeResolver } from "../resolver";
 
 export interface MetaPage {
 	root(): Promise<MemoryPointer>;
 }
 
+type RootResponse = {
+	rootNode: BPTreeNode;
+	pointer: MemoryPointer;
+};
+
 export class BPTree {
 	private tree: RangeResolver;
 	private meta: MetaPage;
-	//private maxPageSize: number;
 
 	constructor(tree: RangeResolver, meta: MetaPage) {
 		this.tree = tree;
 		this.meta = meta;
-		//this.maxPageSize = maxPageSize;
 	}
 
-	private async root(): Promise<BPTreeNode | null> {
+	private async root(): Promise<RootResponse | null> {
 		const mp = await this.meta.root();
 		if (!mp || mp.length === 0) {
 			return null;
@@ -27,12 +30,18 @@ export class BPTree {
 			return null;
 		}
 
-		return root;
+		return {
+			rootNode: root,
+			pointer: mp,
+		};
 	}
 
 	private async readNode(ptr: MemoryPointer): Promise<BPTreeNode | null> {
 		try {
-			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(ptr, this.tree);
+			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
+				ptr,
+				this.tree
+			);
 
 			if (!bytesRead || bytesRead !== ptr.length) {
 				return null;
@@ -50,10 +59,11 @@ export class BPTree {
 
 	private async traverse(
 		key: Uint8Array,
-		node: BPTreeNode
+		node: BPTreeNode,
+		pointer: MemoryPointer
 	): Promise<TraversalRecord[] | null> {
-		if (await node.leaf()) {
-			return [{ node: node, index: 0 }];
+		if (node.leaf()) {
+			return [{ node: node, index: 0, pointer: pointer }];
 		}
 
 		for (const [i, k] of node.keys.entries()) {
@@ -63,12 +73,12 @@ export class BPTree {
 					return null;
 				}
 
-				const path = await this.traverse(key, child);
+				const path = await this.traverse(key, child, node.pointers[i]);
 				if (!path) {
 					return null;
 				}
 
-				return [...path, { node: node, index: i }];
+				return [...path, { node: node, index: i, pointer: pointer }];
 			}
 		}
 
@@ -78,22 +88,28 @@ export class BPTree {
 			return null;
 		}
 
-		const path = await this.traverse(key, child);
+		const path = await this.traverse(
+			key,
+			child,
+			node.pointers[node.pointers.length - 1]
+		);
 		if (!path) {
 			return null;
 		}
 
-		return [...path, { node: node, index: node.keys.length }];
+		return [...path, { node: node, index: node.keys.length, pointer: pointer }];
 	}
 
 	public async find(key: Uint8Array): Promise<[MemoryPointer, boolean]> {
-		let rootNode = await this.root();
+		const rootResponse = await this.root();
 
-		if (!rootNode) {
+		if (!rootResponse) {
 			return [{ offset: 0, length: 0 }, false];
 		}
 
-		const path = await this.traverse(key, rootNode);
+		let { rootNode, pointer } = rootResponse;
+
+		const path = await this.traverse(key, rootNode, pointer);
 		if (!path) {
 			return [{ offset: 0, length: 0 }, false];
 		}
@@ -113,9 +129,11 @@ export class BPTree {
 class TraversalRecord {
 	public node: BPTreeNode;
 	public index: number;
+	public pointer: MemoryPointer;
 
-	constructor(node: BPTreeNode, index: number) {
+	constructor(node: BPTreeNode, index: number, pointer: MemoryPointer) {
 		this.node = node;
 		this.index = index;
+		this.pointer = pointer;
 	}
 }

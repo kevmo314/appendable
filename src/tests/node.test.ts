@@ -3,7 +3,7 @@ import {
 	MemoryPointer,
 	ReferencedValue,
 	compareBytes,
-} from "../node";
+} from "../bptree/node";
 import { RangeResolver } from "../resolver";
 
 const strToUint8Array = (str: string) => {
@@ -106,7 +106,7 @@ describe("test binary search", () => {
 	});
 });
 
-describe("BPTree readNode method", () => {
+describe("test readNode", () => {
 	let mockRangeResolver: RangeResolver;
 	let mockMemoryPointer: MemoryPointer;
 

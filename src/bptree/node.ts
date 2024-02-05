@@ -1,15 +1,15 @@
-import { RangeResolver } from "./resolver";
+import { RangeResolver } from "../resolver";
 
 export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
 export type MemoryPointer = { offset: number; length: number };
 
 export class BPTreeNode {
-	public pointers: MemoryPointer[];
 	public keys: ReferencedValue[];
+	public pointers: MemoryPointer[];
 
 	constructor(pointers: MemoryPointer[], keys: ReferencedValue[]) {
-		this.pointers = pointers;
 		this.keys = keys;
+		this.pointers = pointers;
 	}
 
 	leaf(): boolean {
