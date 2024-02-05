@@ -1,28 +1,31 @@
-import { FormatType } from ".";
-import { DataFile } from "./data-file";
-import { IndexFile, VersionedIndexFile } from "./index-file";
+import { FormatType } from "..";
+import { DataFile } from "../data-file";
+import { IndexFile, VersionedIndexFile } from "../index-file";
+import { QueryBuilder } from "./query-builder";
+import { validateQuery } from "./query-validation";
 
-type Schema = {
+export type Schema = {
 	[key: string]: {};
 };
 
-type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
+export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
 	operation: "<" | "<=" | "==" | ">=" | ">";
 	key: keyof T;
 	value: T[K];
 };
 
-type OrderBy<T extends Schema> = {
+export type OrderBy<T extends Schema> = {
 	key: keyof T;
 	direction: "ASC" | "DESC";
 };
 
-type SelectField<T extends Schema> = keyof T;
+export type SelectField<T extends Schema> = keyof T;
 
 export type Query<T extends Schema> = {
 	where?: WhereNode<T>[];
 	orderBy?: OrderBy<T>[];
 	select?: SelectField<T>[];
+	limit?: number;
 };
 
 export enum FieldType {
@@ -30,11 +33,6 @@ export enum FieldType {
 	Number = 1 << 1,
 	Boolean = 1 << 4,
 	Null = 1 << 5,
-}
-
-// given a fieldType and the desired type, this function performs a bitwise operation to test membership
-export function containsType(fieldType: bigint, desiredType: FieldType) {
-	return (fieldType & BigInt(desiredType)) !== BigInt(0);
 }
 
 function parseIgnoringSuffix(
@@ -151,6 +149,13 @@ export class Database<T extends Schema> {
 		// convert each of the where nodes into a range of field values.
 		const headers = await this.indexFile.indexHeaders();
 		const headerFields = headers.map((header) => header.fieldName);
+
+		try {
+			await validateQuery(query, headers);
+		} catch (error) {
+			throw new Error(`Query validation failed: ${(error as Error).message}`);
+		}
+
 		const fieldRanges = await Promise.all(
 			(query.where ?? []).map(async ({ key, value, operation }) => {
 				const header = headers.find((header) => header.fieldName === key);
@@ -290,5 +295,13 @@ export class Database<T extends Schema> {
 				yield dataFieldValue;
 			}
 		}
+	}
+
+	where(
+		key: keyof T,
+		operation: WhereNode<T>["operation"],
+		value: T[keyof T]
+	): QueryBuilder<T> {
+		return new QueryBuilder(this).where(key, operation, value);
 	}
 }

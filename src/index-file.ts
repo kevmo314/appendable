@@ -60,13 +60,7 @@ export interface VersionedIndexFile<T> {
 		indexLength: number;
 		dataCount: number;
 	}>;
-	indexHeaders(): Promise<
-		{
-			fieldName: string;
-			fieldType: bigint;
-			indexRecordCount: bigint;
-		}[]
-	>;
+	indexHeaders(): Promise<Header[]>;
 	indexRecord(
 		field: keyof T,
 		offset: number
@@ -85,11 +79,7 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 		indexLength: number;
 		dataCount: number;
 	};
-	private _indexHeaders?: {
-		fieldName: string;
-		fieldType: bigint;
-		indexRecordCount: bigint;
-	}[];
+	private _indexHeaders?: Header[];
 
 	private static INDEX_RECORD_SIZE = 18;
 
@@ -150,7 +140,6 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 			throw new Error("offset out of range");
 		}
 		const headers = await this.indexHeaders();
-		console.log("headers: ", headers);
 		const headerIndex = headers.findIndex(
 			(header) => header.fieldName === field
 		);

@@ -247,6 +247,20 @@ func TestBPTree(t *testing.T) {
 		}
 	})
 
+	t.Run("identical insertion test", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
+		for i := 0; i < 65536*4; i++ {
+			if err := tree.Insert(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}}, MemoryPointer{Offset: uint64(i)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	})
+
 	// t.Run("bulk insert", func(t *testing.T) {
 	// 	b := buftest.NewSeekableBuffer()
 	// 	tree :=NewBPTree(b, 2)

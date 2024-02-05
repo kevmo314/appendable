@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -19,6 +20,8 @@ type BPTree struct {
 	meta MetaPage
 
 	maxPageSize int
+
+	Data io.ReaderAt
 }
 
 func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
@@ -38,14 +41,14 @@ func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 }
 
 func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
-	root, _, err := t.root()
+	root, rootOffset, err := t.root()
 	if err != nil {
 		return MemoryPointer{}, false, fmt.Errorf("read root node: %w", err)
 	}
 	if root == nil {
 		return MemoryPointer{}, false, nil
 	}
-	path, err := t.traverse(key, root)
+	path, err := t.traverse(key, root, rootOffset)
 	if err != nil {
 		return MemoryPointer{}, false, err
 	}
@@ -61,7 +64,7 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 	if _, err := t.tree.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
-	node := &BPTreeNode{}
+	node := &BPTreeNode{Data: t.Data}
 	if _, err := node.ReadFrom(t.tree); err != nil {
 		return nil, err
 	}
@@ -71,36 +74,47 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 type TraversalRecord struct {
 	node  *BPTreeNode
 	index int
+	// the offset is useful so we know which page to free when we split
+	ptr MemoryPointer
 }
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
-func (t *BPTree) traverse(key []byte, node *BPTreeNode) ([]*TraversalRecord, error) {
+func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
 	if node.leaf() {
-		return []*TraversalRecord{{node: node}}, nil
+		return []TraversalRecord{{node: node, ptr: ptr}}, nil
 	}
 	for i, k := range node.Keys {
 		if bytes.Compare(key, k.Value) < 0 {
+			if node.Pointers[i].Offset == ptr.Offset {
+				log.Printf("infinite loop index %d", i)
+				log.Printf("%#v", node)
+				log.Printf("node offset %#v ptr offset %#v", node.Pointers[i].Offset, ptr.Offset)
+				panic("infinite loop")
+			}
 			child, err := t.readNode(node.Pointers[i])
 			if err != nil {
 				return nil, err
 			}
-			path, err := t.traverse(key, child)
+			path, err := t.traverse(key, child, node.Pointers[i])
 			if err != nil {
 				return nil, err
 			}
-			return append(path, &TraversalRecord{node: node, index: i}), nil
+			return append(path, TraversalRecord{node: node, index: i, ptr: ptr}), nil
 		}
+	}
+	if node.Pointers[len(node.Pointers)-1].Offset == ptr.Offset {
+		panic("infinite loop 2")
 	}
 	child, err := t.readNode(node.Pointers[len(node.Pointers)-1])
 	if err != nil {
 		return nil, err
 	}
-	path, err := t.traverse(key, child)
+	path, err := t.traverse(key, child, node.Pointers[len(node.Pointers)-1])
 	if err != nil {
 		return nil, err
 	}
-	return append(path, &TraversalRecord{node: node, index: len(node.Keys)}), nil
+	return append(path, TraversalRecord{node: node, index: len(node.Keys), ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
@@ -110,20 +124,21 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		offset, err := t.tree.NewPage()
-		if err != nil {
-			return err
-		}
-		node := &BPTreeNode{}
+		node := &BPTreeNode{Data: t.Data}
 		node.Keys = []ReferencedValue{key}
 		node.Pointers = []MemoryPointer{value}
-		length, err := node.WriteTo(t.tree)
+		buf, err := node.MarshalBinary()
 		if err != nil {
 			return err
 		}
-		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
+		offset, err := t.tree.NewPage(buf)
+		if err != nil {
+			return err
+		}
+		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
-	path, err := t.traverse(key.Value, root)
+
+	path, err := t.traverse(key.Value, root, rootOffset)
 	if err != nil {
 		return err
 	}
@@ -147,17 +162,12 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		n := tr.node
 		if int(n.Size()) > t.tree.PageSize() {
 			// split the node
-			moffset, err := t.tree.NewPage()
-			if err != nil {
-				return err
-			}
-
 			// mid is the key that will be inserted into the parent
 			mid := len(n.Keys) / 2
 			midKey := n.Keys[mid]
 
 			// n is the left node, m the right node
-			m := &BPTreeNode{}
+			m := &BPTreeNode{Data: t.Data}
 			if n.leaf() {
 				m.Pointers = n.Pointers[mid:]
 				m.Keys = n.Keys[mid:]
@@ -166,7 +176,11 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				m.Pointers = n.Pointers[mid+1:]
 				m.Keys = n.Keys[mid+1:]
 			}
-			msize, err := m.WriteTo(t.tree)
+			mbuf, err := m.MarshalBinary()
+			if err != nil {
+				return err
+			}
+			moffset, err := t.tree.NewPage(mbuf)
 			if err != nil {
 				return err
 			}
@@ -179,70 +193,68 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				n.Keys = n.Keys[:mid]
 			}
 
-			noffset, err := t.tree.NewPage()
+			nbuf, err := n.MarshalBinary()
 			if err != nil {
 				return err
 			}
-			nsize, err := n.WriteTo(t.tree)
-			if err != nil {
+			noffset := tr.ptr.Offset
+			if _, err := t.tree.Seek(int64(noffset), io.SeekStart); err != nil {
+				return err
+			}
+			if _, err := t.tree.Write(nbuf); err != nil {
 				return err
 			}
 
 			// update the parent
 			if i < len(path)-1 {
 				p := path[i+1]
-				j, _ := p.node.bsearch(midKey.Value)
-				if j != p.index {
-					// j should be equal to p.index...?
-					// if this panic never happens then we can probably remove the above bsearch.
-					panic("this assumption apparently isn't true")
-				}
 				// insert the key into the parent
-				if j == len(p.node.Keys) {
+				if p.index == len(p.node.Keys) {
 					p.node.Keys = append(p.node.Keys, midKey)
 				} else {
-					p.node.Keys = append(p.node.Keys[:j+1], p.node.Keys[j:]...)
-					p.node.Keys[j] = midKey
+					p.node.Keys = append(p.node.Keys[:p.index+1], p.node.Keys[p.index:]...)
+					p.node.Keys[p.index] = midKey
 				}
-				p.node.Pointers = append(p.node.Pointers[:j+1], p.node.Pointers[j:]...)
-				p.node.Pointers[j] = MemoryPointer{Offset: uint64(noffset), Length: uint32(nsize)}
-				p.node.Pointers[j+1] = MemoryPointer{Offset: uint64(moffset), Length: uint32(msize)}
+				p.node.Pointers = append(p.node.Pointers[:p.index+1], p.node.Pointers[p.index:]...)
+				p.node.Pointers[p.index] = MemoryPointer{Offset: uint64(noffset), Length: uint32(len(nbuf))}
+				p.node.Pointers[p.index+1] = MemoryPointer{Offset: uint64(moffset), Length: uint32(len(mbuf))}
 				// the parent will be written to disk in the next iteration
 			} else {
-				poffset := noffset + nsize
-				// create a new root
-				p := &BPTreeNode{Pointers: []MemoryPointer{rootOffset}}
+				// the root split, so create a new root
+				p := &BPTreeNode{Data: t.Data}
 				p.Keys = []ReferencedValue{midKey}
 				p.Pointers = []MemoryPointer{
-					{Offset: uint64(noffset), Length: uint32(nsize)},
-					{Offset: uint64(moffset), Length: uint32(msize)},
+					{Offset: uint64(noffset), Length: uint32(len(nbuf))},
+					{Offset: uint64(moffset), Length: uint32(len(mbuf))},
 				}
 
-				psize, err := p.WriteTo(t.tree)
+				pbuf, err := p.MarshalBinary()
 				if err != nil {
 					return err
 				}
-				return t.meta.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(psize)})
+				poffset, err := t.tree.NewPage(pbuf)
+				if err != nil {
+					return err
+				}
+				if err := t.meta.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
+					return err
+				}
+				return nil
 			}
 		} else {
 			// write this node to disk and update the parent
-			offset, err := t.tree.NewPage()
+			buf, err := tr.node.MarshalBinary()
 			if err != nil {
 				return err
 			}
-			length, err := tr.node.WriteTo(t.tree)
-			if err != nil {
+			if _, err := t.tree.Seek(int64(tr.ptr.Offset), io.SeekStart); err != nil {
 				return err
 			}
-
-			if i < len(path)-1 {
-				p := path[i+1]
-				// update the parent at the index
-				p.node.Pointers[p.index] = MemoryPointer{Offset: uint64(offset), Length: uint32(length)}
-			} else {
-				// update the root
-				return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(length)})
+			if _, err := t.tree.Write(buf); err != nil {
+				return err
 			}
+			// no new nodes were produced, so we can return here
+			return nil
 		}
 	}
 	panic("unreachable")

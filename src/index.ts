@@ -1,5 +1,5 @@
 import { DataFile } from "./data-file";
-import { Database, FieldType, containsType } from "./database";
+import { Database, FieldType} from "./db/database";
 import { IndexFile } from "./index-file";
 import { RangeResolver } from "./resolver";
 
@@ -28,7 +28,6 @@ interface GlobalMap {
 	Appendable: {
 		init: Function;
 		FieldType: typeof FieldType;
-		containsType: typeof containsType;
 		FormatType: typeof FormatType;
 	};
 }
@@ -40,6 +39,5 @@ declare global {
 globalThis.Appendable = {
 	init,
 	FieldType,
-	containsType,
 	FormatType,
 };
