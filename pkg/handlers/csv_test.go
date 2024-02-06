@@ -2,13 +2,14 @@ package handlers
 
 import (
 	"encoding/binary"
-	"github.com/kevmo314/appendable/pkg/appendable"
-	"github.com/kevmo314/appendable/pkg/buftest"
 	"log/slog"
 	"math"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/appendable"
+	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
 func TestCSV(t *testing.T) {
