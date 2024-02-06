@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/csv"
@@ -53,38 +52,35 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 		headers = fieldNames
 	}
 
-	scanner := bufio.NewScanner(bytes.NewBuffer(df[metadata.ReadOffset:]))
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	for {
+		i := bytes.IndexByte(df[metadata.ReadOffset:], '\n')
+		if i == -1 {
+			break
+		}
 
 		if isHeader {
 			slog.Info("Parsing CSV headers")
-			dec := csv.NewReader(bytes.NewReader(line))
+			dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 			headers, err = dec.Read()
 			if err != nil {
 				slog.Error("failed to parse CSV header", "error", err)
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
-			metadata.ReadOffset += uint64(len(line)) + 1
+			metadata.ReadOffset += uint64(i) + 1
 			isHeader = false
 			continue
 		}
 
-		dec := csv.NewReader(bytes.NewReader(line))
+		dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 
 		if err := handleCSVLine(f, df, dec, headers, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
-			Length: uint32(len(line)),
+			Length: uint32(i),
 		}); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
-		metadata.ReadOffset += uint64(len(line)) + 1 // include the newline
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+		metadata.ReadOffset += uint64(i) + 1 // include the newline
 	}
 
 	// update the metadata

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
@@ -28,12 +27,13 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	scanner := bufio.NewScanner(bytes.NewBuffer(df[metadata.ReadOffset:]))
-	for i := 0; scanner.Scan(); i++ {
-		line := scanner.Bytes()
-
+	for {
+		i := bytes.IndexByte(df[metadata.ReadOffset:], '\n')
+		if i == -1 {
+			break
+		}
 		// create a new json decoder
-		dec := json.NewDecoder(bytes.NewReader(line))
+		dec := json.NewDecoder(bytes.NewReader(df[metadata.ReadOffset:(metadata.ReadOffset + uint64(i))]))
 
 		// if the first token is not {, then return an error
 		if t, err := dec.Token(); err != nil || t != json.Delim('{') {
@@ -42,7 +42,7 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 
 		if err := handleJSONLObject(f, df, dec, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
-			Length: uint32(len(line)),
+			Length: uint32(i),
 		}); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
@@ -52,13 +52,9 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 			return fmt.Errorf("expected '}', got '%v'", t)
 		}
 
-		metadata.ReadOffset += uint64(len(line)) + 1 // include the newline
+		metadata.ReadOffset += uint64(i) + 1 // include the newline
 
 		// slog.Info("read line", "i", i, "offset", metadata.ReadOffset)
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
 	}
 
 	// update the metadata

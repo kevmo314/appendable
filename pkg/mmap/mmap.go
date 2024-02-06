@@ -20,7 +20,15 @@ var _ io.Closer = &MemoryMappedFile{}
 var _ io.ReaderAt = &MemoryMappedFile{}
 var _ io.WriterAt = &MemoryMappedFile{}
 
-func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
+func toProt(flag int) int {
+	prot := unix.PROT_READ
+	if flag&os.O_RDWR != 0 {
+		prot |= unix.PROT_WRITE
+	}
+	return prot
+}
+
+func NewMemoryMappedFile(f *os.File, prot int) (*MemoryMappedFile, error) {
 	fd := uintptr(f.Fd())
 	fi, err := f.Stat()
 	if err != nil {
@@ -29,7 +37,7 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 	if fi.Size() == 0 {
 		return &MemoryMappedFile{file: f, bytes: nil, seek: 0}, nil
 	}
-	b, err := unix.Mmap(int(fd), 0, int(fi.Size()), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+	b, err := unix.Mmap(int(fd), 0, int(fi.Size()), prot, unix.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("mmap: %v", err)
 	}
@@ -38,11 +46,16 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 
 // Open is a convenience function to open a file and memory map it.
 func Open(path string) (*MemoryMappedFile, error) {
-	f, err := os.Open(path)
+	return OpenFile(path, os.O_RDWR, 0)
+}
+
+// OpenFile is a convenience function to open a file with the given flags and memory map it.
+func OpenFile(path string, flag int, perm os.FileMode) (*MemoryMappedFile, error) {
+	f, err := os.OpenFile(path, flag, perm)
 	if err != nil {
 		return nil, fmt.Errorf("open: %v", err)
 	}
-	return NewMemoryMappedFile(f)
+	return NewMemoryMappedFile(f, toProt(flag))
 }
 
 func (m *MemoryMappedFile) File() *os.File {
@@ -56,9 +69,12 @@ func (m *MemoryMappedFile) Bytes() []byte {
 // Close closes the file and unmaps the memory.
 func (m *MemoryMappedFile) Close() error {
 	if m.bytes == nil {
-		return nil
+		return m.file.Close()
 	}
-	return unix.Munmap(m.bytes)
+	if err := unix.Munmap(m.bytes); err != nil {
+		return fmt.Errorf("munmap: %v", err)
+	}
+	return m.file.Close()
 }
 
 // Seek sets the offset for the next Read or Write on file to offset.

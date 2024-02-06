@@ -61,17 +61,12 @@ func main() {
 		flag.Usage()
 	}
 
-	// open the index file
-	indexFile, err := os.OpenFile(indexFilename, os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		panic(err)
-	}
-
 	// Open the data df
-	df, err := mmap.Open(args[0])
+	df, err := mmap.OpenFile(args[0], os.O_RDONLY, 0)
 	if err != nil {
 		panic(err)
 	}
+	defer df.Close()
 
 	var dataHandler appendable.DataHandler
 
@@ -87,10 +82,11 @@ func main() {
 	if showTimings {
 		readStart = time.Now()
 	}
-	mmpif, err := mmap.NewMemoryMappedFile(indexFile)
+	mmpif, err := mmap.OpenFile(indexFilename, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
 	}
+	defer mmpif.Close()
 
 	// Open the index file
 	i, err := appendable.NewIndexFile(mmpif, dataHandler)
