@@ -129,13 +129,11 @@ func InferCSVField(fieldValue string) (interface{}, appendable.FieldType) {
 
 	if i, err := strconv.Atoi(fieldValue); err == nil {
 
-		fmt.Printf("\n%v is a integer\n", fieldValue)
 		return float64(i), appendable.FieldTypeFloat64
 	}
 
 	if f, err := strconv.ParseFloat(fieldValue, 64); err == nil {
 
-		fmt.Printf("\n%v is a float\n", fieldValue)
 		return float64(f), appendable.FieldTypeFloat64
 	}
 
