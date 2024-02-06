@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -40,6 +38,9 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 
 // Close closes the file and unmaps the memory.
 func (m *MemoryMappedFile) Close() error {
+	if m.bytes == nil {
+		return nil
+	}
 	return unix.Munmap(m.bytes)
 }
 
@@ -113,22 +114,11 @@ func (m *MemoryMappedFile) WriteAt(b []byte, off int64) (int, error) {
 			}
 			return len(b), nil
 		}
-		header := (*reflect.SliceHeader)(unsafe.Pointer(&m.bytes))
-		mmapAddr, mmapSize, errno := unix.Syscall6(
-			unix.SYS_MREMAP,
-			header.Data,
-			uintptr(header.Len),
-			uintptr(fi.Size()),
-			uintptr(0x01), // MREMAP_MAYMOVE
-			0,
-			0,
-		)
-		if errno != 0 {
-			return 0, fmt.Errorf("mmap: %v", errno)
+		b, err := unix.Mremap(m.bytes, int(fi.Size()), unix.MREMAP_MAYMOVE)
+		if err != nil {
+			return 0, fmt.Errorf("mmap: %v", err)
 		}
-		header.Data = mmapAddr
-		header.Len = int(mmapSize)
-		header.Cap = int(mmapSize)
+		m.bytes = b
 		return len(b), nil
 	}
 	// write the data

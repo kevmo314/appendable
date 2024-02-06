@@ -350,3 +350,55 @@ func TestMemoryMappedFile_Seek(t *testing.T) {
 		}
 	})
 }
+
+func TestMemoryMappedFile_Close(t *testing.T) {
+	t.Run("Close", func(t *testing.T) {
+		f, err := os.CreateTemp("", "close")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer os.Remove(f.Name())
+
+		m, err := NewMemoryMappedFile(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// write some data
+		if _, err := m.Write([]byte("Hello, world!")); err != nil {
+			log.Fatal(err)
+		}
+
+		if err := m.Close(); err != nil {
+			log.Fatal(err)
+		}
+	})
+
+	t.Run("Close with remap", func(t *testing.T) {
+		f, err := os.CreateTemp("", "closeremap")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer os.Remove(f.Name())
+
+		m, err := NewMemoryMappedFile(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// write some data
+		if _, err := m.Write([]byte("Hello, world!")); err != nil {
+			log.Fatal(err)
+		}
+
+		// write some more data, triggering a remap
+		if _, err := m.Write([]byte("Hello, world!")); err != nil {
+			log.Fatal(err)
+		}
+
+		// close the file
+		if err := m.Close(); err != nil {
+			log.Fatal(err)
+		}
+	})
+}
