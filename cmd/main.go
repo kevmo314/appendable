@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"runtime/pprof"
@@ -16,13 +15,14 @@ import (
 
 func main() {
 	var debugFlag, jsonlFlag, csvFlag, showTimings bool
-	var indexFilename string
+	var indexFilename, pprofFilename string
 
 	flag.BoolVar(&debugFlag, "debug", false, "Use logger that prints at the debug-level")
 	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
 	flag.BoolVar(&csvFlag, "csv", false, "Use CSV handler")
 	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
 	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
+	flag.StringVar(&pprofFilename, "pprof", "", "Specify the file to write the pprof data to")
 
 	flag.Parse()
 	logLevel := &slog.LevelVar{}
@@ -31,15 +31,17 @@ func main() {
 		logLevel.Set(slog.LevelDebug)
 	}
 
-	f, err := os.Create("pprof.out")
-	if err != nil {
-		log.Fatal("could not create CPU profile: ", err)
+	if pprofFilename != "" {
+		f, err := os.Create(pprofFilename)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			panic(err)
+		}
+		defer pprof.StopCPUProfile()
 	}
-	defer f.Close() // error handling omitted for example
-	if err := pprof.StartCPUProfile(f); err != nil {
-		log.Fatal("could not start CPU profile: ", err)
-	}
-	defer pprof.StopCPUProfile()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
