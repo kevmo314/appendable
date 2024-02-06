@@ -9,6 +9,7 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/handlers"
+	"github.com/kevmo314/appendable/pkg/mmap"
 )
 
 func main() {
@@ -74,8 +75,12 @@ func main() {
 	if showTimings {
 		readStart = time.Now()
 	}
+	mmpif, err := mmap.NewMemoryMappedFile(indexFile)
+	if err != nil {
+		panic(err)
+	}
 	// Open the index file
-	i, err := appendable.NewIndexFile(indexFile, dataHandler)
+	i, err := appendable.NewIndexFile(mmpif, dataHandler)
 	if err != nil {
 		panic(err)
 	}
@@ -92,6 +97,10 @@ func main() {
 	// Write the index file
 	if showTimings {
 		writeStart = time.Now()
+	}
+
+	if err := mmpif.Close(); err != nil {
+		panic(err)
 	}
 
 	if showTimings {

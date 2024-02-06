@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
-	"unsafe"
 
 	"golang.org/x/sys/unix"
 )
@@ -28,6 +26,9 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 	if err != nil {
 		return nil, fmt.Errorf("stat: %v", err)
 	}
+	if fi.Size() == 0 {
+		return &MemoryMappedFile{file: f, bytes: nil, seek: 0}, nil
+	}
 	b, err := unix.Mmap(int(fd), 0, int(fi.Size()), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("mmap: %v", err)
@@ -37,10 +38,10 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 
 // Close closes the file and unmaps the memory.
 func (m *MemoryMappedFile) Close() error {
-	if err := unix.Munmap(m.bytes); err != nil {
-		return err
+	if m.bytes == nil {
+		return nil
 	}
-	return m.file.Close()
+	return unix.Munmap(m.bytes)
 }
 
 // Seek sets the offset for the next Read or Write on file to offset.
@@ -69,18 +70,24 @@ func (m *MemoryMappedFile) Seek(offset int64, whence int) (int64, error) {
 func (m *MemoryMappedFile) Read(b []byte) (int, error) {
 	n := copy(b, m.bytes[m.seek:])
 	m.seek += int64(n)
+	if n < len(b) {
+		return n, io.EOF
+	}
 	return n, nil
 }
 
 // ReadAt reads len(b) bytes from the file starting at byte offset off.
 func (m *MemoryMappedFile) ReadAt(b []byte, off int64) (int, error) {
 	n := copy(b, m.bytes[off:])
+	if n < len(b) {
+		return n, io.EOF
+	}
 	return n, nil
 }
 
 // Write writes len(b) bytes to the file, appending to the file and remapping if necessary.
 func (m *MemoryMappedFile) Write(b []byte) (int, error) {
-	n, err := m.WriteAt(b, int64(len(m.bytes)))
+	n, err := m.WriteAt(b, m.seek)
 	if err != nil {
 		return 0, err
 	}
@@ -100,22 +107,18 @@ func (m *MemoryMappedFile) WriteAt(b []byte, off int64) (int, error) {
 		if err != nil {
 			return 0, err
 		}
-		header := (*reflect.SliceHeader)(unsafe.Pointer(&m.bytes))
-		mmapAddr, mmapSize, errno := unix.Syscall6(
-			unix.SYS_MREMAP,
-			header.Data,
-			uintptr(header.Len),
-			uintptr(fi.Size()),
-			uintptr(0x01), // MREMAP_MAYMOVE
-			0,
-			0,
-		)
-		if errno != 0 {
-			return 0, fmt.Errorf("mmap: %v", errno)
+		if m.bytes == nil {
+			m.bytes, err = unix.Mmap(int(m.file.Fd()), 0, int(fi.Size()), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+			if err != nil {
+				return 0, fmt.Errorf("mmap: %v", err)
+			}
+			return len(b), nil
 		}
-		header.Data = mmapAddr
-		header.Len = int(mmapSize)
-		header.Cap = int(mmapSize)
+		b, err := unix.Mremap(m.bytes, int(fi.Size()), unix.MREMAP_MAYMOVE)
+		if err != nil {
+			return 0, fmt.Errorf("mmap: %v", err)
+		}
+		m.bytes = b
 		return len(b), nil
 	}
 	// write the data

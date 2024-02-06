@@ -162,7 +162,7 @@ func (pf *PageFile) FreePage(offset int64) error {
 		return errors.New("free page index is full")
 	}
 
-	for i, _ := range pf.freePageIndexes {
+	for i := range pf.freePageIndexes {
 		if pf.freePageIndexes[i] == offset {
 			return errors.New("offset already exists")
 		}
