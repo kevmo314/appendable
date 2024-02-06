@@ -180,6 +180,46 @@ func TestMemoryMappedFile_Write(t *testing.T) {
 		}
 	})
 
+	t.Run("Write writes at seek location", func(t *testing.T) {
+		f, err := os.CreateTemp("", "writeseek")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		defer os.Remove(f.Name())
+
+		m, err := NewMemoryMappedFile(f)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer m.Close()
+
+		// write some data to the file
+		if _, err := m.Write([]byte("Hello, zz")); err != nil {
+			log.Fatal(err)
+		}
+
+		n, err := m.Seek(6, io.SeekStart)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if n != 6 {
+			t.Fatalf("expected %d, got %d", 6, n)
+		}
+
+		if _, err := m.Write([]byte("world!")); err != nil {
+			log.Fatal(err)
+		}
+
+		b := make([]byte, 12)
+		if _, err := f.ReadAt(b, 0); err != nil {
+			log.Fatal(err)
+		}
+		if string(b) != "Hello,world!" {
+			t.Fatalf("expected %s, got %s", "Hello,world!", string(b))
+		}
+	})
+
 	t.Run("WriteAt", func(t *testing.T) {
 		f, err := os.CreateTemp("", "writeat")
 		if err != nil {

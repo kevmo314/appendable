@@ -86,7 +86,7 @@ func (m *MemoryMappedFile) ReadAt(b []byte, off int64) (int, error) {
 
 // Write writes len(b) bytes to the file, appending to the file and remapping if necessary.
 func (m *MemoryMappedFile) Write(b []byte) (int, error) {
-	n, err := m.WriteAt(b, int64(len(m.bytes)))
+	n, err := m.WriteAt(b, m.seek)
 	if err != nil {
 		return 0, err
 	}
