@@ -44,7 +44,7 @@ func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 //
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
-func (m *LinkedMetaPage) BPTree(data io.ReaderAt) *BPTree {
+func (m *LinkedMetaPage) BPTree(data []byte) *BPTree {
 	t := NewBPTree(m.rws, m)
 	if data != nil {
 		t.Data = data

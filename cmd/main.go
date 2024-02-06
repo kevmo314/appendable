@@ -3,8 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -28,6 +30,16 @@ func main() {
 	if debugFlag {
 		logLevel.Set(slog.LevelDebug)
 	}
+
+	f, err := os.Create("pprof.out")
+	if err != nil {
+		log.Fatal("could not create CPU profile: ", err)
+	}
+	defer f.Close() // error handling omitted for example
+	if err := pprof.StartCPUProfile(f); err != nil {
+		log.Fatal("could not start CPU profile: ", err)
+	}
+	defer pprof.StopCPUProfile()
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
 	slog.SetDefault(logger)
@@ -55,8 +67,8 @@ func main() {
 		panic(err)
 	}
 
-	// Open the data file
-	file, err := os.Open(args[0])
+	// Open the data df
+	df, err := mmap.Open(args[0])
 	if err != nil {
 		panic(err)
 	}
@@ -79,13 +91,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
 	// Open the index file
 	i, err := appendable.NewIndexFile(mmpif, dataHandler)
 	if err != nil {
 		panic(err)
 	}
 
-	if err := i.Synchronize(file); err != nil {
+	if err := i.Synchronize(df.Bytes()); err != nil {
 		panic(err)
 	}
 

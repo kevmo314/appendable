@@ -6,8 +6,6 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log/slog"
 	"math"
 	"strings"
 
@@ -24,16 +22,13 @@ func (j JSONLHandler) Format() appendable.Format {
 	return appendable.FormatJSONL
 }
 
-func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df appendable.DataFile) error {
+func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 	// read until the next newline
 	metadata, err := f.Metadata()
 	if err != nil {
 		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	if _, err := df.Seek(int64(metadata.ReadOffset), io.SeekStart); err != nil {
-		return fmt.Errorf("failed to seek: %w", err)
-	}
-	scanner := bufio.NewScanner(df)
+	scanner := bufio.NewScanner(bytes.NewBuffer(df[metadata.ReadOffset:]))
 	for i := 0; scanner.Scan(); i++ {
 		line := scanner.Bytes()
 
@@ -59,7 +54,7 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df appendable.DataFil
 
 		metadata.ReadOffset += uint64(len(line)) + 1 // include the newline
 
-		slog.Info("read line", "i", i, "offset", metadata.ReadOffset)
+		// slog.Info("read line", "i", i, "offset", metadata.ReadOffset)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -95,7 +90,7 @@ func jsonTypeToFieldType(t json.Token) appendable.FieldType {
 	panic(fmt.Sprintf("unexpected token '%v'", t))
 }
 
-func handleJSONLObject(f *appendable.IndexFile, r io.ReaderAt, dec *json.Decoder, path []string, data btree.MemoryPointer) error {
+func handleJSONLObject(f *appendable.IndexFile, r []byte, dec *json.Decoder, path []string, data btree.MemoryPointer) error {
 	// while the next token is not }, read the key
 	for dec.More() {
 		key, err := dec.Token()

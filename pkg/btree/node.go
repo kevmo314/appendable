@@ -23,7 +23,7 @@ type ReferencedValue struct {
 }
 
 type BPTreeNode struct {
-	Data io.ReaderAt
+	Data []byte
 	// contains the offset of the child node or the offset of the record for leaf
 	// if the node is a leaf, the last pointer is the offset of the next leaf
 	Pointers []MemoryPointer
@@ -119,16 +119,11 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			// read the key out of the memory pointer stored at this position
 			n.Keys[i].DataPointer.Offset = binary.BigEndian.Uint64(buf[m+4 : m+12])
 			n.Keys[i].DataPointer.Length = binary.BigEndian.Uint32(buf[m+12 : m+16])
-			n.Keys[i].Value = make([]byte, n.Keys[i].DataPointer.Length)
-			if _, err := n.Data.ReadAt(n.Keys[i].Value, int64(n.Keys[i].DataPointer.Offset)); err != nil {
-				return fmt.Errorf("failed to read key: %w", err)
-			}
+			dp := n.Keys[i].DataPointer
+			n.Keys[i].Value = n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]
 			m += 4 + 12
 		} else {
-			n.Keys[i].Value = make([]byte, l)
-			if o := copy(n.Keys[i].Value, buf[m+4:m+4+int(l)]); o != int(l) {
-				return fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
-			}
+			n.Keys[i].Value = buf[m+4 : m+4+int(l)]
 			m += 4 + int(l)
 		}
 	}

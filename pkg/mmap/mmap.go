@@ -36,6 +36,23 @@ func NewMemoryMappedFile(f *os.File) (*MemoryMappedFile, error) {
 	return &MemoryMappedFile{file: f, bytes: b, seek: 0}, nil
 }
 
+// Open is a convenience function to open a file and memory map it.
+func Open(path string) (*MemoryMappedFile, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("open: %v", err)
+	}
+	return NewMemoryMappedFile(f)
+}
+
+func (m *MemoryMappedFile) File() *os.File {
+	return m.file
+}
+
+func (m *MemoryMappedFile) Bytes() []byte {
+	return m.bytes
+}
+
 // Close closes the file and unmaps the memory.
 func (m *MemoryMappedFile) Close() error {
 	if m.bytes == nil {
