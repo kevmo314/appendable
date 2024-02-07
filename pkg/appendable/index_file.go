@@ -9,13 +9,8 @@ import (
 
 const CurrentVersion = 1
 
-type DataFile interface {
-	io.ReadSeeker
-	io.ReaderAt
-}
-
 type DataHandler interface {
-	Synchronize(f *IndexFile, df DataFile) error
+	Synchronize(f *IndexFile, df []byte) error
 	Format() Format
 }
 
@@ -181,6 +176,6 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.
 // Synchronize will synchronize the index file with the data file.
 // This is a convenience method and is equivalent to calling
 // Synchronize() on the data handler itself.
-func (i *IndexFile) Synchronize(df DataFile) error {
+func (i *IndexFile) Synchronize(df []byte) error {
 	return i.dataHandler.Synchronize(i, df)
 }

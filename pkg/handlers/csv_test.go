@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -27,7 +26,7 @@ func TestCSV(t *testing.T) {
 
 	t.Run("no schema changes", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-		g := strings.NewReader("test\ntest1\n")
+		g := []byte("test\ntest1\n")
 
 		i, err := appendable.NewIndexFile(f, CSVHandler{})
 		if err != nil {
@@ -67,8 +66,8 @@ func TestCSV(t *testing.T) {
 		}
 	})
 	t.Run("correctly sets field offset", func(t *testing.T) {
-		r1 := strings.NewReader("test\ntest1\n")
-		r2 := strings.NewReader("test\ntest1\ntest2\n")
+		r1 := []byte("test\ntest1\n")
+		r2 := []byte("test\ntest1\ntest2\n")
 
 		f := buftest.NewSeekableBuffer()
 
@@ -134,11 +133,11 @@ func TestCSV(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader(s1)); err != nil {
+		if err := i.Synchronize([]byte(s1)); err != nil {
 			t.Fatal(err)
 		}
 
-		r2 := strings.NewReader(s2)
+		r2 := []byte(s2)
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -204,8 +203,8 @@ func TestCSV(t *testing.T) {
 	})
 
 	t.Run("recognize null fields", func(t *testing.T) {
-		r1 := strings.NewReader("nullheader,header1\n,wef\n")
-		r2 := strings.NewReader("nullheader,header1\n,wef\n,howdy\n")
+		r1 := []byte("nullheader,header1\n,wef\n")
+		r2 := []byte("nullheader,header1\n,wef\n,howdy\n")
 
 		f := buftest.NewSeekableBuffer()
 

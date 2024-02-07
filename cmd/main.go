@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime/pprof"
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -14,19 +15,32 @@ import (
 
 func main() {
 	var debugFlag, jsonlFlag, csvFlag, showTimings bool
-	var indexFilename string
+	var indexFilename, pprofFilename string
 
 	flag.BoolVar(&debugFlag, "debug", false, "Use logger that prints at the debug-level")
 	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
 	flag.BoolVar(&csvFlag, "csv", false, "Use CSV handler")
 	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
 	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
+	flag.StringVar(&pprofFilename, "pprof", "", "Specify the file to write the pprof data to")
 
 	flag.Parse()
 	logLevel := &slog.LevelVar{}
 
 	if debugFlag {
 		logLevel.Set(slog.LevelDebug)
+	}
+
+	if pprofFilename != "" {
+		f, err := os.Create(pprofFilename)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close() // error handling omitted for example
+		if err := pprof.StartCPUProfile(f); err != nil {
+			panic(err)
+		}
+		defer pprof.StopCPUProfile()
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: logLevel}))
@@ -49,17 +63,12 @@ func main() {
 		flag.Usage()
 	}
 
-	// open the index file
-	indexFile, err := os.OpenFile(indexFilename, os.O_RDWR|os.O_CREATE, 0666)
+	// Open the data df
+	df, err := mmap.OpenFile(args[0], os.O_RDONLY, 0)
 	if err != nil {
 		panic(err)
 	}
-
-	// Open the data file
-	file, err := os.Open(args[0])
-	if err != nil {
-		panic(err)
-	}
+	defer df.Close()
 
 	var dataHandler appendable.DataHandler
 
@@ -75,17 +84,19 @@ func main() {
 	if showTimings {
 		readStart = time.Now()
 	}
-	mmpif, err := mmap.NewMemoryMappedFile(indexFile)
+	mmpif, err := mmap.OpenFile(indexFilename, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		panic(err)
 	}
+	defer mmpif.Close()
+
 	// Open the index file
 	i, err := appendable.NewIndexFile(mmpif, dataHandler)
 	if err != nil {
 		panic(err)
 	}
 
-	if err := i.Synchronize(file); err != nil {
+	if err := i.Synchronize(df.Bytes()); err != nil {
 		panic(err)
 	}
 

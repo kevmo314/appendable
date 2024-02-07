@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/binary"
 	"math"
-	"strings"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -13,7 +12,7 @@ import (
 func TestJSONL(t *testing.T) {
 	t.Run("no schema changes", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-		g := strings.NewReader("{\"test\":\"test1\"}\n")
+		g := []byte("{\"test\":\"test1\"}\n")
 
 		i, err := appendable.NewIndexFile(f, JSONLHandler{})
 		if err != nil {
@@ -62,11 +61,11 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n")); err != nil {
 			t.Fatal(err)
 		}
 
-		r2 := strings.NewReader("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":\"test3\"}\n")
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -117,11 +116,11 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n")); err != nil {
 			t.Fatal(err)
 		}
 
-		r2 := strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":\"test3\"}\n")
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test2\":\"test3\"}\n")
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -192,11 +191,11 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n")); err != nil {
 			t.Fatal(err)
 		}
 
-		r2 := strings.NewReader("{\"test\":\"test1\"}\n{\"test\":123}\n")
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":123}\n")
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -269,7 +268,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":{\"a\":1,\"b\":\"2\"}}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n{\"test2\":{\"a\":1,\"b\":\"2\"}}\n")); err != nil {
 			t.Fatal(err)
 		}
 
@@ -349,7 +348,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n{\"test\":{\"a\":1,\"b\":\"2\"}}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n{\"test\":{\"a\":1,\"b\":\"2\"}}\n")); err != nil {
 			t.Fatal(err)
 		}
 
@@ -429,7 +428,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n{\"test2\":[[1,2,3],4]}\n")); err != nil {
 			t.Fatal(err)
 		}
 
@@ -483,11 +482,11 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if err := i.Synchronize(strings.NewReader("{\"test\":\"test1\"}\n")); err != nil {
+		if err := i.Synchronize([]byte("{\"test\":\"test1\"}\n")); err != nil {
 			t.Fatal(err)
 		}
 
-		r2 := strings.NewReader("{\"test\":\"test1\"}\n{\"test\":null}\n")
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":null}\n")
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -555,8 +554,8 @@ func TestJSONL(t *testing.T) {
 	})
 
 	t.Run("recognize null fields", func(t *testing.T) {
-		r1 := strings.NewReader("{\"nullheader\":null}\n")
-		r2 := strings.NewReader("{\"nullheader\":null}\n{\"nullheader\":null}\n")
+		r1 := []byte("{\"nullheader\":null}\n")
+		r2 := []byte("{\"nullheader\":null}\n{\"nullheader\":null}\n")
 
 		f := buftest.NewSeekableBuffer()
 

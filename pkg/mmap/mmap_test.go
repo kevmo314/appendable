@@ -6,6 +6,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"golang.org/x/sys/unix"
 )
 
 func ExampleMemoryMappedFile() {
@@ -17,7 +19,7 @@ func ExampleMemoryMappedFile() {
 	defer f.Close()
 
 	// Create a memory-mapped file.
-	m, err := NewMemoryMappedFile(f)
+	m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -50,7 +52,7 @@ func TestMemoryMappedFile_Read(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -78,7 +80,7 @@ func TestMemoryMappedFile_Read(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -106,7 +108,7 @@ func TestMemoryMappedFile_Read(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,7 +133,7 @@ func TestMemoryMappedFile_Read(t *testing.T) {
 			log.Fatal(err)
 		}
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -161,7 +163,7 @@ func TestMemoryMappedFile_Write(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -188,7 +190,7 @@ func TestMemoryMappedFile_Write(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -228,7 +230,7 @@ func TestMemoryMappedFile_Write(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -261,7 +263,7 @@ func TestMemoryMappedFile_Seek(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -288,7 +290,7 @@ func TestMemoryMappedFile_Seek(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -323,7 +325,7 @@ func TestMemoryMappedFile_Seek(t *testing.T) {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -359,7 +361,7 @@ func TestMemoryMappedFile_Close(t *testing.T) {
 		}
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -381,7 +383,7 @@ func TestMemoryMappedFile_Close(t *testing.T) {
 		}
 		defer os.Remove(f.Name())
 
-		m, err := NewMemoryMappedFile(f)
+		m, err := NewMemoryMappedFile(f, unix.PROT_READ|unix.PROT_WRITE)
 		if err != nil {
 			log.Fatal(err)
 		}

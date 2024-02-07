@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
@@ -37,8 +36,8 @@ func TestEquality(t *testing.T) {
 	mockCsv2 := "h1,h2\ntest1,37.3\ntest3,4\n"
 
 	t.Run("test index files after Synchronize", func(t *testing.T) {
-		jr1 := strings.NewReader(mockJsonl2)
-		cr1 := strings.NewReader(mockCsv2)
+		jr1 := []byte(mockJsonl2)
+		cr1 := []byte(mockCsv2)
 		f := buftest.NewSeekableBuffer()
 
 		jsonlI, err := appendable.NewIndexFile(f, JSONLHandler{})
@@ -68,8 +67,8 @@ func TestEquality(t *testing.T) {
 	})
 
 	t.Run("test index files with appending", func(t *testing.T) {
-		jr := strings.NewReader(mockJsonl)
-		cr := strings.NewReader(mockCsv)
+		jr := []byte(mockJsonl)
+		cr := []byte(mockCsv)
 		f := buftest.NewSeekableBuffer()
 
 		jsonlI, err := appendable.NewIndexFile(f, JSONLHandler{})
@@ -81,7 +80,7 @@ func TestEquality(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		jr = strings.NewReader(mockJsonl2)
+		jr = []byte(mockJsonl2)
 		if err := jsonlI.Synchronize(jr); err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +96,7 @@ func TestEquality(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		cr = strings.NewReader(mockCsv2)
+		cr = []byte(mockCsv2)
 		if err := csvI.Synchronize(cr); err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +176,7 @@ func compareIndexMeta(i1, i2 []*btree.LinkedMetaPage) (bool, string) {
 	return true, ""
 }
 
-func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr *strings.Reader) (bool, string) {
+func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, string) {
 	h1 := [2]string{"test1", "test3"}
 	h2 := [2]float64{37.3, 4}
 
@@ -236,7 +235,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr *strings.Reader) (b
 	return true, ""
 }
 
-func compare(i1, i2 *appendable.IndexFile, jReader, cReader *strings.Reader) (bool, string) {
+func compare(i1, i2 *appendable.IndexFile, jReader, cReader []byte) (bool, string) {
 	// compare field names
 
 	i1fn, err := i1.IndexFieldNames()

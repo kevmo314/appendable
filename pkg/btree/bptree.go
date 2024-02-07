@@ -21,7 +21,7 @@ type BPTree struct {
 
 	maxPageSize int
 
-	Data io.ReaderAt
+	Data []byte
 }
 
 func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
