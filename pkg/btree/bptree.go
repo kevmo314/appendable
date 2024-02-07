@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -86,12 +85,6 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]Tr
 	}
 	for i, k := range node.Keys {
 		if bytes.Compare(key, k.Value) < 0 {
-			if node.Pointers[i].Offset == ptr.Offset {
-				log.Printf("infinite loop index %d", i)
-				log.Printf("%#v", node)
-				log.Printf("node offset %#v ptr offset %#v", node.Pointers[i].Offset, ptr.Offset)
-				panic("infinite loop")
-			}
 			child, err := t.readNode(node.Pointers[i])
 			if err != nil {
 				return nil, err
