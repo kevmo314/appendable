@@ -9,7 +9,7 @@ import (
 func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	// Create a test BPTreeNode
 	node1 := &BPTreeNode{
-		Pointers: []MemoryPointer{
+		leafPointers: []MemoryPointer{
 			{Offset: 0, Length: 1},
 			{Offset: 1, Length: 2},
 			{Offset: 2, Length: 3},
@@ -43,12 +43,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 	// Create a test BPTreeNode
 	node1 := &BPTreeNode{
-		Pointers: []MemoryPointer{
-			{Offset: 0, Length: 1},
-			{Offset: 1, Length: 2},
-			{Offset: 2, Length: 3},
-			{Offset: 3, Length: 4},
-		},
+		internalPointers: []uint64{0, 1, 2, 3},
 		Keys: []ReferencedValue{
 			{Value: []byte{0}},
 			{Value: []byte{1, 2}},
