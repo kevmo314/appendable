@@ -26,13 +26,31 @@ type BPTreeNode struct {
 	Data []byte
 	// contains the offset of the child node or the offset of the record for leaf
 	// if the node is a leaf, the last pointer is the offset of the next leaf
-	Pointers []MemoryPointer
-	Keys     []ReferencedValue
+	leafPointers     []MemoryPointer
+	internalPointers []uint64
+	Keys             []ReferencedValue
 }
 
 func (n *BPTreeNode) leaf() bool {
-	// leafs contain the same number of pointers as keys
-	return len(n.Pointers) == len(n.Keys)
+	return len(n.leafPointers) > 0
+}
+
+func (n *BPTreeNode) Pointers() []MemoryPointer {
+	if n.leaf() {
+		return n.leafPointers
+	}
+	pointers := make([]MemoryPointer, len(n.internalPointers))
+	for i, p := range n.internalPointers {
+		pointers[i].Offset = p
+	}
+	return pointers
+}
+
+func (n *BPTreeNode) Pointer(i int) MemoryPointer {
+	if n.leaf() {
+		return n.leafPointers[(len(n.leafPointers)+i)%len(n.leafPointers)]
+	}
+	return MemoryPointer{Offset: n.internalPointers[(len(n.internalPointers)+i)%len(n.internalPointers)]}
 }
 
 func (n *BPTreeNode) Size() int64 {
@@ -44,8 +62,11 @@ func (n *BPTreeNode) Size() int64 {
 			size += 4 + len(k.Value)
 		}
 	}
-	for range n.Pointers {
+	for range n.leafPointers {
 		size += 12
+	}
+	for range n.internalPointers {
+		size += 8
 	}
 	return int64(size)
 }
@@ -78,10 +99,14 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 			ct += m + 4
 		}
 	}
-	for _, p := range n.Pointers {
+	for _, p := range n.leafPointers {
 		binary.BigEndian.PutUint64(buf[ct:ct+8], p.Offset)
 		binary.BigEndian.PutUint32(buf[ct+8:ct+12], p.Length)
 		ct += 12
+	}
+	for _, p := range n.internalPointers {
+		binary.BigEndian.PutUint64(buf[ct:ct+8], p)
+		ct += 8
 	}
 	if ct != int(n.Size()) {
 		panic("size mismatch")
@@ -102,10 +127,10 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	size := int32(binary.BigEndian.Uint32(buf[:4]))
 	leaf := size < 0
 	if leaf {
-		n.Pointers = make([]MemoryPointer, -size)
+		n.leafPointers = make([]MemoryPointer, -size)
 		n.Keys = make([]ReferencedValue, -size)
 	} else {
-		n.Pointers = make([]MemoryPointer, size+1)
+		n.internalPointers = make([]uint64, size+1)
 		n.Keys = make([]ReferencedValue, size)
 	}
 	if size == 0 {
@@ -127,10 +152,14 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			m += 4 + int(l)
 		}
 	}
-	for i := range n.Pointers {
-		n.Pointers[i].Offset = binary.BigEndian.Uint64(buf[m : m+8])
-		n.Pointers[i].Length = binary.BigEndian.Uint32(buf[m+8 : m+12])
+	for i := range n.leafPointers {
+		n.leafPointers[i].Offset = binary.BigEndian.Uint64(buf[m : m+8])
+		n.leafPointers[i].Length = binary.BigEndian.Uint32(buf[m+8 : m+12])
 		m += 12
+	}
+	for i := range n.internalPointers {
+		n.internalPointers[i] = binary.BigEndian.Uint64(buf[m : m+8])
+		m += 8
 	}
 	return nil
 }
