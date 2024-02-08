@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -21,7 +20,7 @@ type BPTree struct {
 
 	maxPageSize int
 
-	Data io.ReaderAt
+	Data []byte
 }
 
 func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
@@ -55,7 +54,7 @@ func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
 	n := path[0].node
 	i, found := n.bsearch(key)
 	if found {
-		return n.Pointers[i], true, nil
+		return n.Pointer(i), true, nil
 	}
 	return MemoryPointer{}, false, nil
 }
@@ -86,31 +85,22 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]Tr
 	}
 	for i, k := range node.Keys {
 		if bytes.Compare(key, k.Value) < 0 {
-			if node.Pointers[i].Offset == ptr.Offset {
-				log.Printf("infinite loop index %d", i)
-				log.Printf("%#v", node)
-				log.Printf("node offset %#v ptr offset %#v", node.Pointers[i].Offset, ptr.Offset)
-				panic("infinite loop")
-			}
-			child, err := t.readNode(node.Pointers[i])
+			child, err := t.readNode(node.Pointer(i))
 			if err != nil {
 				return nil, err
 			}
-			path, err := t.traverse(key, child, node.Pointers[i])
+			path, err := t.traverse(key, child, node.Pointer(i))
 			if err != nil {
 				return nil, err
 			}
 			return append(path, TraversalRecord{node: node, index: i, ptr: ptr}), nil
 		}
 	}
-	if node.Pointers[len(node.Pointers)-1].Offset == ptr.Offset {
-		panic("infinite loop 2")
-	}
-	child, err := t.readNode(node.Pointers[len(node.Pointers)-1])
+	child, err := t.readNode(node.Pointer(-1))
 	if err != nil {
 		return nil, err
 	}
-	path, err := t.traverse(key, child, node.Pointers[len(node.Pointers)-1])
+	path, err := t.traverse(key, child, node.Pointer(-1))
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +116,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		// special case, create the root as the first node
 		node := &BPTreeNode{Data: t.Data}
 		node.Keys = []ReferencedValue{key}
-		node.Pointers = []MemoryPointer{value}
+		node.leafPointers = []MemoryPointer{value}
 		buf, err := node.MarshalBinary()
 		if err != nil {
 			return err
@@ -148,12 +138,12 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	j, _ := n.bsearch(key.Value)
 	if j == len(n.Keys) {
 		n.Keys = append(n.Keys, key)
-		n.Pointers = append(n.Pointers, value)
+		n.leafPointers = append(n.leafPointers, value)
 	} else {
 		n.Keys = append(n.Keys[:j+1], n.Keys[j:]...)
 		n.Keys[j] = key
-		n.Pointers = append(n.Pointers[:j+1], n.Pointers[j:]...)
-		n.Pointers[j] = value
+		n.leafPointers = append(n.leafPointers[:j+1], n.leafPointers[j:]...)
+		n.leafPointers[j] = value
 	}
 
 	// traverse up the tree and split if necessary
@@ -169,11 +159,11 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			// n is the left node, m the right node
 			m := &BPTreeNode{Data: t.Data}
 			if n.leaf() {
-				m.Pointers = n.Pointers[mid:]
+				m.leafPointers = n.leafPointers[mid:]
 				m.Keys = n.Keys[mid:]
 			} else {
 				// for non-leaf nodes, the mid key is inserted into the parent
-				m.Pointers = n.Pointers[mid+1:]
+				m.internalPointers = n.internalPointers[mid+1:]
 				m.Keys = n.Keys[mid+1:]
 			}
 			mbuf, err := m.MarshalBinary()
@@ -186,10 +176,10 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			}
 
 			if n.leaf() {
-				n.Pointers = n.Pointers[:mid]
+				n.leafPointers = n.leafPointers[:mid]
 				n.Keys = n.Keys[:mid]
 			} else {
-				n.Pointers = n.Pointers[:mid+1]
+				n.internalPointers = n.internalPointers[:mid+1]
 				n.Keys = n.Keys[:mid]
 			}
 
@@ -215,17 +205,16 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 					p.node.Keys = append(p.node.Keys[:p.index+1], p.node.Keys[p.index:]...)
 					p.node.Keys[p.index] = midKey
 				}
-				p.node.Pointers = append(p.node.Pointers[:p.index+1], p.node.Pointers[p.index:]...)
-				p.node.Pointers[p.index] = MemoryPointer{Offset: uint64(noffset), Length: uint32(len(nbuf))}
-				p.node.Pointers[p.index+1] = MemoryPointer{Offset: uint64(moffset), Length: uint32(len(mbuf))}
+				p.node.internalPointers = append(p.node.internalPointers[:p.index+1], p.node.internalPointers[p.index:]...)
+				p.node.internalPointers[p.index] = uint64(noffset)
+				p.node.internalPointers[p.index+1] = uint64(moffset)
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
 				p := &BPTreeNode{Data: t.Data}
 				p.Keys = []ReferencedValue{midKey}
-				p.Pointers = []MemoryPointer{
-					{Offset: uint64(noffset), Length: uint32(len(nbuf))},
-					{Offset: uint64(moffset), Length: uint32(len(mbuf))},
+				p.internalPointers = []uint64{
+					uint64(noffset), uint64(moffset),
 				}
 
 				pbuf, err := p.MarshalBinary()
@@ -353,13 +342,13 @@ func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
 	// print the node itself
 	var buf bytes.Buffer
 	if !n.leaf() {
-		for i := range n.Pointers {
-			child, err := t.readNode(n.Pointers[i])
+		for i := range n.internalPointers {
+			child, err := t.readNode(n.Pointer(i))
 			if err != nil {
 				return fmt.Sprintf("error: failed to read child node: %v", err)
 			}
 			buf.WriteString(t.recursiveString(child, indent+1))
-			if i < len(n.Pointers)-1 {
+			if i < len(n.internalPointers)-1 {
 				for i := 0; i < indent; i++ {
 					buf.WriteString("  ")
 				}
@@ -367,7 +356,7 @@ func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
 			}
 		}
 	} else {
-		for i := range n.Pointers {
+		for i := range n.leafPointers {
 			for i := 0; i < indent; i++ {
 				buf.WriteString("  ")
 			}

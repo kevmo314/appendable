@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/binary"
 	"encoding/csv"
@@ -26,7 +25,7 @@ func (c CSVHandler) Format() appendable.Format {
 	return appendable.FormatCSV
 }
 
-func (c CSVHandler) Synchronize(f *appendable.IndexFile, df appendable.DataFile) error {
+func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 	slog.Debug("Starting CSV synchronization")
 
 	var headers []string
@@ -36,10 +35,6 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df appendable.DataFile)
 	if err != nil {
 		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	if _, err := df.Seek(int64(metadata.ReadOffset), io.SeekStart); err != nil {
-		return fmt.Errorf("failed to seek: %w", err)
-	}
-
 	isHeader := false
 
 	isEmpty, err := f.IsEmpty()
@@ -57,38 +52,35 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df appendable.DataFile)
 		headers = fieldNames
 	}
 
-	scanner := bufio.NewScanner(df)
-
-	for scanner.Scan() {
-		line := scanner.Bytes()
+	for {
+		i := bytes.IndexByte(df[metadata.ReadOffset:], '\n')
+		if i == -1 {
+			break
+		}
 
 		if isHeader {
 			slog.Info("Parsing CSV headers")
-			dec := csv.NewReader(bytes.NewReader(line))
+			dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 			headers, err = dec.Read()
 			if err != nil {
 				slog.Error("failed to parse CSV header", "error", err)
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
-			metadata.ReadOffset += uint64(len(line)) + 1
+			metadata.ReadOffset += uint64(i) + 1
 			isHeader = false
 			continue
 		}
 
-		dec := csv.NewReader(bytes.NewReader(line))
+		dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 
 		if err := handleCSVLine(f, df, dec, headers, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
-			Length: uint32(len(line)),
+			Length: uint32(i),
 		}); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
 
-		metadata.ReadOffset += uint64(len(line)) + 1 // include the newline
-	}
-
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("failed to scan: %w", err)
+		metadata.ReadOffset += uint64(i) + 1 // include the newline
 	}
 
 	// update the metadata
@@ -129,13 +121,11 @@ func InferCSVField(fieldValue string) (interface{}, appendable.FieldType) {
 
 	if i, err := strconv.Atoi(fieldValue); err == nil {
 
-		fmt.Printf("\n%v is a integer\n", fieldValue)
 		return float64(i), appendable.FieldTypeFloat64
 	}
 
 	if f, err := strconv.ParseFloat(fieldValue, 64); err == nil {
 
-		fmt.Printf("\n%v is a float\n", fieldValue)
 		return float64(f), appendable.FieldTypeFloat64
 	}
 
@@ -146,7 +136,7 @@ func InferCSVField(fieldValue string) (interface{}, appendable.FieldType) {
 	return fieldValue, appendable.FieldTypeString
 }
 
-func handleCSVLine(f *appendable.IndexFile, r io.ReaderAt, dec *csv.Reader, headers []string, path []string, data btree.MemoryPointer) error {
+func handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers []string, path []string, data btree.MemoryPointer) error {
 	record, err := dec.Read()
 	if err != nil {
 		slog.Error("Failed to read CSV record at index", "error", err)
@@ -179,21 +169,21 @@ func handleCSVLine(f *appendable.IndexFile, r io.ReaderAt, dec *csv.Reader, head
 		case appendable.FieldTypeFloat64:
 			buf := make([]byte, 8)
 			binary.BigEndian.PutUint64(buf, math.Float64bits(value.(float64)))
-			if err := page.BPTree(r).Insert(btree.ReferencedValue{Value: buf}, data); err != nil {
+			if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: buf}, data); err != nil {
 				return fmt.Errorf("failed to insert into b+tree: %w", err)
 			}
 		case appendable.FieldTypeBoolean:
 			if value.(bool) {
-				if err := page.BPTree(r).Insert(btree.ReferencedValue{Value: []byte{1}}, data); err != nil {
+				if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{1}}, data); err != nil {
 					return fmt.Errorf("failed to insert into b+tree: %w", err)
 				}
 			} else {
-				if err := page.BPTree(r).Insert(btree.ReferencedValue{Value: []byte{0}}, data); err != nil {
+				if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{0}}, data); err != nil {
 					return fmt.Errorf("failed to insert into b+tree: %w", err)
 				}
 			}
 		case appendable.FieldTypeString:
-			if err := page.BPTree(r).Insert(btree.ReferencedValue{
+			if err := page.BPTree(df).Insert(btree.ReferencedValue{
 				DataPointer: btree.MemoryPointer{
 					Offset: fieldOffset,
 					Length: fieldLength,
@@ -212,7 +202,7 @@ func handleCSVLine(f *appendable.IndexFile, r io.ReaderAt, dec *csv.Reader, head
 		case appendable.FieldTypeNull:
 			// nil values are a bit of a degenerate case, we are essentially using the btree
 			// as a set. we store the value as an empty byte slice.
-			if err := page.BPTree(r).Insert(btree.ReferencedValue{Value: []byte{}}, data); err != nil {
+			if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{}}, data); err != nil {
 				return fmt.Errorf("failed to insert into b+tree: %w", err)
 			}
 			slog.Debug("Marked field", "name", name)
