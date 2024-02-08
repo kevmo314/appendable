@@ -13,6 +13,9 @@ type MemoryMappedFile struct {
 	file  *os.File
 	bytes []byte
 	seek  int64
+
+	// parameters used for remapping.
+	prot, flags int
 }
 
 var _ io.ReadWriteSeeker = &MemoryMappedFile{}
@@ -35,13 +38,13 @@ func NewMemoryMappedFile(f *os.File, prot int) (*MemoryMappedFile, error) {
 		return nil, fmt.Errorf("stat: %v", err)
 	}
 	if fi.Size() == 0 {
-		return &MemoryMappedFile{file: f, bytes: nil, seek: 0}, nil
+		return &MemoryMappedFile{file: f, bytes: nil, seek: 0, prot: prot, flags: unix.MAP_SHARED}, nil
 	}
 	b, err := unix.Mmap(int(fd), 0, int(fi.Size()), prot, unix.MAP_SHARED)
 	if err != nil {
 		return nil, fmt.Errorf("mmap: %v", err)
 	}
-	return &MemoryMappedFile{file: f, bytes: b, seek: 0}, nil
+	return &MemoryMappedFile{file: f, bytes: b, seek: 0, prot: prot, flags: unix.MAP_SHARED}, nil
 }
 
 // Open is a convenience function to open a file and memory map it.
@@ -141,13 +144,13 @@ func (m *MemoryMappedFile) WriteAt(b []byte, off int64) (int, error) {
 			return 0, err
 		}
 		if m.bytes == nil {
-			m.bytes, err = unix.Mmap(int(m.file.Fd()), 0, int(fi.Size()), unix.PROT_READ|unix.PROT_WRITE, unix.MAP_SHARED)
+			m.bytes, err = unix.Mmap(int(m.file.Fd()), 0, int(fi.Size()), m.prot, m.flags)
 			if err != nil {
 				return 0, fmt.Errorf("mmap: %v", err)
 			}
 			return len(b), nil
 		}
-		b, err := unix.Mremap(m.bytes, int(fi.Size()), unix.MREMAP_MAYMOVE)
+		b, err := mremap(m.bytes, int(m.file.Fd()), int(fi.Size()), m.prot, m.flags)
 		if err != nil {
 			return 0, fmt.Errorf("mmap: %v", err)
 		}
