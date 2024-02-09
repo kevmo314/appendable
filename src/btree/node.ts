@@ -1,7 +1,7 @@
 import { RangeResolver } from "../resolver";
 
 export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
-export type MemoryPointer = { offset: number; length: number };
+export type MemoryPointer = { offset: BigInt; length: number };
 
 export class BPTreeNode {
 	public keys: ReferencedValue[];
@@ -23,8 +23,8 @@ export class BPTreeNode {
 		try {
 			const node = new BPTreeNode([], []);
 			let { data: sizeData } = await resolver({
-				start: mp.offset,
-				end: mp.offset + mp.length,
+				start: Number(mp.offset),
+				end: Number(mp.offset) + mp.length,
 			});
 
 			let sizeBuffer = Buffer.from(sizeData);

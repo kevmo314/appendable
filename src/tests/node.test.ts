@@ -3,7 +3,7 @@ import {
 	MemoryPointer,
 	ReferencedValue,
 	compareBytes,
-} from "../bptree/node";
+} from "../btree/node";
 import { RangeResolver } from "../resolver";
 
 const strToUint8Array = (str: string) => {

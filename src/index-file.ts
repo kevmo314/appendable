@@ -1,3 +1,5 @@
+import { LinkedMetaPage } from "./btree/multi";
+import { PageFile } from "./btree/pagefile";
 import { LengthIntegrityError, RangeResolver } from "./resolver";
 
 export type Header = {
@@ -30,22 +32,7 @@ export class IndexFile {
 	static async forResolver<T = any>(
 		resolver: RangeResolver
 	): Promise<VersionedIndexFile<T>> {
-		const response = await resolver({ start: 0, end: 0 });
-		const version = new DataView(response.data).getUint8(0);
-		switch (version) {
-			case 1:
-				return new IndexFileV1<T>(async (start, end) => {
-					return (
-						await resolver({
-							start,
-							end,
-							expectedLength: response.totalLength,
-						})
-					).data;
-				});
-			default:
-				throw new Error("invalid version");
-		}
+		return new IndexFileV1<T>(resolver);
 	}
 }
 
@@ -55,6 +42,57 @@ function decodeFloatingInt16(x: number) {
 	return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
 }
 
+export type FileMeta = {
+	version: number;
+	format: number;
+	readOffset: bigint;
+};
+
+export interface VersionedIndexFile<T> {
+	tree(): Promise<LinkedMetaPage>;
+
+	metadata(): Promise<FileMeta | null>;
+}
+
+class IndexFileV1<T> implements VersionedIndexFile<T> {
+	private _tree?: LinkedMetaPage;
+
+	constructor(private resolver: RangeResolver) {}
+
+	async tree(): Promise<LinkedMetaPage> {
+		if (this._tree) {
+			return this._tree;
+		}
+		// read the linked meta page
+
+		// we'll have to read the tree file: see multi.ts
+
+	}
+
+	async metadata(): Promise<FileMeta | null> {
+		const tree = await this.tree();
+
+		const buffer = await tree.metadata();
+
+		if (buffer.byteLength < 9) {
+			return null;
+		}
+
+		const dataView = new DataView(buffer);
+		const version = dataView.getUint8(0);
+		const format = dataView.getUint8(1);
+
+		const readOffset = dataView.getBigUint64(2);
+
+		return {
+			version: version,
+			format: format,
+			readOffset: readOffset,
+		};
+	}
+}
+
+/*
 export interface VersionedIndexFile<T> {
 	indexFileHeader(): Promise<{
 		indexLength: number;
@@ -219,3 +257,4 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 		};
 	}
 }
+*/
