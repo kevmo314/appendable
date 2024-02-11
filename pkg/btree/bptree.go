@@ -83,28 +83,27 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]Tr
 	if node.leaf() {
 		return []TraversalRecord{{node: node, ptr: ptr}}, nil
 	}
-	for i, k := range node.Keys {
-		if bytes.Compare(key, k.Value) < 0 {
-			child, err := t.readNode(node.Pointer(i))
-			if err != nil {
-				return nil, err
-			}
-			path, err := t.traverse(key, child, node.Pointer(i))
-			if err != nil {
-				return nil, err
-			}
-			return append(path, TraversalRecord{node: node, index: i, ptr: ptr}), nil
+
+	// binary search node.Keys to find the first key greater than or equal to key
+	low, high := 0, len(node.Keys)
+	for low < high {
+		mid := (low + high) / 2
+		if bytes.Compare(key, node.Keys[mid].Value) < 0 {
+			high = mid
+		} else {
+			low = mid + 1
 		}
 	}
-	child, err := t.readNode(node.Pointer(-1))
+	// low == high
+	child, err := t.readNode(node.Pointer(low))
 	if err != nil {
 		return nil, err
 	}
-	path, err := t.traverse(key, child, node.Pointer(-1))
+	path, err := t.traverse(key, child, node.Pointer(low))
 	if err != nil {
 		return nil, err
 	}
-	return append(path, TraversalRecord{node: node, index: len(node.Keys), ptr: ptr}), nil
+	return append(path, TraversalRecord{node: node, index: low, ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
