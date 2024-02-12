@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math/rand"
 	"testing"
@@ -30,7 +31,7 @@ func TestBPTree(t *testing.T) {
 		}
 		tree := NewBPTree(p, &testMetaPage{})
 		// find a key that doesn't exist
-		_, found, err := tree.Find([]byte("hello"))
+		_, found, err := tree.FindFirst([]byte("hello"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -49,7 +50,7 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
-		v, found, err := tree.Find([]byte("hello"))
+		v, found, err := tree.FindFirst([]byte("hello"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +75,7 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("world")}, MemoryPointer{Offset: 2}); err != nil {
 			t.Fatal(err)
 		}
-		v1, f1, err := tree.Find([]byte("hello"))
+		v1, f1, err := tree.FindFirst([]byte("hello"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +85,7 @@ func TestBPTree(t *testing.T) {
 		if v1.Offset != 1 {
 			t.Fatalf("expected value 1, got %d", v1)
 		}
-		v2, f2, err := tree.Find([]byte("world"))
+		v2, f2, err := tree.FindFirst([]byte("world"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -115,7 +116,7 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4}); err != nil {
 			t.Fatal(err)
 		}
-		v1, f1, err := tree.Find([]byte("hello"))
+		v1, f1, err := tree.FindFirst([]byte("hello"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,7 +126,7 @@ func TestBPTree(t *testing.T) {
 		if v1.Offset != 1 {
 			t.Fatalf("expected value 1, got %d", v1)
 		}
-		v2, f2, err := tree.Find([]byte("world"))
+		v2, f2, err := tree.FindFirst([]byte("world"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +136,7 @@ func TestBPTree(t *testing.T) {
 		if v2.Offset != 2 {
 			t.Fatalf("expected value 2, got %d", v2)
 		}
-		v3, f3, err := tree.Find([]byte("moooo"))
+		v3, f3, err := tree.FindFirst([]byte("moooo"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +146,7 @@ func TestBPTree(t *testing.T) {
 		if v3.Offset != 3 {
 			t.Fatalf("expected value 3, got %d", v3)
 		}
-		v4, f4, err := tree.Find([]byte("cooow"))
+		v4, f4, err := tree.FindFirst([]byte("cooow"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,7 +199,7 @@ func TestBPTree(t *testing.T) {
 		for i := 0; i < 16384; i++ {
 			buf := make([]byte, 8)
 			binary.BigEndian.PutUint64(buf, uint64(i))
-			v, found, err := tree.Find(buf)
+			v, found, err := tree.FindFirst(buf)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -234,7 +235,7 @@ func TestBPTree(t *testing.T) {
 			if _, err := s.Read(buf); err != nil {
 				t.Fatal(err)
 			}
-			v, found, err := tree.Find(buf)
+			v, found, err := tree.FindFirst(buf)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -257,6 +258,55 @@ func TestBPTree(t *testing.T) {
 		for i := 0; i < 65536*4; i++ {
 			if err := tree.Insert(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}}, MemoryPointer{Offset: uint64(i)}); err != nil {
 				t.Fatal(err)
+			}
+		}
+	})
+}
+
+func TestBPTreeFind(t *testing.T) {
+	t.Run("insertion test with duplicates", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := NewBPTree(p, &testMetaPage{})
+		count := 256
+		for i := 0; i < count; i++ {
+			buf := make([]byte, 8)
+			binary.BigEndian.PutUint64(buf, uint64(i/16))
+			if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for i := 0; i < count/16; i++ {
+			buf := make([]byte, 8)
+			binary.BigEndian.PutUint64(buf, uint64(i))
+			it, err := tree.Find(buf)
+			if err != nil {
+				t.Fatal(err)
+			}
+			seen := [16]bool{}
+			for j := 0; j < 16; j++ {
+				k, v, err := it.Next()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(k, buf) {
+					t.Fatalf("expected key %v, got %v", buf, k)
+				}
+				// note: these are not guaranteed to be ordered.
+				if seen[v.Offset%16] {
+					t.Fatalf("expected value %d to be unique", v.Offset%16)
+				}
+				seen[v.Offset%16] = true
+			}
+			k, _, err := it.Next()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Equal(k, buf) {
+				t.Fatalf("expected no more values")
 			}
 		}
 	})

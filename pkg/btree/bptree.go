@@ -40,19 +40,90 @@ func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 	return root, mp, nil
 }
 
-func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
+type TraversalRecord struct {
+	node  *BPTreeNode
+	index int
+	// the offset is useful so we know which page to free when we split
+	ptr MemoryPointer
+}
+
+type TraversalPath struct {
+	tree    *BPTree
+	records []TraversalRecord
+}
+
+func (t *BPTree) Find(key []byte) (*TraversalPath, error) {
 	root, rootOffset, err := t.root()
 	if err != nil {
-		return MemoryPointer{}, false, fmt.Errorf("read root node: %w", err)
+		return nil, fmt.Errorf("read root node: %w", err)
 	}
 	if root == nil {
-		return MemoryPointer{}, false, nil
+		return nil, nil
 	}
-	path, err := t.traverse(key, root, rootOffset)
+	records, err := t.traverse(key, root, rootOffset)
+	if err != nil {
+		return nil, err
+	}
+	return &TraversalPath{tree: t, records: records}, nil
+}
+
+func (tp *BPTree) FindFirst(key []byte) (MemoryPointer, bool, error) {
+	path, err := tp.Find(key)
 	if err != nil {
 		return MemoryPointer{}, false, err
 	}
-	return path[0].node.Pointer(path[0].index), path[0].found, nil
+	if path == nil {
+		return MemoryPointer{}, false, nil
+	}
+	retrieved, value, err := path.Next()
+	if err != nil || !bytes.Equal(key, retrieved) {
+		return MemoryPointer{}, false, err
+	}
+	return value, true, nil
+}
+
+func (tp *TraversalPath) Next() ([]byte, MemoryPointer, error) {
+	p := tp.records
+	if len(p) == 0 {
+		return nil, MemoryPointer{}, io.EOF
+	}
+	if p[0].index == len(p[0].node.Keys) {
+		// this is a signal that there's no more data, however it's not an error.
+		return nil, MemoryPointer{}, nil
+	}
+	key := p[0].node.Keys[p[0].index].Value
+	value := p[0].node.Pointer(p[0].index)
+	p[0].index++
+	if p[0].index == len(p[0].node.Keys) {
+		// propagate the carryover
+		if len(p) == 1 {
+			// we're at the end of the tree, no more data
+			return key, value, nil
+		}
+		p[0].index = 0
+		for i := 1; i < len(p); i++ {
+			panic("incrementing parent!")
+			p[i].index++
+			if p[i].index > len(p[i].node.Keys) {
+				if i == len(p)-1 {
+					// we're at the end of the tree, no more data
+					break
+				}
+				p[i].index = 0
+			} else {
+				// we found a node with keys left, so update the path
+				for j := i - 1; j >= 0; j-- {
+					node, err := tp.tree.readNode(p[j+1].node.Pointer(p[j+1].index))
+					if err != nil {
+						return nil, MemoryPointer{}, err
+					}
+					p[j].node = node
+				}
+				break
+			}
+		}
+	}
+	return key, value, nil
 }
 
 func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
@@ -66,19 +137,11 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 	return node, nil
 }
 
-type TraversalRecord struct {
-	node  *BPTreeNode
-	index int
-	found bool
-	// the offset is useful so we know which page to free when we split
-	ptr MemoryPointer
-}
-
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
 func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
 	// binary search node.Keys to find the first key greater than key (or gte if leaf)
-	index, found := slices.BinarySearchFunc(node.Keys, ReferencedValue{Value: key}, func(e ReferencedValue, t ReferencedValue) int {
+	index, _ := slices.BinarySearchFunc(node.Keys, ReferencedValue{Value: key}, func(e ReferencedValue, t ReferencedValue) int {
 		if cmp := bytes.Compare(e.Value, t.Value); cmp == 0 && !node.leaf() {
 			return -1
 		} else {
@@ -87,7 +150,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]Tr
 	})
 
 	if node.leaf() {
-		return []TraversalRecord{{node: node, index: index, found: found, ptr: ptr}}, nil
+		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}
 
 	child, err := t.readNode(node.Pointer(index))
@@ -98,7 +161,7 @@ func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]Tr
 	if err != nil {
 		return nil, err
 	}
-	return append(path, TraversalRecord{node: node, index: index, found: found, ptr: ptr}), nil
+	return append(path, TraversalRecord{node: node, index: index, ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {

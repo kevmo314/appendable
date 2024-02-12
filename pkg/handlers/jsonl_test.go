@@ -85,26 +85,26 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find([]byte("test1"))
+		mp1, found, err := collected[0].BPTree(r2).FindFirst([]byte("test1"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = nil, want non-nil")
 		}
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		mp2, found, err := collected[0].BPTree(r2).Find([]byte("test3"))
+		mp2, found, err := collected[0].BPTree(r2).FindFirst([]byte("test3"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test3\") = nil, want non-nil")
 		}
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":\"test3\"}")) {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":\"test3\"}"))
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":\"test3\"}"))
 		}
 	})
 
@@ -140,15 +140,15 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find([]byte("test1"))
+		mp1, found, err := collected[0].BPTree(r2).FindFirst([]byte("test1"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = nil, want non-nil")
 		}
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
 		buf1, err := collected[0].Metadata()
@@ -163,15 +163,15 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		mp2, found, err := collected[1].BPTree(r2).Find([]byte("test3"))
+		mp2, found, err := collected[1].BPTree(r2).FindFirst([]byte("test3"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(\"test3\") = nil, want non-nil")
 		}
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test2\":\"test3\"}")) {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test2\":\"test3\"}"))
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test2\":\"test3\"}"))
 		}
 
 		md2 := &appendable.IndexMeta{}
@@ -215,15 +215,15 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find([]byte("test1"))
+		mp1, found, err := collected[0].BPTree(r2).FindFirst([]byte("test1"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = nil, want non-nil")
 		}
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
 		buf1, err := collected[0].Metadata()
@@ -240,15 +240,15 @@ func TestJSONL(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		mp2, found, err := collected[1].BPTree(r2).Find(v2)
+		mp2, found, err := collected[1].BPTree(r2).FindFirst(v2)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[1].BPTree().Find(123) = nil, want non-nil")
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(123) = nil, want non-nil")
 		}
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":123}")) {
-			t.Errorf("got i.Indexes[1].BPTree().Find(123)= %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(123)= %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
 		}
 
 		md2 := &appendable.IndexMeta{}
@@ -506,15 +506,15 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find([]byte("test1"))
+		mp1, found, err := collected[0].BPTree(r2).FindFirst([]byte("test1"))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = nil, want non-nil")
 		}
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
-			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
+			t.Errorf("got i.Indexes[0].BPTree().FindFirst(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
 		buf1, err := collected[0].Metadata()
@@ -529,15 +529,15 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		mp2, found, err := collected[1].BPTree(r2).Find([]byte{})
+		mp2, found, err := collected[1].BPTree(r2).FindFirst([]byte{})
 		if err != nil {
 			t.Fatal(err)
 		}
 		if !found {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(\"test3\") = nil, want non-nil")
 		}
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":null}")) {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
+			t.Errorf("got i.Indexes[1].BPTree().FindFirst(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
 		}
 
 		buf2, err := collected[1].Metadata()
