@@ -104,14 +104,14 @@ export class BPTree {
 		const rootResponse = await this.root();
 
 		if (!rootResponse) {
-			return [{ offset: 0, length: 0 }, false];
+			return [{ offset: BigInt(0), length: 0 }, false];
 		}
 
 		let { rootNode, pointer } = rootResponse;
 
 		const path = await this.traverse(key, rootNode, pointer);
 		if (!path) {
-			return [{ offset: 0, length: 0 }, false];
+			return [{ offset: BigInt(0), length: 0 }, false];
 		}
 
 		const n = path[0].node;
@@ -122,7 +122,7 @@ export class BPTree {
 			return [n.pointers[i], true];
 		}
 
-		return [{ offset: 0, length: 0 }, false];
+		return [{ offset: BigInt(0), length: 0 }, false];
 	}
 }
 

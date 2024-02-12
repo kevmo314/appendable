@@ -50,23 +50,23 @@ describe("test binary search", () => {
 	beforeEach(() => {
 		keys = [
 			{
-				dataPointer: { offset: 3, length: 1 },
+				dataPointer: { offset: BigInt(3), length: 1 },
 				value: Buffer.from(strToUint8Array("omoplata")),
 			},
 			{
-				dataPointer: { offset: 4, length: 1 },
+				dataPointer: { offset: BigInt(4), length: 1 },
 				value: Buffer.from(strToUint8Array("tarikoplata")),
 			},
 			{
-				dataPointer: { offset: 1, length: 1 },
+				dataPointer: { offset: BigInt(1), length: 1 },
 				value: Buffer.from(strToUint8Array("baratoplata")),
 			},
 			{
-				dataPointer: { offset: 2, length: 1 },
+				dataPointer: { offset: BigInt(2), length: 1 },
 				value: Buffer.from(strToUint8Array("choibar")),
 			},
 			{
-				dataPointer: { offset: 0, length: 1 },
+				dataPointer: { offset: BigInt(0), length: 1 },
 				value: Buffer.from(strToUint8Array("armbar")),
 			},
 		];
@@ -164,7 +164,7 @@ describe("test readNode", () => {
 			};
 		});
 
-		mockMemoryPointer = { offset: 0, length: mockLeafNodeData.length };
+		mockMemoryPointer = { offset: BigInt(0), length: mockLeafNodeData.length };
 
 		const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
 			mockMemoryPointer,
@@ -179,7 +179,7 @@ describe("test readNode", () => {
 
 	it("create non-leaf BPTreeNode from memory", async () => {
 		const nonLeafMemoryPointer = {
-			offset: 0,
+			offset: BigInt(0),
 			length: mockNonLeafNodeData.length,
 		};
 
@@ -203,7 +203,7 @@ describe("test readNode", () => {
 
 	it("create empty leaf BPTreeNode from memory", async () => {
 		const leafMemoryPointer = {
-			offset: 0,
+			offset: BigInt(0),
 			length: emptyLeafNodeData.length,
 		};
 

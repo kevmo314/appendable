@@ -22,23 +22,4 @@ export class PageFile {
 
 		return data;
 	}
-
-	async readFreePageIndex(): Promise<number[]> {
-		const { data } = await this.resolver({ start: 0, end: this.pageSize });
-		const view = new DataView(data);
-
-		const freePageIndexes = [];
-
-		for (let idx = 0; idx <= this.pageSize - 1; idx += 8) {
-			const offset = view.getBigUint64(idx);
-
-			if (offset === BigInt(0)) {
-				break; // the rest of the page is filled with zeros
-			}
-
-			freePageIndexes.push(Number(offset));
-		}
-
-		return freePageIndexes;
-	}
 }
