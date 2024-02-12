@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"slices"
 )
 
@@ -64,6 +65,7 @@ func (t *BPTree) Find(key []byte) (*TraversalPath, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("path: %v", records)
 	return &TraversalPath{tree: t, records: records}, nil
 }
 
@@ -93,8 +95,10 @@ func (tp *TraversalPath) Next() ([]byte, MemoryPointer, error) {
 	}
 	key := p[0].node.Keys[p[0].index].Value
 	value := p[0].node.Pointer(p[0].index)
+	log.Printf("index: %p %d (%d), key: %v, value: %v", p[0].node, p[0].index, len(p[0].node.Keys), key, value)
 	p[0].index++
 	if p[0].index == len(p[0].node.Keys) {
+		log.Printf("carryover")
 		// propagate the carryover
 		if len(p) == 1 {
 			// we're at the end of the tree, no more data

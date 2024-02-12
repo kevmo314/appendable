@@ -3,6 +3,7 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"math/rand"
 	"testing"
 
@@ -271,7 +272,7 @@ func TestBPTreeFind(t *testing.T) {
 			t.Fatal(err)
 		}
 		tree := NewBPTree(p, &testMetaPage{})
-		count := 256
+		count := 16 * 16
 		for i := 0; i < count; i++ {
 			buf := make([]byte, 8)
 			binary.BigEndian.PutUint64(buf, uint64(i/16))
@@ -280,6 +281,7 @@ func TestBPTreeFind(t *testing.T) {
 			}
 		}
 		for i := 0; i < count/16; i++ {
+			log.Printf("checking %d", i)
 			buf := make([]byte, 8)
 			binary.BigEndian.PutUint64(buf, uint64(i))
 			it, err := tree.Find(buf)
@@ -301,6 +303,7 @@ func TestBPTreeFind(t *testing.T) {
 				}
 				seen[v.Offset%16] = true
 			}
+			log.Printf("done")
 			k, _, err := it.Next()
 			if err != nil {
 				t.Fatal(err)
