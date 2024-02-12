@@ -1,7 +1,6 @@
 package btree
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -173,20 +172,4 @@ func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
 		return 0, err
 	}
 	return pageSizeBytes, nil
-}
-
-func (n *BPTreeNode) bsearch(key []byte) (int, bool) {
-	i, j := 0, len(n.Keys)-1
-	for i <= j {
-		m := (i + j) / 2
-		cmp := bytes.Compare(key, n.Keys[m].Value)
-		if cmp == 0 {
-			return m, true
-		} else if cmp < 0 {
-			j = m - 1
-		} else {
-			i = m + 1
-		}
-	}
-	return i, false
 }
