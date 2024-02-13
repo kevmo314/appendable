@@ -1,41 +1,39 @@
 import { RangeResolver } from "../resolver";
 
+export type IndexMeta = {
+	fieldName: string;
+	fieldType: bigint;
+};
 
-export class IndexMeta {
-    private resolver: RangeResolver;  
-    
-    public fieldName: string | null;
-    public fieldType: number | null;
+export async function unmarshalBinaryForIndexMeta(
+	resolver: RangeResolver,
+	buffer: ArrayBuffer
+): Promise<IndexMeta> {
+	if (buffer.byteLength < 10) {
+		throw new Error(`invalid metadata size ${buffer.byteLength}`);
+	}
 
-    constructor(resolver: RangeResolver) {
-        this.resolver = resolver;
-        this.fieldName = null;
-        this.fieldType = null;
-    }
+	const indexMeta = {
+		fieldName: "",
+		fieldType: BigInt(0),
+	};
 
-    async unmarshalBinary(buffer: ArrayBuffer): Promise<void> {
-        if (buffer.byteLength < 10) {
-            throw new Error(`invalid metadata size ${buffer.byteLength}`);
-        }
+	const dataView = new DataView(buffer);
 
-        const dataView = new DataView(buffer);
+	indexMeta.fieldType = dataView.getBigUint64(0);
 
-        const high = dataView.getUint32(0); 
-        const low = dataView.getUint32(4); 
-        this.fieldType = (high * Math.pow(2, 32)) + low; 
+	const nameLength = dataView.getUint16(8);
 
-        const nameLength = dataView.getUint16(8);
+	if (buffer.byteLength < 10 + nameLength) {
+		throw new Error(`invalid metadata size: ${buffer.byteLength}`);
+	}
 
-        if(buffer.byteLength < 10 + nameLength) {
-            throw new Error(`invalid metadata size: ${buffer.byteLength}`);
-        }
+	const { data: fieldNameData } = await resolver({
+		start: 10,
+		end: 10 + nameLength - 1,
+	});
 
-        const { data: fieldNameData } = await this.resolver({
-            start: 10,
-            end: 10 + nameLength - 1,
-        });
+	indexMeta.fieldName = new TextDecoder("utf-8").decode(fieldNameData);
 
-        this.fieldName = new TextDecoder().decode(fieldNameData);
-    }
-
+	return indexMeta;
 }

@@ -1,12 +1,8 @@
 import { LinkedMetaPage } from "../btree/multi";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
-import { IndexMeta } from "./index-meta";
+import { IndexMeta, unmarshalBinaryForIndexMeta } from "./index-meta";
 
-export type Header = {
-	fieldName: string;
-	fieldType: bigint;
-	indexRecordCount: bigint;
-};
+
 
 export class IndexFile {
 	static async forUrl<T = any>(url: string) {
@@ -105,9 +101,8 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 				return headers;
 			}
 
-			const nextBuffer = next?.metadata();
-			const indexMeta = new IndexMeta(this.resolver);
-			indexMeta.unmarshalBinary(await nextBuffer);
+			const nextBuffer = await next?.metadata();
+			const indexMeta = await unmarshalBinaryForIndexMeta(this.resolver, nextBuffer);
 
 			headers.push(indexMeta);
 
