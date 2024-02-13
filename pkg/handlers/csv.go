@@ -35,22 +35,12 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 	if err != nil {
 		return fmt.Errorf("failed to read metadata: %w", err)
 	}
-	isHeader := false
 
-	isEmpty, err := f.IsEmpty()
+	fieldNames, err := f.IndexFieldNames()
 	if err != nil {
-		return fmt.Errorf("failed to check if index file is empty: %w", err)
+		return fmt.Errorf("failed to retrieve index field names: %w", err)
 	}
-
-	if isEmpty {
-		isHeader = true
-	} else {
-		fieldNames, err := f.IndexFieldNames()
-		if err != nil {
-			return fmt.Errorf("failed to retrieve index field names: %w", err)
-		}
-		headers = fieldNames
-	}
+	headers = fieldNames
 
 	for {
 		i := bytes.IndexByte(df[metadata.ReadOffset:], '\n')
@@ -58,7 +48,7 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 			break
 		}
 
-		if isHeader {
+		if len(headers) == 0 {
 			slog.Info("Parsing CSV headers")
 			dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 			headers, err = dec.Read()
@@ -67,7 +57,6 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 				return fmt.Errorf("failed to parse CSV header: %w", err)
 			}
 			metadata.ReadOffset += uint64(i) + 1
-			isHeader = false
 			continue
 		}
 
