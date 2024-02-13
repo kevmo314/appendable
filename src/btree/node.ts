@@ -1,7 +1,7 @@
 import { RangeResolver } from "../resolver";
 
 export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
-export type MemoryPointer = { offset: number; length: number };
+export type MemoryPointer = { offset: BigInt; length: number };
 
 export class BPTreeNode {
 	public keys: ReferencedValue[];
@@ -23,8 +23,8 @@ export class BPTreeNode {
 		try {
 			const node = new BPTreeNode([], []);
 			let { data: sizeData } = await resolver({
-				start: mp.offset,
-				end: mp.offset + mp.length,
+				start: Number(mp.offset),
+				end: Number(mp.offset) + mp.length,
 			});
 
 			let sizeBuffer = Buffer.from(sizeData);
@@ -67,7 +67,7 @@ export class BPTreeNode {
 
 					node.keys.push({
 						value: Buffer.from(keyValue),
-						dataPointer: { offset: dpOffset, length: dpLength },
+						dataPointer: { offset: BigInt(dpOffset), length: dpLength },
 					});
 				} else {
 					let { data: keyValue } = await resolver({
@@ -77,7 +77,7 @@ export class BPTreeNode {
 
 					node.keys.push({
 						value: Buffer.from(keyValue),
-						dataPointer: { offset: currentOffset, length: l },
+						dataPointer: { offset: BigInt(currentOffset), length: l },
 					});
 
 					currentOffset += l;
@@ -104,7 +104,7 @@ export class BPTreeNode {
 				let pointerLength = lengthBuffer.readUint32BE(0);
 				currentOffset += 4;
 
-				node.pointers.push({ offset: pointerOffset, length: pointerLength });
+				node.pointers.push({ offset: BigInt(pointerOffset), length: pointerLength });
 			}
 
 			return { node, bytesRead: currentOffset };

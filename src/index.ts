@@ -1,6 +1,6 @@
 import { DataFile } from "./data-file";
 import { Database, FieldType} from "./db/database";
-import { IndexFile } from "./index-file";
+import { IndexFile } from "./index-file/index-file";
 import { RangeResolver } from "./resolver";
 
 export enum FormatType {

@@ -1,9 +1,6 @@
 import { BPTreeNode, MemoryPointer, compareBytes } from "./node";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
-
-export interface MetaPage {
-	root(): Promise<MemoryPointer>;
-}
+import { LinkedMetaPage } from "./multi";
 
 type RootResponse = {
 	rootNode: BPTreeNode;
@@ -12,9 +9,9 @@ type RootResponse = {
 
 export class BPTree {
 	private tree: RangeResolver;
-	private meta: MetaPage;
+	private meta: LinkedMetaPage;
 
-	constructor(tree: RangeResolver, meta: MetaPage) {
+	constructor(tree: RangeResolver, meta: LinkedMetaPage) {
 		this.tree = tree;
 		this.meta = meta;
 	}
@@ -104,14 +101,14 @@ export class BPTree {
 		const rootResponse = await this.root();
 
 		if (!rootResponse) {
-			return [{ offset: 0, length: 0 }, false];
+			return [{ offset: BigInt(0), length: 0 }, false];
 		}
 
 		let { rootNode, pointer } = rootResponse;
 
 		const path = await this.traverse(key, rootNode, pointer);
 		if (!path) {
-			return [{ offset: 0, length: 0 }, false];
+			return [{ offset: BigInt(0), length: 0 }, false];
 		}
 
 		const n = path[0].node;
@@ -122,7 +119,7 @@ export class BPTree {
 			return [n.pointers[i], true];
 		}
 
-		return [{ offset: 0, length: 0 }, false];
+		return [{ offset: BigInt(0), length: 0 }, false];
 	}
 }
 

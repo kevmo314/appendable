@@ -40,7 +40,7 @@ export class QueryBuilder<T extends Schema> {
 	 * Executes the constructed query
 	 */
 	get() {
-		return this.database.query(this.queryObject);
+		//return this.database.query(this.queryObject);
 	}
 
 	/**

@@ -1,8 +1,7 @@
-import { DataFile } from "../data-file";
 import { Database, Query } from "../db/database";
 import { QueryBuilder } from "../db/query-builder";
 import { validateQuery } from "../db/query-validation";
-import { Header } from "../index-file";
+import { IndexMeta } from "../index-file/index-meta";
 
 describe("test validate queries", () => {
 	interface MockSchema {
@@ -13,26 +12,22 @@ describe("test validate queries", () => {
 		payment_type: {};
 	}
 
-	const headers: Header[] = [
+	const headers: IndexMeta[] = [
 		{
 			fieldName: "VendorID",
 			fieldType: BigInt(2),
-			indexRecordCount: BigInt(683211),
 		},
 		{
 			fieldName: "store_and_fwd_flag",
 			fieldType: BigInt(33),
-			indexRecordCount: BigInt(423),
 		},
 		{
 			fieldName: "fare_amount",
 			fieldType: BigInt(2),
-			indexRecordCount: BigInt(68211),
 		},
 		{
 			fieldName: "payment_type",
 			fieldType: BigInt(33),
-			indexRecordCount: BigInt(63887),
 		},
 	];
 
