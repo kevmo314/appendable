@@ -1,9 +1,6 @@
 import { BPTreeNode, MemoryPointer, compareBytes } from "./node";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
-
-export interface MetaPage {
-	root(): Promise<MemoryPointer>;
-}
+import { LinkedMetaPage } from "./multi";
 
 type RootResponse = {
 	rootNode: BPTreeNode;
@@ -12,9 +9,9 @@ type RootResponse = {
 
 export class BPTree {
 	private tree: RangeResolver;
-	private meta: MetaPage;
+	private meta: LinkedMetaPage;
 
-	constructor(tree: RangeResolver, meta: MetaPage) {
+	constructor(tree: RangeResolver, meta: LinkedMetaPage) {
 		this.tree = tree;
 		this.meta = meta;
 	}

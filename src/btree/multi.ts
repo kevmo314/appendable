@@ -1,6 +1,9 @@
 import { RangeResolver } from "../resolver";
 import { MemoryPointer } from "./node";
 
+
+const PAGE_SIZE_BYTES = 4096;
+
 export class LinkedMetaPage {
 	private resolver: RangeResolver;
 	private offset: number;
@@ -30,7 +33,7 @@ export class LinkedMetaPage {
 
 	async metadata(): Promise<ArrayBuffer> {
 		const pageData = await this.getPage();	
-		const lengthData = pageData.slice(this.offset + 24, this.offset + 4096)	
+		const lengthData = pageData.slice(this.offset + 24, this.offset + PAGE_SIZE_BYTES)	
 
 		const lengthView = new DataView(lengthData);
 
@@ -48,7 +51,7 @@ export class LinkedMetaPage {
 
 		const { data } = await this.resolver({
 			start: this.offset,
-			end: this.offset + 4096 - 1,
+			end: this.offset + PAGE_SIZE_BYTES - 1,
 		});
 
 		this.pageData = data;

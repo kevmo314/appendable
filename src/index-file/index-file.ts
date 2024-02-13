@@ -1,6 +1,6 @@
-import { LinkedMetaPage } from "./btree/multi";
-import { PageFile } from "./btree/pagefile";
-import { LengthIntegrityError, RangeResolver } from "./resolver";
+import { LinkedMetaPage } from "../btree/multi";
+import { LengthIntegrityError, RangeResolver } from "../resolver";
+import { IndexMeta } from "./index-meta";
 
 export type Header = {
 	fieldName: string;
@@ -52,6 +52,8 @@ export interface VersionedIndexFile<T> {
 	tree(): Promise<LinkedMetaPage>;
 
 	metadata(): Promise<FileMeta | null>;
+
+	indexHeaders(): Promise<IndexMeta[]>;
 }
 
 class IndexFileV1<T> implements VersionedIndexFile<T> {
@@ -63,10 +65,10 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 		if (this._tree) {
 			return this._tree;
 		}
-		
+
 		this._tree = new LinkedMetaPage(this.resolver, 0);
 
-		return this._tree;	
+		return this._tree;
 	}
 
 	async metadata(): Promise<FileMeta | null> {
@@ -74,6 +76,7 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 
 		const buffer = await tree.metadata();
 
+		// unmarshall binary for FileMeta
 		if (buffer.byteLength < 9) {
 			return null;
 		}
@@ -89,5 +92,28 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 			format: format,
 			readOffset: readOffset,
 		};
+	}
+
+	async indexHeaders(): Promise<IndexMeta[]> {
+		let headers: IndexMeta[] = [];
+
+		let mp = await this.tree();
+
+		while (mp) {
+			const next = await mp.next();
+			if (next === null) {
+				return headers;
+			}
+
+			const nextBuffer = next?.metadata();
+			const indexMeta = new IndexMeta(this.resolver);
+			indexMeta.unmarshalBinary(await nextBuffer);
+
+			headers.push(indexMeta);
+
+			mp = next;
+		}
+
+		return headers;
 	}
 }
