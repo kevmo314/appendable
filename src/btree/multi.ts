@@ -1,6 +1,6 @@
 import { RangeResolver } from "../resolver";
+import { BPTree } from "./bptree";
 import { MemoryPointer } from "./node";
-
 
 const PAGE_SIZE_BYTES = 4096;
 
@@ -32,22 +32,28 @@ export class LinkedMetaPage {
 	}
 
 	async metadata(): Promise<ArrayBuffer> {
-		const pageData = await this.getPage();	
-		const lengthData = pageData.slice(this.offset + 24, this.offset + PAGE_SIZE_BYTES)	
+		const pageData = await this.getPage();
+		const lengthData = pageData.slice(
+			this.offset + 24,
+			this.offset + PAGE_SIZE_BYTES
+		);
 
 		const lengthView = new DataView(lengthData);
 
 		// read the first four because that represnts length
 		const metadataLength = lengthView.getUint32(0);
-		const metadata = pageData.slice(this.offset + 28, this.offset + metadataLength);
+		const metadata = pageData.slice(
+			this.offset + 28,
+			this.offset + metadataLength
+		);
 
 		return metadata;
 	}
 
 	private async getPage(): Promise<ArrayBuffer> {
 		if (this.pageData) {
-			return this.pageData
-		}	
+			return this.pageData;
+		}
 
 		const { data } = await this.resolver({
 			start: this.offset,
@@ -58,6 +64,11 @@ export class LinkedMetaPage {
 
 		return data;
 	}
+
+	// fillBPTree(data: ArrayBuffer): BPTree {
+	// 	const t = new BPTree(this.resolver, this);
+
+	// }
 
 	async next(): Promise<LinkedMetaPage | null> {
 		const pageData = await this.getPage();

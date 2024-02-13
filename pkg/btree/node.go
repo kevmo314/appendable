@@ -34,17 +34,6 @@ func (n *BPTreeNode) leaf() bool {
 	return len(n.leafPointers) > 0
 }
 
-func (n *BPTreeNode) Pointers() []MemoryPointer {
-	if n.leaf() {
-		return n.leafPointers
-	}
-	pointers := make([]MemoryPointer, len(n.internalPointers))
-	for i, p := range n.internalPointers {
-		pointers[i].Offset = p
-	}
-	return pointers
-}
-
 func (n *BPTreeNode) Pointer(i int) MemoryPointer {
 	if n.leaf() {
 		return n.leafPointers[(len(n.leafPointers)+i)%len(n.leafPointers)]
