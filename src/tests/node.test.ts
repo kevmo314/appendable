@@ -46,14 +46,14 @@ describe("node functionality", () => {
 			new ReferencedValue({ offset: BigInt(0), length: 0 }, new Uint8Array()),
 		];
 		const leafPointer = { offset: BigInt(0), length: 0 };
-		const leafNode = new BPTreeNode(leafKeys, [leafPointer], [], new ArrayBuffer(4096));
+		const leafNode = new BPTreeNode(leafKeys, [leafPointer], [], new Uint8Array(4096));
 		expect(leafNode.leaf()).toBeTruthy();
 
 		const internalNode = new BPTreeNode(
 			[],
 			[],
 			[BigInt(0)],
-			new ArrayBuffer(4096)
+			new Uint8Array(4096)
 		);
 		expect(internalNode.leaf()).toBeFalsy();
 	});
@@ -64,7 +64,7 @@ describe("node functionality", () => {
 			[],
 			leafPointers,
 			[],
-			new ArrayBuffer(4096)
+			new Uint8Array(4096)
 		);
 		expect(leafNode.pointer(0)).toEqual(leafPointers[0]);
 	});

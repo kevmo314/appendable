@@ -18,9 +18,9 @@ type RootResponse = {
 export class BPTree {
 	private tree: RangeResolver;
 	private meta: MetaPage;
-	private data: ArrayBuffer;
+	private data: Uint8Array;
 
-	constructor(tree: RangeResolver, meta: MetaPage, data: ArrayBuffer) {
+	constructor(tree: RangeResolver, meta: MetaPage, data: Uint8Array) {
 		this.tree = tree;
 		this.meta = meta;
 		this.data = data;

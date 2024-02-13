@@ -6,13 +6,13 @@ export class BPTreeNode {
 	public keys: ReferencedValue[];
 	public leafPointers: MemoryPointer[];
 	public internalPointers: bigint[];
-	private data: ArrayBuffer;
+	private data: Uint8Array;
 
 	constructor(
 		keys: ReferencedValue[],
 		leafPointers: MemoryPointer[],
 		internalPointers: bigint[],
-		data: ArrayBuffer
+		data: Uint8Array
 	) {
 		this.keys = keys;
 		this.leafPointers = leafPointers;
@@ -62,7 +62,7 @@ export class BPTreeNode {
 		return BigInt(size);
 	}
 
-	async unmarshalBinary(buffer: ArrayBuffer) {
+	async unmarshalBinary(buffer: ArrayBuffer): Promise<number> {
 		let dataView = new DataView(buffer.slice(0, 4));
 		const size = dataView.getUint32(0);
 
@@ -83,12 +83,12 @@ export class BPTreeNode {
 		let m = 4;
 
 		for (let idx = 0; idx <= this.keys.length - 1; idx++) {
-			dataView = new DataView(buffer.slice(m, m + 4));
+			dataView = new DataView(buffer.slice(m, m + 3));
 			const l = dataView.getUint32(0);
 			if (l === ~0 >>> 0) {
-				dataView = new DataView(buffer.slice(m + 4, m + 12));
+				dataView = new DataView(buffer.slice(m + 4, m + 11));
 				this.keys[idx].dataPointer.offset = dataView.getBigUint64(0);
-				dataView = new DataView(buffer.slice(m + 12, m + 16));
+				dataView = new DataView(buffer.slice(m + 12, m + 15));
 				this.keys[idx].dataPointer.length = dataView.getUint32(0);
 
 				const dp = this.keys[idx].dataPointer;
@@ -100,40 +100,44 @@ export class BPTreeNode {
 
 				m += 4 + 12;
 			} else {
-				this.keys[idx].value = new Uint8Array(buffer.slice(m + 4, m + 4 + l));
+				this.keys[idx].value = new Uint8Array(
+					buffer.slice(m + 4, m + 4 + l - 1)
+				);
 				m += 4 + l;
 			}
 		}
 
 		for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
-			dataView = new DataView(buffer.slice(m, m + 8));
+			dataView = new DataView(buffer.slice(m, m + 7));
 			this.leafPointers[idx].offset = dataView.getBigUint64(0);
-			dataView = new DataView(buffer.slice(m + 8, m + 12));
+			dataView = new DataView(buffer.slice(m + 8, m + 11));
 			this.leafPointers[idx].length = dataView.getUint32(0);
 
 			m += 12;
 		}
 
 		for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
-			dataView = new DataView(buffer.slice(m, m + 8));
+			dataView = new DataView(buffer.slice(m, m + 7));
 			this.internalPointers[idx] = dataView.getBigUint64(0);
 
 			m += 8;
 		}
+
+		return m;
 	}
 
 	static async fromMemoryPointer(
 		mp: MemoryPointer,
 		resolver: RangeResolver,
-		data: ArrayBuffer
+		data: Uint8Array
 	): Promise<{ node: BPTreeNode; bytesRead: number }> {
 		const { data: bufferData } = await resolver({
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
 		const node = new BPTreeNode([], [], [], data);
-		await node.unmarshalBinary(bufferData);
+		const bytesRead = await node.unmarshalBinary(bufferData);
 
-		return { node, bytesRead: 4096 };
+		return { node, bytesRead };
 	}
 }
