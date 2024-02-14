@@ -16,9 +16,9 @@ type RootResponse = {
 };
 
 export class BPTree {
-	private tree: RangeResolver;
+	private readonly tree: RangeResolver;
 	private meta: MetaPage;
-	private data: Uint8Array;
+	private readonly data: Uint8Array;
 
 	constructor(tree: RangeResolver, meta: MetaPage, data: Uint8Array) {
 		this.tree = tree;
@@ -62,7 +62,7 @@ export class BPTree {
 	}
 
 	private async traverse(
-		key: Uint8Array,
+		key: ArrayBuffer,
 		node: BPTreeNode,
 		pointer: MemoryPointer
 	): Promise<TraversalRecord[]> {
@@ -121,14 +121,17 @@ class TraversalRecord {
 
 export class ReferencedValue {
 	public dataPointer: MemoryPointer;
-	public value: Uint8Array;
+	public value: ArrayBuffer;
 
 	constructor(dataPointer: MemoryPointer, value: Uint8Array) {
 		this.dataPointer = dataPointer;
 		this.value = value;
 	}
 
-	static compareBytes(a: Uint8Array, b: Uint8Array): number {
+	static compareBytes(aBuffer: ArrayBuffer, bBuffer: ArrayBuffer): number {
+		const a = new Uint8Array(aBuffer);
+		const b = new Uint8Array(bBuffer);
+
 		const len = Math.min(a.length, b.length);
 		for (let idx = 0; idx < len; idx++) {
 			if (a[idx] !== b[idx]) {
@@ -148,7 +151,7 @@ export class ReferencedValue {
 
 function binarySearchReferencedValues(
 	values: ReferencedValue[],
-	target: Uint8Array
+	target: ArrayBuffer
 ): number {
 	let lo = 0;
 	let hi = values.length;

@@ -1,8 +1,11 @@
 import { ReferencedValue } from "../btree/bptree";
 import { BPTreeNode, MemoryPointer } from "../btree/node";
+import fs from 'fs/promises';
+import path from 'path';
+import {RangeResolver} from "../resolver";
 
-const strToUint8Array = (str: string) => {
-	return new Uint8Array(str.split("").map((c) => c.charCodeAt(0)));
+const strToArrayBuffer = (str: string) => {
+	return new Uint8Array(str.split("").map((c) => c.charCodeAt(0))).buffer;
 };
 
 describe("test compare bytes", () => {
@@ -32,15 +35,26 @@ describe("test compare bytes", () => {
 	testCases.forEach(({ a, b, i }, idx) => {
 		it(`test ${idx} compareBytes`, async () => {
 			const result = ReferencedValue.compareBytes(
-				strToUint8Array(a),
-				strToUint8Array(b)
+				strToArrayBuffer(a),
+				strToArrayBuffer(b)
 			);
 			expect(result).toBe(i);
 		});
 	});
 });
 
+
+const readBinaryFile = async (filename: string): Promise<Uint8Array> => {
+	const filePath = path.join(__dirname, filename);
+	const data = await fs.readFile(filePath);
+	return new Uint8Array(data);
+};
+
 describe("node functionality", () => {
+
+	let resolver: RangeResolver;
+
+
 	it("correctly identifies leaf nodes", async () => {
 		const leafKeys = [
 			new ReferencedValue({ offset: BigInt(0), length: 0 }, new Uint8Array()),
@@ -68,4 +82,16 @@ describe("node functionality", () => {
 		);
 		expect(leafNode.pointer(0)).toEqual(leafPointers[0]);
 	});
+
+	it("reads from buffer for leaf node", async() => {
+
+		const buffer = await readBinaryFile('leaf_node_data.bin');
+		console.log(buffer);
+		const node = new BPTreeNode([], [], [], buffer);
+		// const bytesRead = await node.unmarshalBinary();
+		console.log(node)
+
+	});
+
+
 });

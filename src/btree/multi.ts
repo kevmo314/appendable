@@ -1,25 +1,25 @@
 import { RangeResolver } from "../resolver";
-import { BPTree } from "./bptree";
 import { MemoryPointer } from "./node";
+import {PageFile} from "./pagefile";
 
 const PAGE_SIZE_BYTES = 4096;
 
 export class LinkedMetaPage {
 	private resolver: RangeResolver;
-	private offset: number;
-	private pageData: ArrayBuffer | null;
+	private offset: bigint;
+	private metaPageData: ArrayBuffer | null;
 
-	constructor(resolver: RangeResolver, offset: number) {
+	constructor(resolver: RangeResolver, offset: bigint) {
 		this.resolver = resolver;
 		this.offset = offset;
-		this.pageData = null;
+		this.metaPageData = null;
 	}
 
 	async root(): Promise<MemoryPointer | null> {
-		const pageData = await this.getPage();
+		const pageData = await this.getMetaPage();
 
 		// we seek by 12 bytes since offset is 8 bytes, length is 4 bytes
-		const data = pageData.slice(this.offset, this.offset + 12);
+		const data = pageData.slice(Number(this.offset), Number(this.offset) + 11);
 		const view = new DataView(data);
 
 		const pointerOffset = view.getBigUint64(0);
@@ -32,10 +32,10 @@ export class LinkedMetaPage {
 	}
 
 	async metadata(): Promise<ArrayBuffer> {
-		const pageData = await this.getPage();
+		const pageData = await this.getMetaPage();
 		const lengthData = pageData.slice(
-			this.offset + 24,
-			this.offset + PAGE_SIZE_BYTES
+			Number(this.offset) + 24,
+			Number(this.offset) + PAGE_SIZE_BYTES - 1
 		);
 
 		const lengthView = new DataView(lengthData);
@@ -43,36 +43,31 @@ export class LinkedMetaPage {
 		// read the first four because that represnts length
 		const metadataLength = lengthView.getUint32(0);
 		const metadata = pageData.slice(
-			this.offset + 28,
-			this.offset + metadataLength
+			Number(this.offset) + 28,
+			Number(this.offset) + metadataLength - 1
 		);
 
 		return metadata;
 	}
 
-	private async getPage(): Promise<ArrayBuffer> {
-		if (this.pageData) {
-			return this.pageData;
+	private async getMetaPage(): Promise<ArrayBuffer> {
+		if (this.metaPageData) {
+			return this.metaPageData;
 		}
 
 		const { data } = await this.resolver({
-			start: this.offset,
-			end: this.offset + PAGE_SIZE_BYTES - 1,
+			start: Number(this.offset),
+			end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
 		});
 
-		this.pageData = data;
+		this.metaPageData= data;
 
 		return data;
 	}
 
-	// fillBPTree(data: ArrayBuffer): BPTree {
-	// 	const t = new BPTree(this.resolver, this);
-
-	// }
-
 	async next(): Promise<LinkedMetaPage | null> {
-		const pageData = await this.getPage();
-		const data = pageData.slice(this.offset + 12, this.offset + 12 + 8);
+		const pageData = await this.getMetaPage();
+		const data = pageData.slice(Number(this.offset) + 12, Number(this.offset) + 12 + 7);
 
 		const view = new DataView(data);
 
@@ -83,6 +78,13 @@ export class LinkedMetaPage {
 			return null;
 		}
 
-		return new LinkedMetaPage(this.resolver, Number(nextOffset));
+		return new LinkedMetaPage(this.resolver, nextOffset);
 	}
+}
+
+
+export function ReadMultiBPTree(resolver: RangeResolver, pageFile: PageFile): LinkedMetaPage {
+	const offset = pageFile.page(0);
+
+	return new LinkedMetaPage(resolver, offset);
 }

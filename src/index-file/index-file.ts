@@ -1,6 +1,7 @@
-import { LinkedMetaPage } from "../btree/multi";
+import {LinkedMetaPage, ReadMultiBPTree} from "../btree/multi";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
 import { IndexMeta, unmarshalBinaryForIndexMeta } from "./index-meta";
+import {PageFile} from "../btree/pagefile";
 
 
 
@@ -62,9 +63,11 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 			return this._tree;
 		}
 
-		this._tree = new LinkedMetaPage(this.resolver, 0);
+		const pageFile = new PageFile(this.resolver);
+		const tree = ReadMultiBPTree(this.resolver, pageFile);
 
-		return this._tree;
+		this._tree = tree;
+		return tree;
 	}
 
 	async metadata(): Promise<FileMeta | null> {

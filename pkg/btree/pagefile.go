@@ -27,7 +27,7 @@ type PageFile struct {
 
 var _ ReadWriteSeekPager = &PageFile{}
 
-const maxFreePageIndices = 512
+// const maxFreePageIndices = 512
 const pageSizeBytes = 4096 // 4kB by default.
 
 func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {

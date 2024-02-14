@@ -63,7 +63,7 @@ export class BPTreeNode {
 	}
 
 	async unmarshalBinary(buffer: ArrayBuffer): Promise<number> {
-		let dataView = new DataView(buffer.slice(0, 4));
+		let dataView = new DataView(buffer.slice(0, 3));
 		const size = dataView.getUint32(0);
 
 		const leaf = size < 0;
@@ -94,7 +94,7 @@ export class BPTreeNode {
 				const dp = this.keys[idx].dataPointer;
 				const dataSlice = this.data.slice(
 					Number(dp.offset),
-					Number(dp.offset + BigInt(dp.length))
+					Number(dp.offset + BigInt(dp.length)) - 1
 				);
 				this.keys[idx].value = new Uint8Array(dataSlice);
 

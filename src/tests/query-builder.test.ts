@@ -163,7 +163,6 @@ describe("test validate queries", () => {
 
 		// green queries
 		[passQuery, passQuery2].forEach(async (query) => {
-			console.log(query.toQuery());
 			await expect(() => validateQuery(query.toQuery(), headers)).not.toThrow();
 		});
 	});
