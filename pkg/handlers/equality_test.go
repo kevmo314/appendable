@@ -186,7 +186,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 		if i == 0 {
 
 			for _, val := range h1 {
-				_, found, err := collected1.BPTree(jr).Find([]byte(val))
+				_, found, err := collected1.BPTree(jr).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -195,7 +195,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				_, found, err = collected2.BPTree(cr).Find([]byte(val))
+				_, found, err = collected2.BPTree(cr).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -210,7 +210,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 
 				v2 := make([]byte, 8)
 				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
-				_, found, err := collected1.BPTree(jr).Find(v2)
+				_, found, err := collected1.BPTree(jr).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -219,7 +219,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				_, found, err = collected2.BPTree(cr).Find(v2)
+				_, found, err = collected2.BPTree(cr).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
