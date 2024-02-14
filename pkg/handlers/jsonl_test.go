@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/binary"
 	"math"
 	"testing"
@@ -86,24 +87,34 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		mp2, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp2 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv2.Value, []byte("test3")) {
+			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test3"))
+		}
+
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":\"test3\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":\"test3\"}"))
 		}
@@ -141,13 +152,18 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
@@ -164,13 +180,18 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		mp2, found, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp2 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv2.Value, []byte("test3")) {
+			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test3"))
+		}
+
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test2\":\"test3\"}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test2\":\"test3\"}"))
 		}
@@ -216,13 +237,18 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
@@ -241,13 +267,18 @@ func TestJSONL(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		mp2, found, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp2 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(123) = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv2.Value, v2) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, v2)
+		}
+
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":123}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(123)= %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
 		}
@@ -507,13 +538,18 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
@@ -530,13 +566,18 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		mp2, found, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{})
+		rv2, mp2, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
-			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
+		if mp2 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
 		}
+
+		if len(rv2.Value) != 0 {
+			t.Errorf("incorrect values, got %v, want %v", rv2.Value, "null")
+		}
+
 		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":null}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
 		}

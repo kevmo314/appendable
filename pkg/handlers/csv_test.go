@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/binary"
 	"log/slog"
 	"math"
@@ -99,23 +100,33 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(test1) = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != uint64(len("test\n")) || mp1.Length != uint32(len("test1")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
 
-		mp2, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test2")})
+		rv2, mp2, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test2")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp2 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test2\") = nil, want non-nil")
+		}
+
+		if !bytes.Equal(rv2.Value, []byte("test2")) {
+			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test2"))
 		}
 
 		if mp2.Offset != uint64(len("test\ntest1\n")) || mp2.Length != uint32(len("test2")) {
@@ -158,13 +169,18 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		mp1, found, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(r2).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp1 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
 		if mp1.Offset != uint64(len("test\n")) || mp1.Length != uint32(len("test1")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
@@ -183,13 +199,17 @@ func TestCSV(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		mp2, found, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(r2).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !found {
+		if mp2 == (btree.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
 		}
+		if !bytes.Equal(rv2.Value, v2) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, v2)
+		}
+
 		if mp2.Offset != uint64(len("test\ntest1\n")) || mp2.Length != uint32(len("123")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("test\ntest1\n"), len("123"))
 		}

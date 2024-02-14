@@ -98,6 +98,7 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
+	fmt.Printf("\ninsert parameters look like \nkey: %v\nvalue: %v\n\n", key, value)
 	root, rootOffset, err := t.root()
 	if err != nil {
 		return fmt.Errorf("read root node: %w", err)
@@ -123,11 +124,13 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		return err
 	}
 
-	log.Printf("path: %v", path)
+	log.Printf("path: %v\n", path)
 
 	// insert the key into the leaf
 	n := path[0].node
+	fmt.Printf("keys %v and key %v", n.Keys, key)
 	j, found := slices.BinarySearchFunc(n.Keys, key, CompareReferencedValues)
+	fmt.Printf("binary search results: j: %v and found %v", j, found)
 	if found {
 		return fmt.Errorf("key already exists")
 	}

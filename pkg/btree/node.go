@@ -31,6 +31,8 @@ func CompareReferencedValues(a, b ReferencedValue) int {
 	if cmp != 0 {
 		return cmp
 	}
+
+	fmt.Printf("the offsets to compare are: %v %v\n", a.DataPointer.Offset, b.DataPointer.Offset)
 	if a.DataPointer.Offset != b.DataPointer.Offset {
 		return int(a.DataPointer.Offset - b.DataPointer.Offset)
 	}
