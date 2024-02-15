@@ -31,23 +31,31 @@ export class LinkedMetaPage {
 		};
 	}
 
+	/**
+	 * `metadata()` gets the page data. It does the following:
+	 * 		(1) creates a slice from 24 to the end of the page
+	 * 		(2) it reads the first four bytes of that slice which gives us the length to seek to
+	 * 		(3) slices from [24, (24 + dataLength)] which contain metadata
+	 */
 	async metadata(): Promise<ArrayBuffer> {
+		console.log("metadata entered");
 		const pageData = await this.getMetaPage();
+		console.log("page data: ", pageData)
 		const lengthData = pageData.slice(
-			Number(this.offset) + 24,
-			Number(this.offset) + PAGE_SIZE_BYTES - 1
+			24,
+			PAGE_SIZE_BYTES
 		);
 
 		const lengthView = new DataView(lengthData);
 
-		// read the first four because that represnts length
+		// read the first four because that represents length
 		const metadataLength = lengthView.getUint32(0);
-		const metadata = pageData.slice(
-			Number(this.offset) + 28,
-			Number(this.offset) + metadataLength - 1
-		);
 
-		return metadata;
+		console.log("metadatalength: ", metadataLength);
+		return pageData.slice(
+			28,
+			28 + metadataLength
+		);
 	}
 
 	private async getMetaPage(): Promise<ArrayBuffer> {
@@ -59,6 +67,7 @@ export class LinkedMetaPage {
 			start: Number(this.offset),
 			end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
 		});
+
 
 		this.metaPageData= data;
 

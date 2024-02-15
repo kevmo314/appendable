@@ -1,8 +1,7 @@
 import { ReferencedValue } from "../btree/bptree";
 import { BPTreeNode, MemoryPointer } from "../btree/node";
-import fs from 'fs/promises';
-import path from 'path';
 import {RangeResolver} from "../resolver";
+import {readBinaryFile} from "./test-util";
 
 const strToArrayBuffer = (str: string) => {
 	return new Uint8Array(str.split("").map((c) => c.charCodeAt(0))).buffer;
@@ -43,12 +42,6 @@ describe("test compare bytes", () => {
 	});
 });
 
-
-const readBinaryFile = async (filename: string): Promise<Uint8Array> => {
-	const filePath = path.join(__dirname, filename);
-	const data = await fs.readFile(filePath);
-	return new Uint8Array(data);
-};
 
 describe("node functionality", () => {
 
