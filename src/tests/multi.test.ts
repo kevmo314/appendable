@@ -22,7 +22,7 @@ describe("test multi", () => {
       dataView.setUint32(4096 + 24, metadataLength);
 
       view.set(metadata, 4096 + 24 + 4);
-      const slice = view.slice(start, end + 1);
+      const slice = view.slice(start, end);
 
       if (expectedLength !== undefined && slice.byteLength !== expectedLength) {
         throw new LengthIntegrityError();
@@ -70,7 +70,7 @@ describe("test multi", () => {
         }
       }
 
-      const slice = view.slice(start, Math.min(end + 1, bufferSize));
+      const slice = view.slice(start, Math.min(end, bufferSize));
       console.log("slice: ", slice);
       if (expectedLength !== undefined && slice.byteLength !== expectedLength) {
         throw new LengthIntegrityError();
