@@ -52,7 +52,7 @@ describe("test multi", () => {
       const bufferSize = pageSize * 5; // 1 for gc, 1 for file meta, 3 pages
       const buffer = new ArrayBuffer(bufferSize);
       const view = new Uint8Array(buffer);
-      const maxUint64 = BigInt(2) ** BigInt(64) - BigInt(1);
+      const maxUint64 = 2n ** 64n - 1n;
 
       for (let i = 0; i < 4; i++) {
         let nextPageOffset;

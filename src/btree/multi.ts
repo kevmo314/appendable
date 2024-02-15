@@ -39,9 +39,8 @@ export class LinkedMetaPage {
    */
   async metadata(): Promise<ArrayBuffer> {
     const pageData = await this.getMetaPage();
-    const lengthData = pageData.slice(24, PAGE_SIZE_BYTES);
 
-    const lengthView = new DataView(lengthData);
+    const lengthView = new DataView(pageData, 24);
 
     // read the first four because that represents length
     const metadataLength = lengthView.getUint32(0);
@@ -73,11 +72,10 @@ export class LinkedMetaPage {
    */
   async next(): Promise<LinkedMetaPage | null> {
     const pageData = await this.getMetaPage();
-    const data = pageData.slice(12, 12 + 8);
 
-    const view = new DataView(data);
+    const view = new DataView(pageData, 12, 8);
     const nextOffset = view.getBigUint64(0);
-    const maxUint64 = BigInt(2) ** BigInt(64) - BigInt(1);
+    const maxUint64 = 2n ** 64n - 1n;
     console.log("next offset: ", nextOffset);
     if (nextOffset === maxUint64) {
       return null;
