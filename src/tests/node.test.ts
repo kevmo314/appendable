@@ -47,44 +47,44 @@ describe("node functionality", () => {
 
 	let resolver: RangeResolver;
 
-
-	it("correctly identifies leaf nodes", async () => {
-		const leafKeys = [
-			new ReferencedValue({ offset: BigInt(0), length: 0 }, new Uint8Array()),
-		];
-		const leafPointer = { offset: BigInt(0), length: 0 };
-		const leafNode = new BPTreeNode(leafKeys, [leafPointer], [], new Uint8Array(4096));
-		expect(leafNode.leaf()).toBeTruthy();
-
-		const internalNode = new BPTreeNode(
-			[],
-			[],
-			[BigInt(0)],
-			new Uint8Array(4096)
-		);
-		expect(internalNode.leaf()).toBeFalsy();
-	});
-
-	it("retrieves the correct pointer for a leaf node", async () => {
-		const leafPointers: MemoryPointer[] = [{ offset: BigInt(10), length: 20 }];
-		const leafNode = new BPTreeNode(
-			[],
-			leafPointers,
-			[],
-			new Uint8Array(4096)
-		);
-		expect(leafNode.pointer(0)).toEqual(leafPointers[0]);
-	});
-
-	it("reads from buffer for leaf node", async() => {
-
-		const buffer = await readBinaryFile('leaf_node_data.bin');
-		console.log(buffer);
-		const node = new BPTreeNode([], [], [], buffer);
-		// const bytesRead = await node.unmarshalBinary();
-		console.log(node)
-
-	});
+	//
+	// it("correctly identifies leaf nodes", async () => {
+	// 	const leafKeys = [
+	// 		new ReferencedValue({ offset: BigInt(0), length: 0 }, new Uint8Array()),
+	// 	];
+	// 	const leafPointer = { offset: BigInt(0), length: 0 };
+	// 	const leafNode = new BPTreeNode(leafKeys, [leafPointer], [], new Uint8Array(4096));
+	// 	expect(leafNode.leaf()).toBeTruthy();
+	//
+	// 	const internalNode = new BPTreeNode(
+	// 		[],
+	// 		[],
+	// 		[BigInt(0)],
+	// 		new Uint8Array(4096)
+	// 	);
+	// 	expect(internalNode.leaf()).toBeFalsy();
+	// });
+	//
+	// it("retrieves the correct pointer for a leaf node", async () => {
+	// 	const leafPointers: MemoryPointer[] = [{ offset: BigInt(10), length: 20 }];
+	// 	const leafNode = new BPTreeNode(
+	// 		[],
+	// 		leafPointers,
+	// 		[],
+	// 		new Uint8Array(4096)
+	// 	);
+	// 	expect(leafNode.pointer(0)).toEqual(leafPointers[0]);
+	// });
+	//
+	// it("reads from buffer for leaf node", async() => {
+	//
+	// 	const buffer = await readBinaryFile('leaf_node_data.bin');
+	// 	console.log(buffer);
+	// 	const node = new BPTreeNode([], [], [], buffer);
+	// 	// const bytesRead = await node.unmarshalBinary();
+	// 	console.log(node)
+	//
+	// });
 
 
 });

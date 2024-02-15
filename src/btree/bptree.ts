@@ -18,16 +18,21 @@ type RootResponse = {
 export class BPTree {
 	private readonly tree: RangeResolver;
 	private meta: MetaPage;
-	private readonly data: Uint8Array; // RangeResolver for the data-file
+	private readonly dataFileResolver: RangeResolver;
 
-	constructor(tree: RangeResolver, meta: MetaPage, data: Uint8Array) {
+	constructor(
+		tree: RangeResolver,
+		meta: MetaPage,
+		dataFileResolver: RangeResolver
+	) {
 		this.tree = tree;
 		this.meta = meta;
-		this.data = data;
+		this.dataFileResolver = dataFileResolver;
 	}
 
 	private async root(): Promise<RootResponse | null> {
 		const mp = await this.meta.root();
+
 		if (!mp || mp.length === 0) {
 			return null;
 		}
@@ -48,7 +53,7 @@ export class BPTree {
 			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
 				ptr,
 				this.tree,
-				this.data
+				this.dataFileResolver
 			);
 
 			if (!bytesRead || bytesRead !== ptr.length) {

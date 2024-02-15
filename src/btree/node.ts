@@ -6,18 +6,18 @@ export class BPTreeNode {
 	public keys: ReferencedValue[];
 	public leafPointers: MemoryPointer[];
 	public internalPointers: bigint[];
-	private data: Uint8Array;
+	private dataFileResolver: RangeResolver;
 
 	constructor(
 		keys: ReferencedValue[],
 		leafPointers: MemoryPointer[],
 		internalPointers: bigint[],
-		data: Uint8Array
+		dataFileResolver: RangeResolver
 	) {
 		this.keys = keys;
 		this.leafPointers = leafPointers;
 		this.internalPointers = internalPointers;
-		this.data = data;
+		this.dataFileResolver = dataFileResolver;
 	}
 
 	leaf(): boolean {
@@ -92,11 +92,12 @@ export class BPTreeNode {
 				this.keys[idx].dataPointer.length = dataView.getUint32(0);
 
 				const dp = this.keys[idx].dataPointer;
-				const dataSlice = this.data.slice(
-					Number(dp.offset),
-					Number(dp.offset + BigInt(dp.length)) - 1
-				);
-				this.keys[idx].value = new Uint8Array(dataSlice);
+				const { data } = await this.dataFileResolver({
+					start:	Number(dp.offset),
+					end: Number(dp.offset + BigInt(dp.length)) - 1
+				});
+
+				this.keys[idx].value = data
 
 				m += 4 + 12;
 			} else {
@@ -129,13 +130,13 @@ export class BPTreeNode {
 	static async fromMemoryPointer(
 		mp: MemoryPointer,
 		resolver: RangeResolver,
-		data: Uint8Array
+		dataFilePointer : RangeResolver
 	): Promise<{ node: BPTreeNode; bytesRead: number }> {
 		const { data: bufferData } = await resolver({
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
-		const node = new BPTreeNode([], [], [], data);
+		const node = new BPTreeNode([], [], [], dataFilePointer);
 		const bytesRead = await node.unmarshalBinary(bufferData);
 
 		return { node, bytesRead };
