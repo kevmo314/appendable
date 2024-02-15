@@ -94,6 +94,5 @@ export function ReadMultiBPTree(
   pageFile: PageFile,
 ): LinkedMetaPage {
   const offset = pageFile.page(0);
-
   return new LinkedMetaPage(resolver, offset);
 }

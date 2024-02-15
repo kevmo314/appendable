@@ -2,18 +2,18 @@ package btree
 
 import (
 	"bytes"
+	"log"
+	"os"
 	"reflect"
 	"testing"
 )
 
-/*
 func writeBufferToFile(buf *bytes.Buffer, filename string) error {
 	if err := os.WriteFile(filename, buf.Bytes(), 0644); err != nil {
 		return err
 	}
 	return nil
 }
-*/
 
 func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	// Create a test BPTreeNode
@@ -35,8 +35,19 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err := writeBufferToFile(buf, "leafnode.bin")
+	if err != nil {
+		return
+	}
+
+	file, err := os.Open("leafnode.bin")
+	if err != nil {
+		log.Fatal(err) // Handle the error
+	}
+	defer file.Close() // Ensure the file is closed after reading
+
 	node2 := &BPTreeNode{}
-	if _, err := node2.ReadFrom(buf); err != nil {
+	if _, err := node2.ReadFrom(file); err != nil {
 		t.Fatal(err)
 	}
 
@@ -65,8 +76,19 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	err := writeBufferToFile(buf, "internalnode.bin")
+	if err != nil {
+		return
+	}
+
+	file, err := os.Open("internalnode.bin")
+	if err != nil {
+		log.Fatal(err) // Handle the error
+	}
+	defer file.Close() // Ensure the file is closed after reading
+
 	node2 := &BPTreeNode{}
-	if _, err := node2.ReadFrom(buf); err != nil {
+	if _, err := node2.ReadFrom(file); err != nil {
 		t.Fatal(err)
 	}
 
