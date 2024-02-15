@@ -35,7 +35,6 @@ function validateWhere<T extends Schema>(
 		throw new Error("Missing 'where' clause.");
 	}
 
-	console.log("validating where: ", where);
 
 	for (const whereNode of where) {
 		if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
@@ -116,7 +115,6 @@ function validateOrderBy<T extends Schema>(
 	whereKey: string
 ): void {
 	if (orderBy) {
-		console.log("validating orderBy: ", orderBy);
 		if (!Array.isArray(orderBy) || orderBy.length === 0) {
 			throw new Error("Invalid 'orderBy' clause.");
 		}
@@ -146,7 +144,6 @@ function validateSelect<T extends Schema>(
 	headers: IndexMeta[]
 ): void {
 	if (select) {
-		console.log("validating select: ", select);
 		if (!Array.isArray(select) || select.length === 0) {
 			throw new Error("Invalid 'select' clause");
 		}

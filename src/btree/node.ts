@@ -1,158 +1,143 @@
 import { RangeResolver } from "../resolver";
+import { ReferencedValue } from "./bptree";
 
-export type ReferencedValue = { dataPointer: MemoryPointer; value: Buffer };
-export type MemoryPointer = { offset: BigInt; length: number };
-
+export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {
 	public keys: ReferencedValue[];
-	public pointers: MemoryPointer[];
+	public leafPointers: MemoryPointer[];
+	public internalPointers: bigint[];
+	private data: Uint8Array;
 
-	constructor(pointers: MemoryPointer[], keys: ReferencedValue[]) {
+	constructor(
+		keys: ReferencedValue[],
+		leafPointers: MemoryPointer[],
+		internalPointers: bigint[],
+		data: Uint8Array
+	) {
 		this.keys = keys;
-		this.pointers = pointers;
+		this.leafPointers = leafPointers;
+		this.internalPointers = internalPointers;
+		this.data = data;
 	}
 
 	leaf(): boolean {
-		return this.pointers.length === this.keys.length;
+		return this.leafPointers.length > 0;
+	}
+
+	pointer(i: number): MemoryPointer {
+		if (this.leaf()) {
+			return this.leafPointers[
+				(this.leafPointers.length + i) % this.leafPointers.length
+			];
+		}
+
+		return {
+			offset:
+				this.internalPointers[
+					this.internalPointers.length + (i % this.internalPointers.length)
+				],
+			length: 0, // disregard since this is a free value in golang version
+		};
+	}
+
+	size(): bigint {
+		let size = 4;
+
+		for (let idx = 0; idx <= this.keys.length - 1; idx++) {
+			const k = this.keys[idx];
+			if (k.dataPointer.length > 0) {
+				size += 4 + 12;
+			} else {
+				size += 4 * k.value.byteLength; // bytelength over length
+			}
+		}
+
+		for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
+			size += 12;
+		}
+		for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
+			size += 8;
+		}
+
+		return BigInt(size);
+	}
+
+	async unmarshalBinary(buffer: ArrayBuffer): Promise<number> {
+		let dataView = new DataView(buffer.slice(0, 3));
+		const size = dataView.getUint32(0);
+
+		const leaf = size < 0;
+
+		if (leaf) {
+			this.leafPointers = Array<MemoryPointer>(-size);
+			this.keys = Array<ReferencedValue>(-size);
+		} else {
+			this.internalPointers = Array<bigint>(size + 1);
+			this.keys = Array<ReferencedValue>(size);
+		}
+
+		if (size === 0) {
+			throw new Error("empty node");
+		}
+
+		let m = 4;
+
+		for (let idx = 0; idx <= this.keys.length - 1; idx++) {
+			dataView = new DataView(buffer.slice(m, m + 3));
+			const l = dataView.getUint32(0);
+			if (l === ~0 >>> 0) {
+				dataView = new DataView(buffer.slice(m + 4, m + 11));
+				this.keys[idx].dataPointer.offset = dataView.getBigUint64(0);
+				dataView = new DataView(buffer.slice(m + 12, m + 15));
+				this.keys[idx].dataPointer.length = dataView.getUint32(0);
+
+				const dp = this.keys[idx].dataPointer;
+				const dataSlice = this.data.slice(
+					Number(dp.offset),
+					Number(dp.offset + BigInt(dp.length)) - 1
+				);
+				this.keys[idx].value = new Uint8Array(dataSlice);
+
+				m += 4 + 12;
+			} else {
+				this.keys[idx].value = new Uint8Array(
+					buffer.slice(m + 4, m + 4 + l - 1)
+				);
+				m += 4 + l;
+			}
+		}
+
+		for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
+			dataView = new DataView(buffer.slice(m, m + 7));
+			this.leafPointers[idx].offset = dataView.getBigUint64(0);
+			dataView = new DataView(buffer.slice(m + 8, m + 11));
+			this.leafPointers[idx].length = dataView.getUint32(0);
+
+			m += 12;
+		}
+
+		for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
+			dataView = new DataView(buffer.slice(m, m + 7));
+			this.internalPointers[idx] = dataView.getBigUint64(0);
+
+			m += 8;
+		}
+
+		return m;
 	}
 
 	static async fromMemoryPointer(
 		mp: MemoryPointer,
-		resolver: RangeResolver
-	): Promise<{ node: BPTreeNode | null; bytesRead: number }> {
-		try {
-			const node = new BPTreeNode([], []);
-			let { data: sizeData } = await resolver({
-				start: Number(mp.offset),
-				end: Number(mp.offset) + mp.length,
-			});
+		resolver: RangeResolver,
+		data: Uint8Array
+	): Promise<{ node: BPTreeNode; bytesRead: number }> {
+		const { data: bufferData } = await resolver({
+			start: Number(mp.offset),
+			end: Number(mp.offset) + 4096 - 1,
+		});
+		const node = new BPTreeNode([], [], [], data);
+		const bytesRead = await node.unmarshalBinary(bufferData);
 
-			let sizeBuffer = Buffer.from(sizeData);
-
-			let size = sizeBuffer.readInt32BE(0);
-			let leaf = size < 0;
-			let absSize = Math.abs(size);
-
-			node.pointers = [];
-			node.keys = [];
-			let currentOffset = 4;
-
-			for (let idx = 0; idx <= absSize - 1; idx++) {
-				let { data: keyData } = await resolver({
-					start: currentOffset,
-					end: currentOffset + 4,
-				});
-
-				let keyBuffer = Buffer.from(keyData);
-				let l = keyBuffer.readUint32BE(0);
-
-				currentOffset += 4;
-
-				if (l === 0) {
-					let { data: pointerData } = await resolver({
-						start: currentOffset,
-						end: currentOffset + 12,
-					});
-					let pointerBuffer = Buffer.from(pointerData);
-
-					let dpOffset = pointerBuffer.readInt32BE(0);
-					let dpLength = pointerBuffer.readUInt32BE(4);
-
-					currentOffset += 8;
-
-					let { data: keyValue } = await resolver({
-						start: dpOffset,
-						end: dpOffset + dpLength - 1,
-					});
-
-					node.keys.push({
-						value: Buffer.from(keyValue),
-						dataPointer: { offset: BigInt(dpOffset), length: dpLength },
-					});
-				} else {
-					let { data: keyValue } = await resolver({
-						start: currentOffset,
-						end: currentOffset + l,
-					});
-
-					node.keys.push({
-						value: Buffer.from(keyValue),
-						dataPointer: { offset: BigInt(currentOffset), length: l },
-					});
-
-					currentOffset += l;
-				}
-			}
-
-			for (let idx = 0; idx < absSize + (leaf ? 0 : 1); idx++) {
-				let { data: offsetData } = await resolver({
-					start: currentOffset,
-					end: currentOffset + 4,
-				});
-				let offsetBuffer = Buffer.from(offsetData);
-
-				let pointerOffset = offsetBuffer.readUint32BE(0);
-				currentOffset += 4;
-
-				let { data: lengthData } = await resolver({
-					start: currentOffset,
-					end: currentOffset + 4,
-				});
-
-				let lengthBuffer = Buffer.from(lengthData);
-
-				let pointerLength = lengthBuffer.readUint32BE(0);
-				currentOffset += 4;
-
-				node.pointers.push({ offset: BigInt(pointerOffset), length: pointerLength });
-			}
-
-			return { node, bytesRead: currentOffset };
-		} catch (error) {
-			// console.error(error);
-			return { node: null, bytesRead: 0 };
-		}
+		return { node, bytesRead };
 	}
-
-	async bsearch(key: Uint8Array): Promise<number> {
-		let lo = 0;
-		let hi = this.keys.length - 1;
-
-		while (lo <= hi) {
-			const mid = Math.floor((lo + hi) / 2);
-			const cmp = compareBytes(key, this.keys[mid].value);
-
-			switch (cmp) {
-				case 0:
-					return mid;
-				case -1:
-					hi = mid - 1;
-					break;
-				case 1:
-					lo = mid + 1;
-					break;
-			}
-		}
-
-		return ~lo;
-	}
-}
-
-export function compareBytes(a: Uint8Array, b: Uint8Array): number {
-	const len = Math.min(a.length, b.length);
-
-	for (let idx = 0; idx < len; idx++) {
-		if (a[idx] !== b[idx]) {
-			return a[idx] < b[idx] ? -1 : 1;
-		}
-	}
-
-	if (a.length < b.length) {
-		return -1;
-	}
-	if (a.length > b.length) {
-		return 1;
-	}
-
-	return 0;
 }
