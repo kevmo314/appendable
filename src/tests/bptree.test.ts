@@ -1,5 +1,4 @@
 import { BPTree, MetaPage } from "../btree/bptree";
-import { LinkedMetaPage } from "../btree/multi";
 import { MemoryPointer } from "../btree/node";
 import { RangeResolver } from "../resolver";
 
