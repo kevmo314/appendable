@@ -110,8 +110,7 @@ export class BPTreeNode {
       if (l === ~0 >>> 0) {
         dataView = new DataView(buffer, m + 4);
         const dpOffset = dataView.getBigUint64(0);
-        dataView = new DataView(buffer, m + 12);
-        const dpLength = dataView.getUint32(0);
+        const dpLength = dataView.getUint32(8);
         this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
 
         const dp = this.keys[idx].dataPointer;
@@ -134,8 +133,7 @@ export class BPTreeNode {
     for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
       dataView = new DataView(buffer, m);
       this.leafPointers[idx].offset = dataView.getBigUint64(0);
-      dataView = new DataView(buffer, m + 8);
-      this.leafPointers[idx].length = dataView.getUint32(0);
+      this.leafPointers[idx].length = dataView.getUint32(8);
 
       m += 12;
     }
