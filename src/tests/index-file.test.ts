@@ -1,50 +1,56 @@
-import { ReadMultiBPTree } from "../btree/multi";
-import { PageFile } from "../btree/pagefile";
-import { readFileMeta } from "../index-file/meta";
+import { IndexFileV1 } from "../index-file/index-file";
+import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
 describe("test index-file parsing", () => {
+	const MAX_PAGE_SIZE = 4096;
+	let mockRangeResolver: RangeResolver;
+	let indexFileSize: number;
+	let indexFile: Uint8Array | null;
 
-    let mockRangeResolver: RangeResolver;
+	async function generateFile(): Promise<Uint8Array> {
+		if (indexFile) {
+			return indexFile;
+		}
 
-    beforeEach(() => {
-        mockRangeResolver = async ({ start, end }) => {
-            const indexFile = await readBinaryFile("green_tripdata_2023-01.csv.index");
-            const slicedPart = indexFile.slice(start, end + 1);
+		const res = await readBinaryFile("green_tripdata_2023-01.index");
+		indexFile = res;
+		return indexFile;
+	}
 
-            const arrayBuffer = slicedPart.buffer.slice(slicedPart.byteOffset, slicedPart.byteOffset + slicedPart.byteLength);
-           
-            
+	beforeEach(() => {
+		mockRangeResolver = async ({ start, end }) => {
+			const indexFile = await generateFile();
+			indexFileSize = indexFile.byteLength;
+			const slicedPart = indexFile.slice(start, end + 1);
 
-            console.log("indexFile", start, end, arrayBuffer.byteLength);
+			const arrayBuffer = slicedPart.buffer.slice(
+				slicedPart.byteOffset,
+				slicedPart.byteOffset + slicedPart.byteLength
+			);
 
-            return {
-                data: arrayBuffer,
-                totalLength: arrayBuffer.byteLength, 
-            }
-        }
-    });
+			return {
+				data: arrayBuffer,
+				totalLength: arrayBuffer.byteLength,
+			};
+		};
+	});
 
+	it("should read the file meta", async () => {
+		const indexFile = new IndexFileV1(mockRangeResolver);
+		const fileMeta = await indexFile.metadata();
 
+		expect(fileMeta.format).toEqual(FileFormat.JSONL);
+		expect(fileMeta.version).toEqual(1);
+	});
 
-    it("should read the file meta", async () => {
-        const pageFile = new PageFile(mockRangeResolver);
-        
-        const tree = ReadMultiBPTree(mockRangeResolver, pageFile);
+	it("should traverse the entire index file and retrieve the index headers", async () => {
+		const indexFile = new IndexFileV1(mockRangeResolver);
 
-        const metadata = await tree.metadata();
+		const indexMetas = await indexFile.indexHeaders();
 
-        const fileMeta = await readFileMeta(metadata);
-
-        console.log(fileMeta);
-
-        expect(fileMeta.format).toEqual(1);
-        expect(fileMeta.version).toEqual(1);
-
-        console.log(fileMeta.readOffset)
-
-    });
-
-
+		console.log(indexMetas, indexMetas.length);
+		expect(indexMetas.length).toEqual(20);
+	});
 });

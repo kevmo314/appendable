@@ -1,8 +1,7 @@
-import { FormatType } from "..";
 import { DataFile } from "../data-file";
-import { IndexFile, VersionedIndexFile } from "../index-file/index-file";
+import { VersionedIndexFile } from "../index-file/index-file";
+import { FileFormat } from "../index-file/meta";
 import { QueryBuilder } from "./query-builder";
-import { validateQuery } from "./query-validation";
 
 export type Schema = {
 	[key: string]: {};
@@ -37,11 +36,11 @@ export enum FieldType {
 
 function parseIgnoringSuffix(
 	x: string,
-	format: FormatType,
+	format: FileFormat,
 	headerFields: string[]
 ) {
 	switch (format) {
-		case FormatType.Jsonl:
+		case FileFormat.JSONL:
 			try {
 				return JSON.parse(x);
 			} catch (error) {
@@ -55,7 +54,7 @@ function parseIgnoringSuffix(
 			console.log(JSON.parse(x));
 			return JSON.parse(x);
 
-		case FormatType.Csv:
+		case FileFormat.CSV:
 			const fields = x.split(",");
 
 			if (fields.length === 2) {
@@ -125,16 +124,14 @@ function cmp(a: any, b: any) {
 export class Database<T extends Schema> {
 	private constructor(
 		private dataFile: DataFile,
-		private indexFile: VersionedIndexFile<T>,
-		private formatType: FormatType
+		private indexFile: VersionedIndexFile<T>
 	) {}
 
 	static forDataFileAndIndexFile<T extends Schema>(
 		dataFile: DataFile,
-		indexFile: VersionedIndexFile<T>,
-		format: FormatType
+		indexFile: VersionedIndexFile<T>
 	) {
-		return new Database(dataFile, indexFile, format);
+		return new Database(dataFile, indexFile);
 	}
 
 	async fields() {
