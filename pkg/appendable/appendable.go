@@ -93,18 +93,31 @@ type FileMeta struct {
 }
 
 func (m *FileMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 9)
+	buf := make([]byte, 10)
 	buf[0] = byte(m.Version)
-	binary.BigEndian.PutUint64(buf[1:], m.ReadOffset)
+	buf[1] = byte(m.Format)
+	binary.BigEndian.PutUint64(buf[2:], m.ReadOffset)
 	return buf, nil
 }
 
 func (m *FileMeta) UnmarshalBinary(buf []byte) error {
-	if len(buf) < 9 {
+	if len(buf) < 10 {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
 	m.Version = Version(buf[0])
-	m.ReadOffset = binary.BigEndian.Uint64(buf[1:])
+
+	fileFormat := buf[1]
+
+	switch fileFormat {
+	case byte(0):
+		m.Format = FormatJSONL
+	case byte(1):
+		m.Format = FormatCSV
+	default:
+		return fmt.Errorf("unrecognized file format: %v", buf[1])
+	}
+
+	m.ReadOffset = binary.BigEndian.Uint64(buf[2:])
 	return nil
 }
 
