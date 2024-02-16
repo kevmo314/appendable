@@ -1,224 +1,182 @@
-import {
-	BPTreeNode,
-	MemoryPointer,
-	ReferencedValue,
-	compareBytes,
-} from "../bptree/node";
+import { ReferencedValue } from "../btree/bptree";
+import { BPTreeNode, MemoryPointer } from "../btree/node";
 import { RangeResolver } from "../resolver";
+import { readBinaryFile } from "./test-util";
 
-const strToUint8Array = (str: string) => {
-	return new Uint8Array(str.split("").map((c) => c.charCodeAt(0)));
+const PAGE_SIZE_BYTES = 4096;
+
+const strToArrayBuffer = (str: string) => {
+  return new Uint8Array(str.split("").map((c) => c.charCodeAt(0))).buffer;
 };
 
 describe("test compare bytes", () => {
-	beforeEach(() => {});
+  beforeEach(() => {});
 
-	const testCases = [
-		{ a: "", b: "", i: 0 },
-		{ a: "a", b: "", i: 1 },
-		{ a: "", b: "a", i: -1 },
-		{ a: "abc", b: "abc", i: 0 },
-		{ a: "abd", b: "abc", i: 1 },
-		{ a: "abc", b: "abd", i: -1 },
-		{ a: "ab", b: "abc", i: -1 },
-		{ a: "abc", b: "ab", i: 1 },
-		{ a: "x", b: "ab", i: 1 },
-		{ a: "ab", b: "x", i: -1 },
-		{ a: "x", b: "a", i: 1 },
-		{ a: "b", b: "x", i: -1 },
-		{ a: "abcdefgh", b: "abcdefgh", i: 0 },
-		{ a: "abcdefghi", b: "abcdefghi", i: 0 },
-		{ a: "abcdefghi", b: "abcdefghj", i: -1 },
-		{ a: "abcdefghj", b: "abcdefghi", i: 1 },
-	];
+  const testCases = [
+    { a: "", b: "", i: 0 },
+    { a: "a", b: "", i: 1 },
+    { a: "", b: "a", i: -1 },
+    { a: "abc", b: "abc", i: 0 },
+    { a: "abd", b: "abc", i: 1 },
+    { a: "abc", b: "abd", i: -1 },
+    { a: "ab", b: "abc", i: -1 },
+    { a: "abc", b: "ab", i: 1 },
+    { a: "x", b: "ab", i: 1 },
+    { a: "ab", b: "x", i: -1 },
+    { a: "x", b: "a", i: 1 },
+    { a: "b", b: "x", i: -1 },
+    { a: "abcdefgh", b: "abcdefgh", i: 0 },
+    { a: "abcdefghi", b: "abcdefghi", i: 0 },
+    { a: "abcdefghi", b: "abcdefghj", i: -1 },
+    { a: "abcdefghj", b: "abcdefghi", i: 1 },
+  ];
 
-	// This test uses the Go test cases for `bytes.Compare` for `compareBytes()`
-	// https://cs.opensource.google/go/go/+/refs/tags/go1.21.6:src/bytes/compare_test.go
-	testCases.forEach(({ a, b, i }, idx) => {
-		it(`test ${idx} compareBytes`, async () => {
-			const result = compareBytes(strToUint8Array(a), strToUint8Array(b));
-			expect(result).toBe(i);
-		});
-	});
+  // This test uses the Go test cases for `bytes.Compare` for `compareBytes()`
+  // https://cs.opensource.google/go/go/+/refs/tags/go1.21.6:src/bytes/compare_test.go
+  testCases.forEach(({ a, b, i }, idx) => {
+    it(`test ${idx} compareBytes`, async () => {
+      const result = ReferencedValue.compareBytes(
+        strToArrayBuffer(a),
+        strToArrayBuffer(b),
+      );
+      expect(result).toBe(i);
+    });
+  });
 });
 
-describe("test binary search", () => {
-	let bpTreeNode: BPTreeNode;
-	let keys: ReferencedValue[];
-	let pointers: MemoryPointer[];
+describe("node functionality", () => {
+  it("should read a leaf bptree node", async () => {
+    const mockRangeResolver: RangeResolver = async ({ start, end }) => {
+      const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
+      const leafnode_data = await readBinaryFile("leafnode.bin");
+      view.set(leafnode_data, 0);
+      const slice = view.slice(start, end + 1);
 
-	beforeEach(() => {
-		keys = [
-			{
-				dataPointer: { offset: 3, length: 1 },
-				value: Buffer.from(strToUint8Array("omoplata")),
-			},
-			{
-				dataPointer: { offset: 4, length: 1 },
-				value: Buffer.from(strToUint8Array("tarikoplata")),
-			},
-			{
-				dataPointer: { offset: 1, length: 1 },
-				value: Buffer.from(strToUint8Array("baratoplata")),
-			},
-			{
-				dataPointer: { offset: 2, length: 1 },
-				value: Buffer.from(strToUint8Array("choibar")),
-			},
-			{
-				dataPointer: { offset: 0, length: 1 },
-				value: Buffer.from(strToUint8Array("armbar")),
-			},
-		];
+      return {
+        data: slice.buffer,
+        totalLength: view.byteLength,
+      };
+    };
 
-		keys.sort((a, b) => compareBytes(a.value, b.value));
+    // since we're storing the values directly, we can mock
+    let dataResolver: RangeResolver = async ({ start, end }) => {
+      const mock = new ArrayBuffer(0);
+      return {
+        data: mock,
+        totalLength: 0,
+      };
+    };
 
-		pointers = new Array(keys.length + 1).fill({ offset: 0, length: 0 });
-		bpTreeNode = new BPTreeNode(pointers, keys);
-	});
+    const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
+      { offset: 0n, length: 1 },
+      mockRangeResolver,
+      dataResolver,
+    );
 
-	it("should find the correct position for existing keys", async () => {
-		const testKeys = [
-			"omoplata",
-			"tarikoplata",
-			"baratoplata",
-			"choibar",
-			"armbar",
-		];
+    expect(leafNode.internalPointers.length).toEqual(0);
+    expect(leafNode.leafPointers.length).toEqual(3);
+    expect(leafNode.keys.length).toEqual(3);
 
-		for (const key of testKeys) {
-			const keyArray = strToUint8Array(key);
-			const position = await bpTreeNode.bsearch(keyArray);
-			expect(position).toBeGreaterThanOrEqual(0);
-			const keyValueBuffer = Buffer.from(keyArray);
-			expect(bpTreeNode.keys[position].value).toEqual(keyValueBuffer);
-		}
-	});
+    for (let idx = 0; idx <= leafNode.keys.length - 1; idx++) {
+      const rv = leafNode.keys[idx];
 
-	it("should find the no position for nonexistent keys", async () => {
-		const testKeys = ["singlelegx", "xguard", "zguard"];
+      const buffer = new ArrayBuffer(idx + 1);
+      const data = new Uint8Array(buffer);
 
-		for (const key of testKeys) {
-			const keyArray = strToUint8Array(key);
-			const position = await bpTreeNode.bsearch(keyArray);
-			expect(position).toBeLessThan(0);
-		}
-	});
-});
+      if (idx === 0) {
+        data[0] = 0;
+      } else if (idx === 1) {
+        data[0] = 1;
+        data[1] = 2;
+      } else if (idx === 2) {
+        data[0] = 3;
+        data[1] = 4;
+        data[2] = 5;
+      }
 
-describe("test readNode", () => {
-	let mockRangeResolver: RangeResolver;
-	let mockMemoryPointer: MemoryPointer;
+      expect(rv.value).toEqual(data.buffer);
+      expect(rv.value.byteLength).toEqual(idx + 1);
 
-	function createMockNodeData(isLeaf: boolean, keys: string[]): Uint8Array {
-		const size = isLeaf ? -keys.length : keys.length;
-		const sizeBuffer = Buffer.alloc(4);
-		sizeBuffer.writeInt32BE(size);
+      // evaluating leaf pointers
+      const lp = leafNode.leafPointers[idx];
+      expect(lp.length).toEqual(idx + 1);
+      if (idx === 0) {
+        expect(lp.offset).toEqual(0n);
+      } else if (idx === 1) {
+        expect(lp.offset).toEqual(1n);
+      } else if (idx === 2) {
+        expect(lp.offset).toEqual(2n);
+      }
+    }
+  });
 
-		let totalSize = 4;
-		for (const key of keys) {
-			totalSize += 4;
-			totalSize += key.length;
-		}
-		const pointerSize = 8;
+  it("should read a internal bptree node", async () => {
+    const mockRangeResolver: RangeResolver = async ({ start, end }) => {
+      const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
+      const internalnode_data = await readBinaryFile("internalnode.bin");
+      view.set(internalnode_data, 0);
+      const slice = view.slice(start, end + 1);
 
-		if (isLeaf) {
-			totalSize += keys.length * pointerSize;
-		} else {
-			totalSize += (keys.length + 1) * pointerSize; // since n + 1 pointers
-		}
+      return {
+        data: slice.buffer,
+        totalLength: view.byteLength,
+      };
+    };
 
-		const mockData = Buffer.alloc(totalSize);
-		sizeBuffer.copy(mockData, 0);
+    // since we're storing the values directly, we can mock
+    let dataResolver: RangeResolver = async ({ start, end }) => {
+      const mock = new ArrayBuffer(0);
+      return {
+        data: mock,
+        totalLength: 0,
+      };
+    };
 
-		let offset = 4;
-		for (const key of keys) {
-			const keyBuffer = strToUint8Array(key);
+    const { node: internalNode, bytesRead } =
+      await BPTreeNode.fromMemoryPointer(
+        { offset: 0n, length: 1 },
+        mockRangeResolver,
+        dataResolver,
+      );
 
-			mockData.writeUInt32BE(keyBuffer.length, offset);
-			offset += 4;
+    expect(internalNode.internalPointers.length).toEqual(4);
+    expect(internalNode.leafPointers.length).toEqual(0);
+    expect(internalNode.keys.length).toEqual(3);
 
-			keyBuffer.forEach((byte) => {
-				mockData[offset] = byte;
-				offset++;
-			});
-		}
+    console.log(internalNode.internalPointers, internalNode.keys);
 
-		return mockData;
-	}
+    for (let idx = 0; idx <= internalNode.internalPointers.length; idx++) {
+      const ip = internalNode.internalPointers[idx];
+      if (idx === 0) {
+        expect(ip).toEqual(0n);
+      } else if (idx === 1) {
+        expect(ip).toEqual(1n);
+      } else if (idx === 2) {
+        expect(ip).toEqual(2n);
+      } else if (idx === 3) {
+        expect(ip).toEqual(3n);
+      }
+    }
 
-	const mockLeafNodeData = createMockNodeData(true, ["cat", "dog", "wef"]);
-	const mockNonLeafNodeData = createMockNodeData(false, [
-		"key1",
-		"key2",
-		"key3",
-	]);
+    for (let idx = 0; idx <= internalNode.keys.length - 1; idx++) {
+      const rv = internalNode.keys[idx];
 
-	const emptyLeafNodeData = createMockNodeData(true, []);
+      const buffer = new ArrayBuffer(idx + 1);
+      const data = new Uint8Array(buffer);
 
-	it("create leaf BPTreeNode from memory", async () => {
-		mockRangeResolver = jest.fn().mockImplementation(async ({ start, end }) => {
-			return {
-				data: mockLeafNodeData.slice(start, end),
-				totalLength: end - start,
-			};
-		});
+      if (idx === 0) {
+        data[0] = 0;
+      } else if (idx === 1) {
+        data[0] = 1;
+        data[1] = 2;
+      } else if (idx === 2) {
+        data[0] = 3;
+        data[1] = 4;
+        data[2] = 5;
+      }
 
-		mockMemoryPointer = { offset: 0, length: mockLeafNodeData.length };
-
-		const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
-			mockMemoryPointer,
-			mockRangeResolver
-		);
-
-		expect(node).not.toBeNull();
-		expect(node?.keys).toHaveLength(3);
-		expect(node?.pointers).toHaveLength(3);
-		expect(bytesRead).toBe(mockMemoryPointer.length);
-	});
-
-	it("create non-leaf BPTreeNode from memory", async () => {
-		const nonLeafMemoryPointer = {
-			offset: 0,
-			length: mockNonLeafNodeData.length,
-		};
-
-		mockRangeResolver = jest.fn().mockImplementation(async ({ start, end }) => {
-			return {
-				data: mockNonLeafNodeData.slice(start, end),
-				totalLength: end - start,
-			};
-		});
-
-		const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
-			nonLeafMemoryPointer,
-			mockRangeResolver
-		);
-
-		expect(bytesRead).toBe(nonLeafMemoryPointer.length);
-		expect(node).not.toBeNull();
-		expect(node?.keys).toHaveLength(3);
-		expect(node?.pointers).toHaveLength(4);
-	});
-
-	it("create empty leaf BPTreeNode from memory", async () => {
-		const leafMemoryPointer = {
-			offset: 0,
-			length: emptyLeafNodeData.length,
-		};
-
-		mockRangeResolver = jest.fn().mockImplementation(async ({ start, end }) => {
-			return {
-				data: emptyLeafNodeData.slice(start, end),
-				totalLength: end - start,
-			};
-		});
-
-		const { node } = await BPTreeNode.fromMemoryPointer(
-			leafMemoryPointer,
-			mockRangeResolver
-		);
-
-		expect(node).toBeNull();
-	});
+      expect(rv.value).toEqual(data.buffer);
+      expect(rv.value.byteLength).toEqual(idx + 1);
+    }
+  });
 });

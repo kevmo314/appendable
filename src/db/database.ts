@@ -1,6 +1,6 @@
 import { FormatType } from "..";
 import { DataFile } from "../data-file";
-import { IndexFile, VersionedIndexFile } from "../index-file";
+import { IndexFile, VersionedIndexFile } from "../index-file/index-file";
 import { QueryBuilder } from "./query-builder";
 import { validateQuery } from "./query-validation";
 
@@ -141,6 +141,7 @@ export class Database<T extends Schema> {
 		return await this.indexFile.indexHeaders();
 	}
 
+	/*
 	async *query(query: Query<T>) {
 		// verify that the query does not require a composite index
 		if (new Set((query.where ?? []).map((where) => where.key)).size > 1) {
@@ -296,6 +297,7 @@ export class Database<T extends Schema> {
 			}
 		}
 	}
+	*/
 
 	where(
 		key: keyof T,

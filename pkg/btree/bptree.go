@@ -20,8 +20,6 @@ type BPTree struct {
 	tree ReadWriteSeekPager
 	meta MetaPage
 
-	maxPageSize int
-
 	Data []byte
 }
 

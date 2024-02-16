@@ -6,6 +6,16 @@ import (
 	"testing"
 )
 
+/*
+func writeBufferToFile(buf *bytes.Buffer, filename string) error {
+	if err := os.WriteFile(filename, buf.Bytes(), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+*/
+
 func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	// Create a test BPTreeNode
 	node1 := &BPTreeNode{

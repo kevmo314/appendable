@@ -52,17 +52,6 @@ func (n *BPTreeNode) leaf() bool {
 	return len(n.leafPointers) > 0
 }
 
-func (n *BPTreeNode) Pointers() []MemoryPointer {
-	if n.leaf() {
-		return n.leafPointers
-	}
-	pointers := make([]MemoryPointer, len(n.internalPointers))
-	for i, p := range n.internalPointers {
-		pointers[i].Offset = p
-	}
-	return pointers
-}
-
 func (n *BPTreeNode) Pointer(i int) MemoryPointer {
 	if n.leaf() {
 		return n.leafPointers[(len(n.leafPointers)+i)%len(n.leafPointers)]
@@ -162,7 +151,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			n.Keys[i].DataPointer.Offset = binary.BigEndian.Uint64(buf[m+4 : m+12])
 			n.Keys[i].DataPointer.Length = binary.BigEndian.Uint32(buf[m+12 : m+16])
 			dp := n.Keys[i].DataPointer
-			n.Keys[i].Value = n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]
+			n.Keys[i].Value = n.Data[dp.Offset : dp.Offset+uint64(dp.Length)] // resolving the data-file
 			m += 4 + 12
 		} else {
 			n.Keys[i].Value = buf[m+4 : m+4+int(l)]
