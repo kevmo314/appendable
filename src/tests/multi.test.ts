@@ -70,7 +70,6 @@ describe("test multi", () => {
       }
 
       const slice = view.slice(start, Math.min(end, bufferSize));
-      console.log("slice: ", slice);
       if (expectedLength !== undefined && slice.byteLength !== expectedLength) {
         throw new LengthIntegrityError();
       }

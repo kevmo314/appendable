@@ -1,9 +1,7 @@
-import {LinkedMetaPage, ReadMultiBPTree} from "../btree/multi";
+import { LinkedMetaPage, ReadMultiBPTree } from "../btree/multi";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
-import {PageFile} from "../btree/pagefile";
-import { IndexMeta, unmarshalBinaryForIndexMeta } from "./meta";
-
-
+import { PageFile } from "../btree/pagefile";
+import { FileFormat, IndexHeader, IndexMeta, collectIndexMetas, readIndexMeta } from "./meta";
 
 export class IndexFile {
 	static async forUrl<T = any>(url: string) {
@@ -50,10 +48,10 @@ export interface VersionedIndexFile<T> {
 
 	metadata(): Promise<FileMeta | null>;
 
-	indexHeaders(): Promise<IndexMeta[]>;
+	indexHeaders(): Promise<IndexHeader[]>;
 }
 
-class IndexFileV1<T> implements VersionedIndexFile<T> {
+export class IndexFileV1<T> implements VersionedIndexFile<T> {
 	private _tree?: LinkedMetaPage;
 
 	constructor(private resolver: RangeResolver) {}
@@ -70,30 +68,35 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 		return tree;
 	}
 
-	async metadata(): Promise<FileMeta | null> {
+	async metadata(): Promise<FileMeta> {
 		const tree = await this.tree();
 
 		const buffer = await tree.metadata();
 
 		// unmarshall binary for FileMeta
-		if (buffer.byteLength < 9) {
-			return null;
+		if (buffer.byteLength < 10) {
+			throw new Error(`incorrect byte length! Want: 10, got ${buffer.byteLength}`);
 		}
 
 		const dataView = new DataView(buffer);
 		const version = dataView.getUint8(0);
-		const format = dataView.getUint8(1);
+		const formatByte = dataView.getUint8(1);
+
+
+		if (Object.values(FileFormat).indexOf(formatByte) === -1) {
+			throw new Error(`unexpected file format. Got: ${formatByte}`);
+		}
 
 		const readOffset = dataView.getBigUint64(2);
 
 		return {
 			version: version,
-			format: format,
+			format: formatByte,
 			readOffset: readOffset,
 		};
 	}
 
-	async indexHeaders(): Promise<IndexMeta[]> {
+	async indexHeaders(): Promise<IndexHeader[]> {
 		let headers: IndexMeta[] = [];
 
 		let mp = await this.tree();
@@ -101,17 +104,17 @@ class IndexFileV1<T> implements VersionedIndexFile<T> {
 		while (mp) {
 			const next = await mp.next();
 			if (next === null) {
-				return headers;
+				return collectIndexMetas(headers);
 			}
 
 			const nextBuffer = await next?.metadata();
-			const indexMeta = await unmarshalBinaryForIndexMeta(this.resolver, nextBuffer);
+			const indexMeta = await readIndexMeta(nextBuffer);
 
 			headers.push(indexMeta);
 
 			mp = next;
 		}
 
-		return headers;
+		return collectIndexMetas(headers);
 	}
 }

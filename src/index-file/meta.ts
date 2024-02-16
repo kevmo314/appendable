@@ -1,5 +1,3 @@
-import { RangeResolver } from "../resolver";
-
 
 export enum FileFormat {
 	JSONL = 0,
@@ -10,67 +8,85 @@ export type FileMeta = {
 	version: number;
 	format: FileFormat;
 	readOffset: bigint;
-}
+};
 
 export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
 	if (buffer.byteLength !== 10) {
-		throw new Error(`incorrect byte length! Want: 10, got ${buffer.byteLength}`);
+		throw new Error(
+			`incorrect byte length! Want: 10, got ${buffer.byteLength}`
+		);
 	}
 
 	const dataView = new DataView(buffer);
 
 	const version = dataView.getUint8(0);
-	const format = dataView.getUint8(1);
+	const formatByte = dataView.getUint8(1);
 
-	if (format !== FileFormat.CSV && format !== FileFormat.JSONL) {
-		throw new Error(`unexpected file format. Got: ${format}`)
+	if (Object.values(FileFormat).indexOf(formatByte) === -1) {
+		throw new Error(`unexpected file format. Got: ${formatByte}`);
 	}
+
 
 	const readOffset = dataView.getBigUint64(2);
 
 	return {
 		version,
-		format,
-		readOffset
-	}
+		format: formatByte,
+		readOffset,
+	};
 }
-
-
 
 export type IndexMeta = {
 	fieldName: string;
-	fieldType: bigint;
+	fieldType: number;
 };
 
-export async function unmarshalBinaryForIndexMeta(
-	resolver: RangeResolver,
-	buffer: ArrayBuffer
+export type IndexHeader = {
+	fieldName: string;
+	fieldTypes: number[];
+}
+
+export async function readIndexMeta(
+	buffer: ArrayBuffer,
 ): Promise<IndexMeta> {
-	if (buffer.byteLength < 10) {
+	if (buffer.byteLength < 4) {
 		throw new Error(`invalid metadata size ${buffer.byteLength}`);
 	}
 
-	const indexMeta = {
-		fieldName: "",
-		fieldType: BigInt(0),
-	};
-
 	const dataView = new DataView(buffer);
+	const fieldType = dataView.getUint16(0);
+	const nameLength = dataView.getUint16(2);
 
-	indexMeta.fieldType = dataView.getBigUint64(0);
-
-	const nameLength = dataView.getUint16(8);
-
-	if (buffer.byteLength < 10 + nameLength) {
-		throw new Error(`invalid metadata size: ${buffer.byteLength}`);
+	if (buffer.byteLength < 4 + nameLength) {
+		throw new Error(`invalid metadata size ${buffer.byteLength}`);
 	}
 
-	const { data: fieldNameData } = await resolver({
-		start: 10,
-		end: 10 + nameLength - 1,
-	});
+	const fieldNameBuffer = buffer.slice(4, 4+ nameLength);
+    const fieldName = new TextDecoder("utf-8").decode(fieldNameBuffer);
 
-	indexMeta.fieldName = new TextDecoder("utf-8").decode(fieldNameData);
+	return {
+		fieldName,
+		fieldType,
+	};
+}
 
-	return indexMeta;
+export function collectIndexMetas(indexMetas: IndexMeta[]): IndexHeader[] {
+    const headersMap: Map<string, number[]> = new Map();
+
+    for (const meta of indexMetas) {
+        if (!headersMap.has(meta.fieldName)) {
+            headersMap.set(meta.fieldName, [meta.fieldType]);
+        } else {
+            const updatedTypes = headersMap.get(meta.fieldName);
+            updatedTypes?.push(meta.fieldType);
+            headersMap.set(meta.fieldName, updatedTypes!!);
+        }
+    }
+
+    const indexHeaders: IndexHeader[] = [];
+    headersMap.forEach((fieldTypes, fieldName) => {
+        indexHeaders.push({ fieldName, fieldTypes });
+    });
+
+    return indexHeaders;
 }

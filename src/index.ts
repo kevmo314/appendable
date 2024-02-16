@@ -1,17 +1,11 @@
 import { DataFile } from "./data-file";
-import { Database, FieldType} from "./db/database";
+import { Database, FieldType } from "./db/database";
 import { IndexFile } from "./index-file/index-file";
 import { RangeResolver } from "./resolver";
 
-export enum FormatType {
-	Csv = "csv",
-	Jsonl = "jsonl",
-}
-
 export async function init(
 	dataUrl: string | RangeResolver,
-	indexUrl: string | RangeResolver,
-	format: FormatType
+	indexUrl: string | RangeResolver
 ) {
 	return Database.forDataFileAndIndexFile(
 		typeof dataUrl === "string"
@@ -19,8 +13,7 @@ export async function init(
 			: DataFile.forResolver(dataUrl),
 		typeof indexUrl === "string"
 			? await IndexFile.forUrl(indexUrl)
-			: await IndexFile.forResolver(indexUrl),
-		format
+			: await IndexFile.forResolver(indexUrl)
 	);
 }
 
@@ -28,7 +21,6 @@ interface GlobalMap {
 	Appendable: {
 		init: Function;
 		FieldType: typeof FieldType;
-		FormatType: typeof FormatType;
 	};
 }
 
@@ -39,5 +31,4 @@ declare global {
 globalThis.Appendable = {
 	init,
 	FieldType,
-	FormatType,
 };
