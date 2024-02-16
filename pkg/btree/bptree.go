@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"slices"
 )
 
@@ -51,7 +50,6 @@ func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, MemoryPointer, erro
 	if err != nil {
 		return ReferencedValue{}, MemoryPointer{}, err
 	}
-	log.Printf("path %#v", path)
 	return path[0].node.Keys[path[0].index], path[0].node.Pointer(path[0].index), nil
 }
 
@@ -69,7 +67,6 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 type TraversalRecord struct {
 	node  *BPTreeNode
 	index int
-	found bool
 	// the offset is useful so we know which page to free when we split
 	ptr MemoryPointer
 }
@@ -81,9 +78,13 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
 	if node.leaf() {
-		return []TraversalRecord{{node: node, index: index, found: found, ptr: ptr}}, nil
+		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}
 
+	if found {
+		// if the key is found, we need to go to the right child
+		index++
+	}
 	child, err := t.readNode(node.Pointer(index))
 	if err != nil {
 		return nil, err
@@ -92,11 +93,10 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 	if err != nil {
 		return nil, err
 	}
-	return append(path, TraversalRecord{node: node, index: index, found: found, ptr: ptr}), nil
+	return append(path, TraversalRecord{node: node, index: index, ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
-	fmt.Printf("\ninsert parameters look like \nkey: %v\nvalue: %v\n\n", key, value)
 	root, rootOffset, err := t.root()
 	if err != nil {
 		return fmt.Errorf("read root node: %w", err)
@@ -122,13 +122,9 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		return err
 	}
 
-	log.Printf("path: %v\n", path)
-
 	// insert the key into the leaf
 	n := path[0].node
-	fmt.Printf("keys %v and key %v", n.Keys, key)
 	j, found := slices.BinarySearchFunc(n.Keys, key, CompareReferencedValues)
-	fmt.Printf("binary search results: j: %v and found %v", j, found)
 	if found {
 		return fmt.Errorf("key already exists")
 	}
@@ -147,7 +143,6 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		tr := path[i]
 		n := tr.node
 		if int(n.Size()) > t.tree.PageSize() {
-			log.Printf("split!")
 			// split the node
 			// mid is the key that will be inserted into the parent
 			mid := len(n.Keys) / 2
