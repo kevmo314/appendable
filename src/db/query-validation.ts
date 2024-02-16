@@ -1,4 +1,4 @@
-import { IndexMeta } from "../index-file/meta";
+import { IndexHeader, IndexMeta } from "../index-file/meta";
 import {
 	FieldType,
 	OrderBy,
@@ -16,8 +16,8 @@ import {
  * @param {FieldType} singleType - The specific type to check for within the compositeType.
  * @returns {boolean} - Returns true if singleType is included in compositeType, false otherwise.
  */
-function containsType(compositeType: bigint, singleType: FieldType): boolean {
-	return (compositeType & BigInt(singleType)) !== BigInt(0);
+function containsType(compositeType: number[], singleType: number): boolean {
+	return compositeType.includes(singleType);	
 }
 
 /**
@@ -29,7 +29,7 @@ function containsType(compositeType: bigint, singleType: FieldType): boolean {
  */
 function validateWhere<T extends Schema>(
 	where: WhereNode<T>[] | undefined,
-	headers: IndexMeta[]
+	headers: IndexHeader[]
 ): void {
 	if (!where || !Array.isArray(where) || where.length === 0) {
 		throw new Error("Missing 'where' clause.");
@@ -57,17 +57,17 @@ function validateWhere<T extends Schema>(
 			throw new Error("'value' in 'where' clause is missing.");
 		}
 
-		const headerType = header.fieldType;
+		const headerType = header.fieldTypes;
 
 		if (whereNode.value === null) {
-			if (!containsType(headerType, FieldType.Null)) {
+			if (!containsType(headerType, 7)) {
 				throw new Error(`'key: ${whereNode.key} does not have type: null.`);
 			}
 		} else {
 			function fieldTypeError(
 				key: string,
 				actual: FieldType,
-				expected: bigint
+				expected: number[] 
 			): string {
 				return `key: ${key} does not have type: ${actual}. Expected: ${expected}`;
 			}
@@ -75,9 +75,9 @@ function validateWhere<T extends Schema>(
 			switch (typeof whereNode.value) {
 				case "bigint":
 				case "number":
-					if (!containsType(headerType, FieldType.Number)) {
+					if (!containsType(headerType, FieldType.Int64)) {
 						throw new Error(
-							fieldTypeError(whereNode.key, FieldType.Number, headerType)
+							fieldTypeError(whereNode.key, FieldType.Int64, headerType)
 						);
 					}
 					break;
@@ -141,7 +141,7 @@ function validateOrderBy<T extends Schema>(
  */
 function validateSelect<T extends Schema>(
 	select: SelectField<T>[] | undefined,
-	headers: IndexMeta[]
+	headers: IndexHeader[]
 ): void {
 	if (select) {
 		if (!Array.isArray(select) || select.length === 0) {
@@ -171,7 +171,7 @@ function validateSelect<T extends Schema>(
  */
 export async function validateQuery<T extends Schema>(
 	query: Query<T>,
-	headers: IndexMeta[]
+	headers: IndexHeader[]
 ): Promise<void> {
 	validateWhere(query.where, headers);
 	validateOrderBy(query.orderBy, query.where![0].key as string);

@@ -3,11 +3,13 @@ import { MemoryPointer } from "./node";
 import { PageFile } from "./pagefile";
 
 const PAGE_SIZE_BYTES = 4096;
+export const maxUint64 = 2n ** 64n - 1n;
 
 export class LinkedMetaPage {
 	private resolver: RangeResolver;
 	private offset: bigint;
 	private metaPageData: ArrayBuffer | null;
+	private metaPagePromise: Promise<ArrayBuffer> | null = null;
 
 	constructor(resolver: RangeResolver, offset: bigint) {
 		this.resolver = resolver;
@@ -57,14 +59,23 @@ export class LinkedMetaPage {
 			return this.metaPageData;
 		}
 
-		const { data } = await this.resolver({
-			start: Number(this.offset),
-			end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
-		});
+		if (!this.metaPagePromise) {
+			this.metaPagePromise = this.resolver({
+				start: Number(this.offset),
+				end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
+			})
+				.then(({ data }) => {
+					this.metaPageData = data;
+					this.metaPagePromise = null;
+					return data;
+				})
+				.catch((error) => {
+					this.metaPagePromise = null;
+					throw error;
+				});
+		}
 
-		this.metaPageData = data;
-
-		return data;
+		return this.metaPagePromise;
 	}
 
 	/**
@@ -75,7 +86,7 @@ export class LinkedMetaPage {
 
 		const view = new DataView(pageData, 12, 8);
 		const nextOffset = view.getBigUint64(0);
-		const maxUint64 = 2n ** 64n - 1n;
+	
 		if (nextOffset === maxUint64) {
 			return null;
 		}

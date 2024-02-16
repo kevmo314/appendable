@@ -20,17 +20,18 @@ export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
 	const dataView = new DataView(buffer);
 
 	const version = dataView.getUint8(0);
-	const format = dataView.getUint8(1);
+	const formatByte = dataView.getUint8(1);
 
-	if (format !== FileFormat.CSV && format !== FileFormat.JSONL) {
-		throw new Error(`unexpected file format. Got: ${format}`);
+	if (Object.values(FileFormat).indexOf(formatByte) === -1) {
+		throw new Error(`unexpected file format. Got: ${formatByte}`);
 	}
+
 
 	const readOffset = dataView.getBigUint64(2);
 
 	return {
 		version,
-		format,
+		format: formatByte,
 		readOffset,
 	};
 }

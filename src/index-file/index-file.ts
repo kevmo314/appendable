@@ -74,7 +74,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 		const buffer = await tree.metadata();
 
 		// unmarshall binary for FileMeta
-		if (buffer.byteLength < 9) {
+		if (buffer.byteLength < 10) {
 			throw new Error(`incorrect byte length! Want: 10, got ${buffer.byteLength}`);
 		}
 
@@ -82,27 +82,16 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 		const version = dataView.getUint8(0);
 		const formatByte = dataView.getUint8(1);
 
-		let format;
-		switch (formatByte) {
-			case FileFormat.CSV:
-				format = FileFormat.CSV
-				break
-			case FileFormat.JSONL:
-				format = FileFormat.JSONL
-				break
-			default:
-				throw new Error(`invalid format: ${formatByte}`)
-		}
 
-		if (format !== FileFormat.CSV && format !== FileFormat.JSONL) {
-			throw new Error(`unexpected file format. Got: ${format}`);
+		if (Object.values(FileFormat).indexOf(formatByte) === -1) {
+			throw new Error(`unexpected file format. Got: ${formatByte}`);
 		}
 
 		const readOffset = dataView.getBigUint64(2);
 
 		return {
 			version: version,
-			format: format,
+			format: formatByte,
 			readOffset: readOffset,
 		};
 	}

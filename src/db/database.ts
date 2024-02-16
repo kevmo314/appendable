@@ -28,10 +28,14 @@ export type Query<T extends Schema> = {
 };
 
 export enum FieldType {
-	String = 1 << 0,
-	Number = 1 << 1,
-	Boolean = 1 << 4,
-	Null = 1 << 5,
+	String = 0,
+	Int64 = 1,
+	Uint64 = 2,
+	Float64 = 3,
+	Object = 4,
+	Array = 5,
+	Boolean = 6,
+	Null = 7,
 }
 
 function parseIgnoringSuffix(
