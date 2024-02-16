@@ -213,6 +213,12 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	}
 }
 
+type StubDataParser struct{}
+
+func (s *StubDataParser) Parse(value []byte) []byte {
+	return []byte{1, 2, 3, 4, 5, 6, 7, 8}
+}
+
 func TestBPTree_RandomTests(t *testing.T) {
 	t.Run("random insertion test", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
@@ -256,8 +262,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
-		tree.Data = make([]byte, 65536*4+8)
+		tree := NewBPTreeWithData(p, &testMetaPage{}, make([]byte, 65536*4+8), &StubDataParser{})
 		for i := 0; i < 65536*4; i++ {
 			if err := tree.Insert(ReferencedValue{
 				Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
