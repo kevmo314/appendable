@@ -1,7 +1,7 @@
 import {LinkedMetaPage, ReadMultiBPTree} from "../btree/multi";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
-import { IndexMeta, unmarshalBinaryForIndexMeta } from "./index-meta";
 import {PageFile} from "../btree/pagefile";
+import { IndexMeta, unmarshalBinaryForIndexMeta } from "./meta";
 
 
 

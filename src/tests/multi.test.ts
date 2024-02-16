@@ -2,7 +2,6 @@ import { LengthIntegrityError, RangeResolver } from "../resolver";
 import { PageFile } from "../btree/pagefile";
 import { ReadMultiBPTree } from "../btree/multi";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
-import mock = jest.mock;
 
 describe("test multi", () => {
   it("storing metadata works", async () => {
