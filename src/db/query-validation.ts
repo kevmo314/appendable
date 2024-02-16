@@ -1,4 +1,4 @@
-import { IndexMeta } from "../index-file/index-meta";
+import { IndexMeta } from "../index-file/meta";
 import {
 	FieldType,
 	OrderBy,
