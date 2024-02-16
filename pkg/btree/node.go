@@ -1,6 +1,7 @@
 package btree
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -12,17 +13,46 @@ type MemoryPointer struct {
 	Length uint32
 }
 
+func (mp MemoryPointer) String() string {
+	return fmt.Sprintf("Pointer[%08x:%08x]", mp.Offset, mp.Offset+uint64(mp.Length))
+}
+
 type ReferencedValue struct {
 	// it is generally optional to set the DataPointer. if it is not set, the
 	// value is taken to be unreferenced and is stored directly in the node.
 	// if it is set, the value is used for comparison but the value is stored
 	// as a reference to the DataPointer.
+	//
+	// caveat: DataPointer is used as a disambiguator for the value. the b+ tree
+	// implementation does not support duplicate keys and uses the DataPointer
+	// to disambiguate between keys that compare as equal.
 	DataPointer MemoryPointer
 	Value       []byte
 }
 
+func (rv ReferencedValue) String() string {
+	return fmt.Sprintf("ReferencedValue@%s{%s}", rv.DataPointer, rv.Value)
+}
+
+func CompareReferencedValues(a, b ReferencedValue) int {
+	cmp := bytes.Compare(a.Value, b.Value)
+	if cmp != 0 {
+		return cmp
+	}
+
+	if a.DataPointer.Offset != b.DataPointer.Offset {
+		return int(a.DataPointer.Offset - b.DataPointer.Offset)
+	}
+	return int(a.DataPointer.Length - b.DataPointer.Length)
+}
+
+type DataParser interface {
+	Parse([]byte) []byte
+}
+
 type BPTreeNode struct {
-	Data []byte
+	Data       []byte
+	DataParser DataParser
 	// contains the offset of the child node or the offset of the record for leaf
 	// if the node is a leaf, the last pointer is the offset of the next leaf
 	leafPointers     []MemoryPointer
@@ -133,7 +163,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			n.Keys[i].DataPointer.Offset = binary.BigEndian.Uint64(buf[m+4 : m+12])
 			n.Keys[i].DataPointer.Length = binary.BigEndian.Uint32(buf[m+12 : m+16])
 			dp := n.Keys[i].DataPointer
-			n.Keys[i].Value = n.Data[dp.Offset : dp.Offset+uint64(dp.Length)] // resolving the data-file
+			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
 			m += 4 + 12
 		} else {
 			n.Keys[i].Value = buf[m+4 : m+4+int(l)]

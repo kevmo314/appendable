@@ -62,7 +62,7 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 
 		dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 
-		if err := handleCSVLine(f, df, dec, headers, []string{}, btree.MemoryPointer{
+		if err := c.handleCSVLine(f, df, dec, headers, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
 			Length: uint32(i),
 		}); err != nil {
@@ -125,7 +125,31 @@ func InferCSVField(fieldValue string) (interface{}, appendable.FieldType) {
 	return fieldValue, appendable.FieldTypeString
 }
 
-func handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers []string, path []string, data btree.MemoryPointer) error {
+func (c CSVHandler) Parse(value []byte) []byte {
+	parsed, fieldType := InferCSVField(string(value))
+
+	switch fieldType {
+	case appendable.FieldTypeFloat64:
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, math.Float64bits(parsed.(float64)))
+		return buf
+	case appendable.FieldTypeBoolean:
+		if parsed.(bool) {
+			return []byte{1}
+		} else {
+			return []byte{0}
+		}
+	case appendable.FieldTypeString:
+		return []byte(parsed.(string))
+	case appendable.FieldTypeNull:
+		// nil values are a bit of a degenerate case, we are essentially using the btree
+		// as a set. we store the value as an empty byte slice.
+		return []byte{}
+	}
+	panic("unknown type")
+}
+
+func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers []string, path []string, data btree.MemoryPointer) error {
 	record, err := dec.Read()
 	if err != nil {
 		slog.Error("Failed to read CSV record at index", "error", err)
@@ -147,58 +171,20 @@ func handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers 
 		fieldOffset := data.Offset + cumulativeLength
 		fieldLength := uint32(len(fieldValue))
 
-		value, fieldType := InferCSVField(fieldValue)
+		_, fieldType := InferCSVField(fieldValue)
 		page, err := f.FindOrCreateIndex(name, fieldType)
 
 		if err != nil {
 			return fmt.Errorf("failed to find or create index: %w", err)
 		}
 
-		switch fieldType {
-		case appendable.FieldTypeFloat64:
-			buf := make([]byte, 8)
-			binary.BigEndian.PutUint64(buf, math.Float64bits(value.(float64)))
-			if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: buf}, data); err != nil {
-				return fmt.Errorf("failed to insert into b+tree: %w", err)
-			}
-		case appendable.FieldTypeBoolean:
-			if value.(bool) {
-				if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{1}}, data); err != nil {
-					return fmt.Errorf("failed to insert into b+tree: %w", err)
-				}
-			} else {
-				if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{0}}, data); err != nil {
-					return fmt.Errorf("failed to insert into b+tree: %w", err)
-				}
-			}
-		case appendable.FieldTypeString:
-			if err := page.BPTree(df).Insert(btree.ReferencedValue{
-				DataPointer: btree.MemoryPointer{
-					Offset: fieldOffset,
-					Length: fieldLength,
-				},
-				// trim the quotes
-				Value: []byte(value.(string)),
-			}, data); err != nil {
-				return fmt.Errorf("failed to insert into b+tree: %w", err)
-			}
+		mp := btree.MemoryPointer{
+			Offset: fieldOffset,
+			Length: fieldLength,
+		}
 
-			slog.Debug("Appended index record",
-				slog.String("field", name),
-				slog.Any("value", value),
-				slog.Int("start", int(fieldOffset)))
-
-		case appendable.FieldTypeNull:
-			// nil values are a bit of a degenerate case, we are essentially using the btree
-			// as a set. we store the value as an empty byte slice.
-			if err := page.BPTree(df).Insert(btree.ReferencedValue{Value: []byte{}}, data); err != nil {
-				return fmt.Errorf("failed to insert into b+tree: %w", err)
-			}
-			slog.Debug("Marked field", "name", name)
-
-		default:
-			slog.Error("Encountered unexpected type '%T' for field '%s'", value, name)
-			return fmt.Errorf("unexpected type '%T'", value)
+		if err := page.BPTree(df, CSVHandler{}).Insert(btree.ReferencedValue{Value: c.Parse([]byte(fieldValue)), DataPointer: mp}, data); err != nil {
+			return fmt.Errorf("failed to insert into b+tree: %w", err)
 		}
 
 		cumulativeLength += uint64(fieldLength + 1)

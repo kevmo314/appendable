@@ -10,6 +10,7 @@ import (
 const CurrentVersion = 1
 
 type DataHandler interface {
+	btree.DataParser
 	Synchronize(f *IndexFile, df []byte) error
 	Format() Format
 }

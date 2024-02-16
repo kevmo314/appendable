@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"log/slog"
@@ -186,23 +187,28 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 		if i == 0 {
 
 			for _, val := range h1 {
-				_, found, err := collected1.BPTree(jr).Find([]byte(val))
+				rv1, mp1, err := collected1.BPTree(jr, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if !found {
-					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
+				if mp1 == (btree.MemoryPointer{}) {
+					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
-				_, found, err = collected2.BPTree(cr).Find([]byte(val))
+				rv2, mp2, err := collected2.BPTree(cr, CSVHandler{}).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if !found {
-					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
+				if mp2 == (btree.MemoryPointer{}) {
+					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
+
+				if !bytes.Equal(rv1.Value, rv2.Value) {
+					return false, fmt.Sprintf("mismatched keys: %v, %v", rv1.Value, rv2.Value)
+				}
+
 			}
 
 		} else if i == 1 {
@@ -210,22 +216,28 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 
 				v2 := make([]byte, 8)
 				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
-				_, found, err := collected1.BPTree(jr).Find(v2)
+				rv1, mp1, err := collected1.BPTree(jr, JSONLHandler{}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if !found {
+				if mp1 == (btree.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				_, found, err = collected2.BPTree(cr).Find(v2)
+				fmt.Printf("rv1: %v", rv1)
+
+				rv2, mp2, err := collected2.BPTree(cr, CSVHandler{}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if !found {
+				if mp2 == (btree.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
+				}
+
+				if !bytes.Equal(rv1.Value, rv2.Value) {
+					return false, fmt.Sprintf("mismatched keys: %v, %v", rv1.Value, rv2.Value)
 				}
 			}
 		}
