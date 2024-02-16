@@ -1,4 +1,4 @@
-import { Header } from "../index-file";
+import { IndexMeta } from "../index-file/index-meta";
 import {
 	FieldType,
 	OrderBy,
@@ -24,18 +24,17 @@ function containsType(compositeType: bigint, singleType: FieldType): boolean {
  * validateWhere validates the 'where' clause of the query.
  *
  * @param {WhereNode<T>[] | undefined} where - The 'where' clause to validate.
- * @param {Header[]} headers - List of headers to check field existence and type compatibility.
+ * @param {IndexMeta[]} headers - List of headers to check field existence and type compatibility.
  * @throws {Error} - Throws an error if the 'where' clause is missing, invalid, or refers to non-existent fields.
  */
 function validateWhere<T extends Schema>(
 	where: WhereNode<T>[] | undefined,
-	headers: Header[]
+	headers: IndexMeta[]
 ): void {
 	if (!where || !Array.isArray(where) || where.length === 0) {
 		throw new Error("Missing 'where' clause.");
 	}
 
-	console.log("validating where: ", where);
 
 	for (const whereNode of where) {
 		if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
@@ -116,7 +115,6 @@ function validateOrderBy<T extends Schema>(
 	whereKey: string
 ): void {
 	if (orderBy) {
-		console.log("validating orderBy: ", orderBy);
 		if (!Array.isArray(orderBy) || orderBy.length === 0) {
 			throw new Error("Invalid 'orderBy' clause.");
 		}
@@ -138,15 +136,14 @@ function validateOrderBy<T extends Schema>(
  * validateSelect validates the 'select' fields of a query.
  *
  * @param {SelectField<T>[] | undefined} select - The 'select' clause to validate.
- * @param {Header[]} headers - List of headers to check for field existence.
+ * @param {IndexMeta[]} headers - List of headers to check for field existence.
  * @throws {Error} Throws an error if any field in the 'select' clause doesn't exist in headers.
  */
 function validateSelect<T extends Schema>(
 	select: SelectField<T>[] | undefined,
-	headers: Header[]
+	headers: IndexMeta[]
 ): void {
 	if (select) {
-		console.log("validating select: ", select);
 		if (!Array.isArray(select) || select.length === 0) {
 			throw new Error("Invalid 'select' clause");
 		}
@@ -169,12 +166,12 @@ function validateSelect<T extends Schema>(
  * If any part of the query is invalid (e.g., a field doesn't exist), it throws an error.
  *
  * @param {Query<T>} query - The query object to validate.
- * @param {Header[]} headers - The headers against which to validate the query fields.
+ * @param {IndexMeta[]} headers - The headers against which to validate the query fields.
  * @throws {Error} Throws an error if query is invalid.
  */
 export async function validateQuery<T extends Schema>(
 	query: Query<T>,
-	headers: Header[]
+	headers: IndexMeta[]
 ): Promise<void> {
 	validateWhere(query.where, headers);
 	validateOrderBy(query.orderBy, query.where![0].key as string);

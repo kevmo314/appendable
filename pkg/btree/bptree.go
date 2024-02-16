@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"slices"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -18,13 +19,16 @@ type BPTree struct {
 	tree ReadWriteSeekPager
 	meta MetaPage
 
-	maxPageSize int
-
-	Data []byte
+	Data       []byte
+	DataParser DataParser
 }
 
 func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
 	return &BPTree{tree: tree, meta: meta}
+}
+
+func NewBPTreeWithData(tree ReadWriteSeekPager, meta MetaPage, data []byte, parser DataParser) *BPTree {
+	return &BPTree{tree: tree, meta: meta, Data: data, DataParser: parser}
 }
 
 func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
@@ -39,31 +43,26 @@ func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 	return root, mp, nil
 }
 
-func (t *BPTree) Find(key []byte) (MemoryPointer, bool, error) {
+func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, MemoryPointer, error) {
 	root, rootOffset, err := t.root()
 	if err != nil {
-		return MemoryPointer{}, false, fmt.Errorf("read root node: %w", err)
+		return ReferencedValue{}, MemoryPointer{}, fmt.Errorf("read root node: %w", err)
 	}
 	if root == nil {
-		return MemoryPointer{}, false, nil
+		return ReferencedValue{}, MemoryPointer{}, nil
 	}
 	path, err := t.traverse(key, root, rootOffset)
 	if err != nil {
-		return MemoryPointer{}, false, err
+		return ReferencedValue{}, MemoryPointer{}, err
 	}
-	n := path[0].node
-	i, found := n.bsearch(key)
-	if found {
-		return n.Pointer(i), true, nil
-	}
-	return MemoryPointer{}, false, nil
+	return path[0].node.Keys[path[0].index], path[0].node.Pointer(path[0].index), nil
 }
 
 func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 	if _, err := t.tree.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
-	node := &BPTreeNode{Data: t.Data}
+	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
 	if _, err := node.ReadFrom(t.tree); err != nil {
 		return nil, err
 	}
@@ -79,32 +78,27 @@ type TraversalRecord struct {
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
-func (t *BPTree) traverse(key []byte, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
+func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
+	// binary search node.Keys to find the first key greater than key
+	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
+
 	if node.leaf() {
-		return []TraversalRecord{{node: node, ptr: ptr}}, nil
+		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}
-	for i, k := range node.Keys {
-		if bytes.Compare(key, k.Value) < 0 {
-			child, err := t.readNode(node.Pointer(i))
-			if err != nil {
-				return nil, err
-			}
-			path, err := t.traverse(key, child, node.Pointer(i))
-			if err != nil {
-				return nil, err
-			}
-			return append(path, TraversalRecord{node: node, index: i, ptr: ptr}), nil
-		}
+
+	if found {
+		// if the key is found, we need to go to the right child
+		index++
 	}
-	child, err := t.readNode(node.Pointer(-1))
+	child, err := t.readNode(node.Pointer(index))
 	if err != nil {
 		return nil, err
 	}
-	path, err := t.traverse(key, child, node.Pointer(-1))
+	path, err := t.traverse(key, child, node.Pointer(index))
 	if err != nil {
 		return nil, err
 	}
-	return append(path, TraversalRecord{node: node, index: len(node.Keys), ptr: ptr}), nil
+	return append(path, TraversalRecord{node: node, index: index, ptr: ptr}), nil
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
@@ -114,7 +108,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		node := &BPTreeNode{Data: t.Data}
+		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
 		node.Keys = []ReferencedValue{key}
 		node.leafPointers = []MemoryPointer{value}
 		buf, err := node.MarshalBinary()
@@ -128,14 +122,17 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
 
-	path, err := t.traverse(key.Value, root, rootOffset)
+	path, err := t.traverse(key, root, rootOffset)
 	if err != nil {
 		return err
 	}
 
 	// insert the key into the leaf
 	n := path[0].node
-	j, _ := n.bsearch(key.Value)
+	j, found := slices.BinarySearchFunc(n.Keys, key, CompareReferencedValues)
+	if found {
+		return fmt.Errorf("key already exists")
+	}
 	if j == len(n.Keys) {
 		n.Keys = append(n.Keys, key)
 		n.leafPointers = append(n.leafPointers, value)
@@ -157,7 +154,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			midKey := n.Keys[mid]
 
 			// n is the left node, m the right node
-			m := &BPTreeNode{Data: t.Data}
+			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
 			if n.leaf() {
 				m.leafPointers = n.leafPointers[mid:]
 				m.Keys = n.Keys[mid:]
@@ -211,7 +208,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
-				p := &BPTreeNode{Data: t.Data}
+				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
 				p.Keys = []ReferencedValue{midKey}
 				p.internalPointers = []uint64{
 					uint64(noffset), uint64(moffset),

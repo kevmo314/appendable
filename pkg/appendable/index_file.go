@@ -10,6 +10,7 @@ import (
 const CurrentVersion = 1
 
 type DataHandler interface {
+	btree.DataParser
 	Synchronize(f *IndexFile, df []byte) error
 	Format() Format
 }
@@ -93,6 +94,7 @@ func (i *IndexFile) IsEmpty() (bool, error) {
 }
 
 func (i *IndexFile) IndexFieldNames() ([]string, error) {
+	var fieldNames []string
 	uniqueFieldNames := make(map[string]bool)
 
 	mp := i.tree
@@ -118,13 +120,11 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
 		}
 
-		uniqueFieldNames[metadata.FieldName] = true
+		if _, ok := uniqueFieldNames[metadata.FieldName]; !ok {
+			uniqueFieldNames[metadata.FieldName] = true
+			fieldNames = append(fieldNames, metadata.FieldName)
+		}
 		mp = next
-	}
-
-	var fieldNames []string
-	for fieldName := range uniqueFieldNames {
-		fieldNames = append(fieldNames, fieldName)
 	}
 
 	return fieldNames, nil
