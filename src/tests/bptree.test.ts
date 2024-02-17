@@ -1,49 +1,110 @@
-import { BPTree, MetaPage } from "../btree/bptree";
+import {
+	BPTree,
+	MetaPage,
+	ReferencedValue,
+	binarySearchReferencedValues,
+} from "../btree/bptree";
 import { MemoryPointer } from "../btree/node";
+import { IndexFileV1 } from "../index-file/index-file";
 import { RangeResolver } from "../resolver";
+import { readBinaryFile } from "./test-util";
 
-function textEncode(phr: string): Uint8Array {
-  const encoder = new TextEncoder();
+class testMetaPage implements MetaPage {
+	private rootMP: MemoryPointer;
 
-  return encoder.encode(phr);
-}
+	constructor(mp: MemoryPointer) {
+		this.rootMP = mp;
+	}
 
-class TestMetaPage implements MetaPage {
-  private _root: MemoryPointer;
-
-  constructor(initialRoot: MemoryPointer) {
-    this._root = initialRoot;
-  }
-
-  setRoot(mp: MemoryPointer): void {
-    this._root = mp;
-  }
-
-  root(): MemoryPointer {
-    return this._root;
-  }
+	async root(): Promise<MemoryPointer | null> {
+		return this.rootMP;
+	}
 }
 
 describe("test compare bytes", () => {
-  let buffer: Uint8Array;
-  let resolver: RangeResolver;
+	let mockRangeResolver: RangeResolver;
+	let indexFileSize: number;
+	let mockDataFileResolver: RangeResolver;
 
-  beforeEach(() => {
-    buffer = new Uint8Array(4096);
-  });
+	beforeEach(() => {
+		mockRangeResolver = async ({ start, end }) => {
+			const indexFile = await readBinaryFile("bptree_1.bin");
 
-  it("generates an empty tree", async () => {
-    /*
-		let mp: MemoryPointer = {
-			offset: BigInt(0),
-			length: 0,
+			const slicedPart = indexFile.slice(start, end + 1);
+
+			const arrayBuffer = slicedPart.buffer.slice(
+				slicedPart.byteOffset,
+				slicedPart.byteOffset + slicedPart.byteLength
+			);
+
+			return {
+				data: arrayBuffer,
+				totalLength: arrayBuffer.byteLength,
+			};
 		};
 
-		const tree = new BPTree(resolver, new TestMetaPage(mp), buffer);
+		mockDataFileResolver = async ({ start, end }) => {
+			return {
+				data: new ArrayBuffer(0),
+				totalLength: 0,
+			};
+		};
+	});
 
-		const res = await tree.find(textEncode("howdy"));
+	it("should read a bptree", async () => {
+		const page = new testMetaPage({ offset: 0n, length: 1 });
+		const bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
 
-		expect(res).toEqual([{ offset: BigInt(0), length: 0 }, false]);
-		*/
-  });
+		const textEncoder = new TextEncoder();
+		const helloBuffer = textEncoder.encode("hello");
+		const key = new ReferencedValue(
+			{ offset: 0n, length: 1 },
+			helloBuffer.buffer
+		);
+
+		//const [rv, mp] = await bptree.find(key);
+
+		//console.log(rv, mp);
+	});
+
+	it("should compare reference values", () => {
+		const values: ReferencedValue[] = [
+			new ReferencedValue({ offset: 0n, length: 10 }, new Uint8Array([0])),
+			new ReferencedValue({ offset: 10n, length: 20 }, new Uint8Array([1])),
+			new ReferencedValue({ offset: 20n, length: 30 }, new Uint8Array([2])),
+		];
+
+		const key1: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 0 },
+			new Uint8Array([1])
+		);
+
+		const [index1, found1] = binarySearchReferencedValues(values, key1);
+
+		expect(index1).toEqual(1);
+		expect(found1).toBeFalsy();
+
+		const key0: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 0 },
+			new Uint8Array([0])
+		);
+
+		const [index0, found0] = binarySearchReferencedValues(values, key0);
+
+		expect(index0).toEqual(0);
+		expect(found0).toBeFalsy();
+
+		const keyNeg1: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 0 },
+			new Uint8Array([5])
+		);
+
+		const [indexNeg1, foudnNeg1] = binarySearchReferencedValues(
+			values,
+			keyNeg1
+		);
+
+		expect(indexNeg1).toEqual(3);
+		expect(foudnNeg1).toBeFalsy();
+	});
 });
