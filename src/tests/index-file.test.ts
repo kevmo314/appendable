@@ -50,7 +50,6 @@ describe("test index-file parsing", () => {
 
 		const indexMetas = await indexFile.indexHeaders();
 
-		console.log(indexMetas, indexMetas.length);
 		expect(indexMetas.length).toEqual(20);
 	});
 });

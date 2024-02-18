@@ -167,11 +167,19 @@ function compareReferencedValues(
 		return valueComparison;
 	}
 
-	if (a.dataPointer.offset !== b.dataPointer.offset) {
-		return Number(a.dataPointer.offset - b.dataPointer.offset);
+	if (a.dataPointer.offset > b.dataPointer.offset) {
+		return 1;
+	} else if (a.dataPointer.offset < b.dataPointer.offset) {
+		return -1;
 	}
 
-	return Number(a.dataPointer.length - b.dataPointer.length);
+	if (a.dataPointer.length > b.dataPointer.length) {
+		return 1;
+	} else if (a.dataPointer.length < b.dataPointer.length) {
+		return -1;
+	}
+
+	return 0;
 }
 
 export function binarySearchReferencedValues(

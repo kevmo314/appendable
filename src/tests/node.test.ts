@@ -1,4 +1,4 @@
-import { ReferencedValue } from "../btree/bptree";
+import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
 import { BPTreeNode, MemoryPointer } from "../btree/node";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
@@ -43,6 +43,56 @@ describe("test compare bytes", () => {
 		});
 	});
 });
+
+describe("compareReferencedValues", () => {
+	it("should compare reference values", () => {
+		const values: ReferencedValue[] = [
+			new ReferencedValue(
+				{ offset: 0n, length: 10 },
+				new Uint8Array([0]).buffer
+			),
+			new ReferencedValue(
+				{ offset: 10n, length: 20 },
+				new Uint8Array([1]).buffer
+			),
+			new ReferencedValue(
+				{ offset: 20n, length: 30 },
+				new Uint8Array([2]).buffer
+			),
+		];
+
+		const key0: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 10 },
+			new Uint8Array([0]).buffer
+		);
+
+		const [index0, found0] = binarySearchReferencedValues(values, key0);
+		expect(index0).toEqual(0);
+		expect(found0).toBeTruthy();
+
+		const key1: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 0 },
+			new Uint8Array([1]).buffer
+		);
+
+		const [index1, found1] = binarySearchReferencedValues(values, key1);
+		expect(index1).toEqual(1);
+		expect(found1).toBeFalsy();
+
+		const keyNeg1: ReferencedValue = new ReferencedValue(
+			{ offset: 0n, length: 0 },
+			new Uint8Array([5]).buffer
+		);
+
+		const [indexNeg1, foudnNeg1] = binarySearchReferencedValues(
+			values,
+			keyNeg1
+		);
+
+		expect(indexNeg1).toEqual(3);
+		expect(foudnNeg1).toBeFalsy();
+	});
+})
 
 describe("node functionality", () => {
 	it("should read a leaf bptree node", async () => {
