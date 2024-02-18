@@ -1,8 +1,4 @@
-import {
-	BPTree,
-	MetaPage,
-	ReferencedValue,
-} from "../btree/bptree";
+import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
 import { MemoryPointer } from "../btree/node";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
@@ -60,8 +56,8 @@ describe("test compare bytes", () => {
 			helloBuffer.buffer
 		);
 
-		const [rv, mp] = await bptree.find(key);
+		// const [rv, mp] = await bptree.find(key);
 
-		console.log(rv, mp);
+		// console.log(rv, mp);
 	});
 });
