@@ -3,6 +3,7 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -18,6 +19,7 @@ type testMetaPage struct {
 }
 
 func (m *testMetaPage) SetRoot(mp MemoryPointer) error {
+	fmt.Printf("mp offset: %v\nlength: %v", mp.Offset, mp.Length)
 	m.root = mp
 	return m.write()
 }
@@ -79,6 +81,7 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
+
 		k, v, err := tree.Find(ReferencedValue{Value: []byte("hello")})
 		if err != nil {
 			t.Fatal(err)
@@ -132,7 +135,8 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		mp := newTestMetaPage(t, p)
+		tree := NewBPTree(p, mp)
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -145,6 +149,8 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4}); err != nil {
 			t.Fatal(err)
 		}
+
+		fmt.Printf("root: %v\nlength: %v", mp.root.Offset, mp.root.Length)
 
 		if err := b.WriteToDisk("bptree_1.bin"); err != nil {
 			t.Fatal(err)

@@ -17,7 +17,7 @@ export class LinkedMetaPage {
 		this.metaPageData = null;
 	}
 
-	async root(): Promise<MemoryPointer | null> {
+	async root(): Promise<MemoryPointer> {
 		const pageData = await this.getMetaPage();
 
 		// we seek by 12 bytes since offset is 8 bytes, length is 4 bytes
@@ -86,7 +86,7 @@ export class LinkedMetaPage {
 
 		const view = new DataView(pageData, 12, 8);
 		const nextOffset = view.getBigUint64(0);
-	
+
 		if (nextOffset === maxUint64) {
 			return null;
 		}

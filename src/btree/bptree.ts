@@ -1,13 +1,13 @@
 import { BPTreeNode, MemoryPointer } from "./node";
 import { RangeResolver } from "../resolver";
-import { LinkedMetaPage } from "./multi";
+import { TraversalIterator, TraversalRecord } from "./traversal";
 
 export interface MetaPage {
-	root(): Promise<MemoryPointer | null>;
+	root(): Promise<MemoryPointer>;
 }
 
 type RootResponse = {
-	rootNode: BPTreeNode;
+	rootNode: BPTreeNode | null;
 	pointer: MemoryPointer;
 };
 
@@ -26,18 +26,24 @@ export class BPTree {
 		this.dataFileResolver = dataFileResolver;
 	}
 
-	private async root(): Promise<RootResponse | null> {
+	async root(): Promise<RootResponse> {
 		const mp = await this.meta.root();
 
 		if (!mp || mp.length === 0) {
-			return null;
+			return {
+				rootNode: null,
+				pointer: mp,
+			};
 		}
 
-		console.log(mp);
+		console.log("this is the memory pointer: ", mp);
 
 		const root = await this.readNode(mp);
 		if (!root) {
-			return null;
+			return {
+				rootNode: null,
+				pointer: mp,
+			};
 		}
 
 		return {
@@ -46,7 +52,7 @@ export class BPTree {
 		};
 	}
 
-	private async readNode(ptr: MemoryPointer): Promise<BPTreeNode> {
+	async readNode(ptr: MemoryPointer): Promise<BPTreeNode> {
 		try {
 			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
 				ptr,
@@ -64,7 +70,11 @@ export class BPTree {
 		}
 	}
 
-	private async traverse(
+	public iter(key: ReferencedValue): TraversalIterator {
+		return new TraversalIterator(this, key);
+	}
+
+	async traverse(
 		key: ReferencedValue,
 		node: BPTreeNode,
 		pointer: MemoryPointer
@@ -89,35 +99,20 @@ export class BPTree {
 	public async find(
 		key: ReferencedValue
 	): Promise<[ReferencedValue, MemoryPointer]> {
-		const rootResponse = await this.root();
+		const p = this.iter(key);
 
-		if (!rootResponse) {
-			throw new Error(`invalid root response: ${rootResponse}`);
+		if (!(await p.next())) {
+			console.log("no next");
+			return [
+				new ReferencedValue(
+					{ offset: 0n, length: 0 },
+					new Uint8Array(0).buffer
+				),
+				{ offset: 0n, length: 0 },
+			];
 		}
 
-		let { rootNode, pointer } = rootResponse;
-
-		const path = await this.traverse(key, rootNode, pointer);
-		if (!path) {
-			throw new Error(`nonexistent path: ${path}`);
-		}
-
-		return [
-			path[0].node.keys[path[0].index],
-			path[0].node.pointer(path[0].index),
-		];
-	}
-}
-
-class TraversalRecord {
-	public node: BPTreeNode;
-	public index: number;
-	public pointer: MemoryPointer;
-
-	constructor(node: BPTreeNode, index: number, pointer: MemoryPointer) {
-		this.node = node;
-		this.index = index;
-		this.pointer = pointer;
+		return [p.getKey(), p.getPointer()];
 	}
 }
 
@@ -158,6 +153,7 @@ export class ReferencedValue {
 		return 0;
 	}
 }
+
 function compareReferencedValues(
 	a: ReferencedValue,
 	b: ReferencedValue

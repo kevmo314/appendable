@@ -74,6 +74,8 @@ func (p *TraversalIterator) init() bool {
 	if root == nil {
 		return false
 	}
+
+	fmt.Printf("pass init root")
 	path, err := p.tree.traverse(p.key, root, rootOffset)
 	if err != nil {
 		p.err = err

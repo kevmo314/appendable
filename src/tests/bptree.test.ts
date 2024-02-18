@@ -1,5 +1,7 @@
 import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
+import { ReadMultiBPTree } from "../btree/multi";
 import { MemoryPointer } from "../btree/node";
+import { PageFile } from "../btree/pagefile";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
@@ -10,7 +12,7 @@ class testMetaPage implements MetaPage {
 		this.rootMP = mp;
 	}
 
-	async root(): Promise<MemoryPointer | null> {
+	async root(): Promise<MemoryPointer> {
 		return this.rootMP;
 	}
 }
@@ -46,18 +48,18 @@ describe("test compare bytes", () => {
 	});
 
 	it("should read a bptree", async () => {
-		const page = new testMetaPage({ offset: 0n, length: 0 });
+		const pageFile = new PageFile(mockRangeResolver);
+		const page = ReadMultiBPTree(mockRangeResolver, pageFile);
+
 		const bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
 
 		const textEncoder = new TextEncoder();
-		const helloBuffer = textEncoder.encode("hello");
-		const key = new ReferencedValue(
-			{ offset: 0n, length: 1 },
-			helloBuffer.buffer
-		);
+		const helloBuf = textEncoder.encode("hello")
 
-		// const [rv, mp] = await bptree.find(key);
+		const key = new ReferencedValue({ offset: 1n, length: 5}, helloBuf.buffer);
 
-		// console.log(rv, mp);
+		const [rv, mp] = await bptree.find(key);
+
+		console.log(rv, mp);
 	});
 });
