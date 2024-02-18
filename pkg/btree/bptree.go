@@ -107,11 +107,7 @@ func (p *TraversalIterator) incr(delta int) bool {
 					return false
 				}
 				p.records[j].node = node
-				if j == 0 {
-					p.records[j].index = (p.records[j].index + len(p.records[j].node.Keys)) % len(p.records[j].node.Keys)
-				} else {
-					p.records[j].index = (p.records[j].index + len(p.records[j].node.Keys) + 1) % (len(p.records[j].node.Keys) + 1)
-				}
+				p.records[j].index %= p.records[j].node.NumPointers()
 			}
 			break
 		}

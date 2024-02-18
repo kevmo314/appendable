@@ -69,9 +69,13 @@ func (n *BPTreeNode) leaf() bool {
 
 func (n *BPTreeNode) Pointer(i int) MemoryPointer {
 	if n.leaf() {
-		return n.leafPointers[(len(n.leafPointers)+i)%len(n.leafPointers)]
+		return n.leafPointers[i]
 	}
-	return MemoryPointer{Offset: n.internalPointers[(len(n.internalPointers)+i)%len(n.internalPointers)]}
+	return MemoryPointer{Offset: n.internalPointers[i]}
+}
+
+func (n *BPTreeNode) NumPointers() int {
+	return len(n.internalPointers) + len(n.leafPointers)
 }
 
 func (n *BPTreeNode) Size() int64 {
