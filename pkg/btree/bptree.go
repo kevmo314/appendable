@@ -43,19 +43,113 @@ func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
 	return root, mp, nil
 }
 
-func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, MemoryPointer, error) {
-	root, rootOffset, err := t.root()
+type TraversalRecord struct {
+	node  *BPTreeNode
+	index int
+	// the offset is useful so we know which page to free when we split
+	ptr MemoryPointer
+}
+
+type TraversalIterator struct {
+	tree    *BPTree
+	key     ReferencedValue
+	records []TraversalRecord
+	err     error
+}
+
+func (p *TraversalIterator) Key() ReferencedValue {
+	return p.records[0].node.Keys[p.records[0].index]
+}
+
+func (p *TraversalIterator) Pointer() MemoryPointer {
+	return p.records[0].node.Pointer(p.records[0].index)
+}
+
+func (p *TraversalIterator) init() bool {
+	root, rootOffset, err := p.tree.root()
 	if err != nil {
-		return ReferencedValue{}, MemoryPointer{}, fmt.Errorf("read root node: %w", err)
+		p.err = fmt.Errorf("read root node: %w", err)
+		return false
 	}
 	if root == nil {
-		return ReferencedValue{}, MemoryPointer{}, nil
+		return false
 	}
-	path, err := t.traverse(key, root, rootOffset)
+	path, err := p.tree.traverse(p.key, root, rootOffset)
+	if err != nil {
+		p.err = err
+		return false
+	}
+	p.records = path
+	return true
+}
+
+// incr moves the iterator by delta, returning false if there is no more data
+// delta is taken to be either -1 or 1.
+func (p *TraversalIterator) incr(delta int) bool {
+	// propagate the carryover
+	if len(p.records) == 1 {
+		// we're at the end of the tree, no more data
+		return false
+	}
+	for i := 0; i < len(p.records); i++ {
+		p.records[i].index += delta
+		if p.records[i].index < 0 || p.records[i].index > len(p.records[i].node.Keys) {
+			if i == len(p.records)-1 {
+				// we're at the end of the tree, no more data
+				return false
+			}
+		} else {
+			// we found a node with keys left, so update the path
+			for j := i - 1; j >= 0; j-- {
+				node, err := p.tree.readNode(p.records[j+1].node.Pointer(p.records[j+1].index))
+				if err != nil {
+					p.err = err
+					return false
+				}
+				p.records[j].node = node
+				if j == 0 {
+					p.records[j].index = (p.records[j].index + len(p.records[j].node.Keys)) % len(p.records[j].node.Keys)
+				} else {
+					p.records[j].index = (p.records[j].index + len(p.records[j].node.Keys) + 1) % (len(p.records[j].node.Keys) + 1)
+				}
+			}
+			break
+		}
+	}
+	return p.records[0].index >= 0 && p.records[0].index < len(p.records[0].node.Keys)
+}
+
+func (p *TraversalIterator) Next() bool {
+	if p.records == nil {
+		return p.init()
+	}
+	return p.incr(1)
+}
+
+func (p *TraversalIterator) Prev() bool {
+	if p.records == nil && !p.init() {
+		return false
+	}
+	return p.incr(-1)
+}
+
+func (p *TraversalIterator) Err() error {
+	return p.err
+}
+
+func (t *BPTree) Iter(key ReferencedValue) (*TraversalIterator, error) {
+	return &TraversalIterator{tree: t, key: key}, nil
+}
+
+func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, MemoryPointer, error) {
+	p, err := t.Iter(key)
 	if err != nil {
 		return ReferencedValue{}, MemoryPointer{}, err
 	}
-	return path[0].node.Keys[path[0].index], path[0].node.Pointer(path[0].index), nil
+	if !p.Next() {
+		return ReferencedValue{}, MemoryPointer{}, p.Err()
+	}
+	return p.Key(), p.Pointer(), nil
 }
 
 func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
@@ -67,13 +161,6 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 		return nil, err
 	}
 	return node, nil
-}
-
-type TraversalRecord struct {
-	node  *BPTreeNode
-	index int
-	// the offset is useful so we know which page to free when we split
-	ptr MemoryPointer
 }
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
