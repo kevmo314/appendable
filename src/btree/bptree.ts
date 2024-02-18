@@ -33,6 +33,8 @@ export class BPTree {
 			return null;
 		}
 
+		console.log(mp);
+
 		const root = await this.readNode(mp);
 		if (!root) {
 			return null;
@@ -85,7 +87,7 @@ export class BPTree {
 	}
 
 	public async find(
-		key: ReferencedValue 
+		key: ReferencedValue
 	): Promise<[ReferencedValue, MemoryPointer]> {
 		const rootResponse = await this.root();
 
@@ -156,7 +158,6 @@ export class ReferencedValue {
 		return 0;
 	}
 }
-
 function compareReferencedValues(
 	a: ReferencedValue,
 	b: ReferencedValue
@@ -167,33 +168,30 @@ function compareReferencedValues(
 	}
 
 	if (a.dataPointer.offset !== b.dataPointer.offset) {
-		return a.dataPointer.offset < b.dataPointer.offset ? -1 : 1;
+		return Number(a.dataPointer.offset - b.dataPointer.offset);
 	}
 
-	// If Offsets are equal, compare by MemoryPointer's Length
-	return a.dataPointer.length < b.dataPointer.length ? -1 : 1;
+	return Number(a.dataPointer.length - b.dataPointer.length);
 }
 
 export function binarySearchReferencedValues(
 	values: ReferencedValue[],
-	target: ReferencedValue 
+	target: ReferencedValue
 ): [number, boolean] {
-	let low = 0;
-	let high = values.length;
+	const n = values.length;
 
-	while (low < high) {
-		const mid = Math.floor((low + high) / 2);
-		const cmp = compareReferencedValues(values[mid], target);
+	let i = 0;
+	let j = n;
 
-		if (cmp < 0) {
-			low = mid + 1;
+	while (i < j) {
+		const h = Math.floor((i + j) / 2);
+
+		if (compareReferencedValues(values[h], target) < 0) {
+			i = h + 1;
 		} else {
-			high = mid;
+			j = h;
 		}
 	}
 
-	const found =
-		low < values.length && compareReferencedValues(values[low], target) === 0;
-
-	return [low, found];
+	return [i, i < n && compareReferencedValues(values[i], target) === 0];
 }

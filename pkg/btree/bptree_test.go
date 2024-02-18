@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/rand"
+	"slices"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
@@ -116,6 +117,11 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4}); err != nil {
 			t.Fatal(err)
 		}
+
+		if err := b.WriteToDisk("bptree_1.bin"); err != nil {
+			t.Fatal(err)
+		}
+
 		k1, v1, err := tree.Find(ReferencedValue{Value: []byte("hello")})
 		if err != nil {
 			t.Fatal(err)
@@ -217,6 +223,57 @@ type StubDataParser struct{}
 
 func (s *StubDataParser) Parse(value []byte) []byte {
 	return []byte{1, 2, 3, 4, 5, 6, 7, 8}
+}
+
+func TestBinarySearchReferencedValues(t *testing.T) {
+	values := []ReferencedValue{
+		{MemoryPointer{Offset: 0, Length: 10}, []byte{0}},
+		{MemoryPointer{Offset: 10, Length: 20}, []byte{1}},
+		{MemoryPointer{Offset: 20, Length: 30}, []byte{2}},
+	}
+
+	t.Run("find first key but zeroed memory pointer", func(t *testing.T) {
+		key0 := ReferencedValue{MemoryPointer{}, []byte{0}}
+
+		index0, found0 := slices.BinarySearchFunc(values, key0, CompareReferencedValues)
+
+		if index0 != 0 {
+			t.Fatalf("expected 0 got %v", index0)
+		}
+
+		// we expect false because we provide a memory pointer that's zeroed
+		if found0 {
+			t.Fatalf("expected false got %v", found0)
+		}
+	})
+
+	t.Run("find key with correct memory pointer", func(t *testing.T) {
+
+		key1 := ReferencedValue{MemoryPointer{Offset: 10, Length: 20}, []byte{1}}
+
+		index1, found1 := slices.BinarySearchFunc(values, key1, CompareReferencedValues)
+
+		if index1 != 1 {
+			t.Fatalf("expected 1 got %v", index1)
+		}
+
+		if !found1 {
+			t.Fatalf("expected true got %v", found1)
+		}
+	})
+
+	t.Run("finds outof bounds index for non existent key", func(t *testing.T) {
+		noKey := ReferencedValue{MemoryPointer{}, []byte{3}}
+
+		undefIndex, undefFound := slices.BinarySearchFunc(values, noKey, CompareReferencedValues)
+		if undefIndex != 3 {
+			t.Fatalf("expected 3 got %v", undefIndex)
+		}
+
+		if undefFound {
+			t.Fatalf("expected true got %v", undefFound)
+		}
+	})
 }
 
 func TestBPTree_RandomTests(t *testing.T) {
