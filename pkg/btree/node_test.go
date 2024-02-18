@@ -79,3 +79,35 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 		t.Fatalf("expected %#v, got %#v", node1, node2)
 	}
 }
+
+func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
+	rv := []ReferencedValue{
+		{
+			Value: []byte{0},
+		},
+		{
+			Value:       []byte{1},
+			DataPointer: MemoryPointer{Offset: 0},
+		}, {
+			Value:       []byte{1},
+			DataPointer: MemoryPointer{Offset: 1},
+		}, {
+			Value:       []byte{1},
+			DataPointer: MemoryPointer{Offset: 1, Length: 1},
+		},
+	}
+	for i := 0; i < len(rv); i++ {
+		for j := 0; j < len(rv); j++ {
+			cmp := CompareReferencedValues(rv[i], rv[j])
+			if i < j && cmp >= 0 {
+				t.Fatalf("expected %d < %d", i, j)
+			}
+			if i > j && cmp <= 0 {
+				t.Fatalf("expected %d > %d", i, j)
+			}
+			if i == j && cmp != 0 {
+				t.Fatalf("expected %d == %d", i, j)
+			}
+		}
+	}
+}

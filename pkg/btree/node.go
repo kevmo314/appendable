@@ -35,15 +35,18 @@ func (rv ReferencedValue) String() string {
 }
 
 func CompareReferencedValues(a, b ReferencedValue) int {
-	cmp := bytes.Compare(a.Value, b.Value)
-	if cmp != 0 {
+	if cmp := bytes.Compare(a.Value, b.Value); cmp != 0 {
 		return cmp
+	} else if a.DataPointer.Offset < b.DataPointer.Offset {
+		return -1
+	} else if a.DataPointer.Offset > b.DataPointer.Offset {
+		return 1
+	} else if a.DataPointer.Length < b.DataPointer.Length {
+		return -1
+	} else if a.DataPointer.Length > b.DataPointer.Length {
+		return 1
 	}
-
-	if a.DataPointer.Offset != b.DataPointer.Offset {
-		return int(a.DataPointer.Offset - b.DataPointer.Offset)
-	}
-	return int(a.DataPointer.Length - b.DataPointer.Length)
+	return 0
 }
 
 type DataParser interface {
