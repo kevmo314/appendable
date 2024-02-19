@@ -87,48 +87,49 @@ func (p *TraversalIterator) init() bool {
 
 // incr moves the iterator by delta, returning false if there is no more data
 // delta is taken to be either -1 or 1.
-func (p *TraversalIterator) incr(delta int) bool {
-	// propagate the carryover
-	if len(p.records) == 1 {
-		// we're at the end of the tree, no more data
+func (p *TraversalIterator) incr(i, delta int) bool {
+	if i == len(p.records) {
+		// we can't increment beyond the root
 		return false
 	}
-	for i := 0; i < len(p.records); i++ {
-		p.records[i].index += delta
-		if p.records[i].index < 0 || p.records[i].index > len(p.records[i].node.Keys) {
-			if i == len(p.records)-1 {
-				// we're at the end of the tree, no more data
-				return false
-			}
+	p.records[i].index += delta
+	rolloverLeft := p.records[i].index < 0
+	rolloverRight := p.records[i].index >= p.records[i].node.NumPointers()
+	if rolloverLeft || rolloverRight {
+		// increment the parent node
+		if !p.incr(i+1, delta) {
+			// if we weren't able to, return false
+			return false
+		}
+		// otherwise, update the current node
+		node, err := p.tree.readNode(p.records[i+1].node.Pointer(p.records[i+1].index))
+		if err != nil {
+			p.err = err
+			return false
+		}
+		// then propagate the rollover
+		p.records[i].node = node
+		if rolloverLeft {
+			p.records[i].index = p.records[i].node.NumPointers() - 1
 		} else {
-			// we found a node with keys left, so update the path
-			for j := i - 1; j >= 0; j-- {
-				node, err := p.tree.readNode(p.records[j+1].node.Pointer(p.records[j+1].index))
-				if err != nil {
-					p.err = err
-					return false
-				}
-				p.records[j].node = node
-				p.records[j].index %= p.records[j].node.NumPointers()
-			}
-			break
+			p.records[i].index = 0
 		}
 	}
-	return p.records[0].index >= 0 && p.records[0].index < len(p.records[0].node.Keys)
+	return true
 }
 
 func (p *TraversalIterator) Next() bool {
 	if p.records == nil {
 		return p.init()
 	}
-	return p.incr(1)
+	return p.incr(0, 1)
 }
 
 func (p *TraversalIterator) Prev() bool {
 	if p.records == nil && !p.init() {
 		return false
 	}
-	return p.incr(-1)
+	return p.incr(0, -1)
 }
 
 func (p *TraversalIterator) Err() error {
