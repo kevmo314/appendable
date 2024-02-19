@@ -62,7 +62,6 @@ func (p *TraversalIterator) Key() ReferencedValue {
 }
 
 func (p *TraversalIterator) Pointer() MemoryPointer {
-	fmt.Printf("p.records[0].index %v and length %v", p.records[0].index, len(p.records))
 	return p.records[0].node.Pointer(p.records[0].index)
 }
 
@@ -80,7 +79,7 @@ func (p *TraversalIterator) init() bool {
 
 	path, err := p.tree.traverse(p.key, root, rootOffset)
 
-	fmt.Printf("\nPATH: %v", path)
+	fmt.Printf("\nineedaonedance: %v", path[0].index)
 
 	if err != nil {
 		p.err = err
@@ -172,11 +171,14 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 // the last element is always the node passed in
 func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {
 	// binary search node.Keys to find the first key greater than key
-	fmt.Printf("keys len: %v", len(node.Keys))
+	fmt.Printf("\ntraverse\n")
+	for _, key := range node.Keys {
+		fmt.Printf("key value: %v", key.Value)
+	}
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
-	fmt.Printf("\nfound: %v\n", found)
 	if node.leaf() {
+		fmt.Printf("leaf: %v, index: %v", node, index)
 		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}
 
@@ -184,10 +186,14 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 		// if the key is found, we need to go to the right child
 		index++
 	}
+
+	fmt.Printf("index: %v", index)
 	child, err := t.readNode(node.Pointer(index))
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("child pointer: %v", child)
 	path, err := t.traverse(key, child, node.Pointer(index))
 
 	if err != nil {

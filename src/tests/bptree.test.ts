@@ -134,7 +134,13 @@ describe("test single page bptree iteration", () => {
 	});
 
 	it("should iterate forward", async () => {
-		const indexFile = await readBinaryFile("bptree_iterator.bin");
+		mockDataFileResolver = async ({ start, end }) => {
+			return {
+				data: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]).buffer,
+				totalLength: 8,
+			};
+		};
+		const indexFile = await readBinaryFile("bptree_iterator_single.bin");
 		console.log(indexFile.byteLength);
 
 		const page = new testMetaPage({ offset: 8192n, length: 32 });
@@ -146,12 +152,20 @@ describe("test single page bptree iteration", () => {
 
 		const iter = tree.iter(key);
 
-		for (let idx = 0; await iter.next(); idx++) {
+		const expectedBuf = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]).buffer;
+
+		let idx = 0;
+		while (await iter.next()) {
 			if (idx > 64) {
 				console.log("expected to find %d keys");
 			}
-			console.log("idx: ", idx)
 
+			const k = iter.getKey();
+			expect(k.value).toEqual(expectedBuf);
+			const v = iter.getPointer();
+			expect(v.offset).toEqual(BigInt(idx));
+
+			idx += 1;
 		}
 	});
 });

@@ -32,7 +32,7 @@ export class TraversalIterator {
 
 		const path = await this.tree.traverse(this.key, root, offset);
 		this.records = path;
-
+		console.log("ineedaonedance: ", this.records[0].index);
 		return true;
 	}
 
@@ -45,7 +45,6 @@ export class TraversalIterator {
 	}
 
 	async increment(i: number, delta: number): Promise<boolean> {
-		console.log("record index: ", this.records[i].index)
 		if (i === this.records.length) {
 			return false;
 		}
@@ -60,19 +59,24 @@ export class TraversalIterator {
 				return false;
 			}
 
-			// otherwise, update the current node
-			const node = await this.tree.readNode(
-				this.records[i + 1].node.pointer(this.records[i + 1].index)
-			);
+			try {
+				const node = await this.tree.readNode(
+					this.records[i + 1].node.pointer(this.records[i + 1].index)
+				);
 
-			// propagate the rollover
-			this.records[i].node = node;
+				// propagate the rollover
+				this.records[i].node = node;
 
-			if (rolloverLeft) {
-				this.records[i].index = this.records[i].node.numPointers() - 1;
-			} else {
-				this.records[i].index = 0;
+				if (rolloverLeft) {
+					this.records[i].index = this.records[i].node.numPointers() - 1;
+				} else {
+					this.records[i].index = 0;
+				}
+			} catch {
+				return false;
 			}
+
+			// otherwise, update the current node
 		}
 
 		return true;
