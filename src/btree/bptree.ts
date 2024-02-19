@@ -77,7 +77,9 @@ export class BPTree {
 		node: BPTreeNode,
 		pointer: MemoryPointer
 	): Promise<TraversalRecord[]> {
+		console.log("length: ", node.keys.length)
 		let [index, found] = binarySearchReferencedValues(node.keys, key);
+		console.log("Found: ", found);
 		if (node.leaf()) {
 			return [{ node, index, pointer }];
 		} else {

@@ -105,13 +105,13 @@ describe("test btree", () => {
 	*/
 });
 
-describe("test bptree iteration", () => {
+describe("test single page bptree iteration", () => {
 	let mockRangeResolver: RangeResolver;
 	let mockDataFileResolver: RangeResolver;
 
 	beforeEach(() => {
 		mockRangeResolver = async ({ start, end }) => {
-			const indexFile = await readBinaryFile("bptree_iterator.bin");
+			const indexFile = await readBinaryFile("bptree_iterator_single.bin");
 			const slicedPart = indexFile.slice(start, end + 1);
 
 			const arrayBuffer = slicedPart.buffer.slice(
@@ -137,17 +137,21 @@ describe("test bptree iteration", () => {
 		const indexFile = await readBinaryFile("bptree_iterator.bin");
 		console.log(indexFile.byteLength);
 
-		const page = new testMetaPage({ offset: 720896n, length: 36 });
-		const bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
+		const page = new testMetaPage({ offset: 8192n, length: 32 });
+		const tree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
 
 		const valueBuf = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
 
 		const key = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf.buffer);
 
-		const iter = bptree.iter(key);
+		const iter = tree.iter(key);
 
 		for (let idx = 0; await iter.next(); idx++) {
-			console.log("count: ", idx);
+			if (idx > 64) {
+				console.log("expected to find %d keys");
+			}
+			console.log("idx: ", idx)
+
 		}
 	});
 });

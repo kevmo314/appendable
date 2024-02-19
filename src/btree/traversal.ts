@@ -27,10 +27,12 @@ export class TraversalIterator {
 
 		const root = rootResponse.rootNode;
 		const offset = rootResponse.pointer;
+		console.log("root: ", root.keys.length);
+		console.log("rootnode: ", offset.offset);
 
 		const path = await this.tree.traverse(this.key, root, offset);
-		console.log("reached here after root: ", path);
 		this.records = path;
+
 		return true;
 	}
 
@@ -43,6 +45,7 @@ export class TraversalIterator {
 	}
 
 	async increment(i: number, delta: number): Promise<boolean> {
+		console.log("record index: ", this.records[i].index)
 		if (i === this.records.length) {
 			return false;
 		}
@@ -53,7 +56,7 @@ export class TraversalIterator {
 			this.records[i].index >= this.records[i].node.numPointers();
 
 		if (rolloverLeft || rolloverRight) {
-			if (await !this.increment(i + 1, delta)) {
+			if (!this.increment(i + 1, delta)) {
 				return false;
 			}
 
