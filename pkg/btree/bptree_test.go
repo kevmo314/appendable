@@ -394,7 +394,9 @@ func TestBPTree_Iteration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree := NewBPTreeWithData(p, newTestMetaPage(t, p), make([]byte, 16384*4+8), &StubDataParser{})
+
+	metaPage := newTestMetaPage(t, p)
+	tree := NewBPTreeWithData(p, metaPage, make([]byte, 16384*4+8), &StubDataParser{})
 	for i := 0; i < 16384*4; i++ {
 		if err := tree.Insert(ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -404,6 +406,10 @@ func TestBPTree_Iteration(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+
+	b.WriteToDisk("btree_iterator.bin")
+
+	fmt.Printf("offset: %v: length: %v", metaPage.root.Offset, metaPage.root.Length)
 
 	t.Run("forward iteration", func(t *testing.T) {
 		iter, err := tree.Iter(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}})

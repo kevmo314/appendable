@@ -77,11 +77,11 @@ export class BPTree {
 		node: BPTreeNode,
 		pointer: MemoryPointer
 	): Promise<TraversalRecord[]> {
-		console.log("traverse: ", node.keys, key)
 		let [index, found] = binarySearchReferencedValues(node.keys, key);
-		console.log("index: ", index, "found: ", found)
 		if (node.leaf()) {
 			return [{ node, index, pointer }];
+		} else {
+			console.log("not a leaf", index, found);
 		}
 
 		if (found) {
@@ -89,6 +89,7 @@ export class BPTree {
 		}
 
 		const childPointer = node.pointer(index);
+		console.log("Childpointer: ", childPointer);
 		const child = await this.readNode(childPointer);
 		const path = await this.traverse(key, child, childPointer);
 
@@ -98,7 +99,7 @@ export class BPTree {
 	public async find(
 		key: ReferencedValue
 	): Promise<[ReferencedValue, MemoryPointer]> {
-		console.log("key to find: ", key.value)
+		console.log("key to find: ", key.value);
 		const p = this.iter(key);
 
 		if (!(await p.next())) {

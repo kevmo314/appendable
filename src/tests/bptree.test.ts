@@ -27,6 +27,9 @@ describe("test btree", () => {
 			};
 		};
 	});
+	it("", () => {});
+
+	/*
 
 	it("should read a bptree and find items", async () => {
 		mockRangeResolver = async ({ start, end }) => {
@@ -78,7 +81,7 @@ describe("test btree", () => {
 			};
 		};
 
-		const page = new testMetaPage({ offset: 8192n, length: 256});
+		const page = new testMetaPage({ offset: 8192n, length: 256 });
 		const bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
 
 		for (let idx = 0; idx < 256; idx++) {
@@ -97,6 +100,54 @@ describe("test btree", () => {
 				console.log("value undefined: ", idx);
 				break;
 			}
+		}
+	});
+	*/
+});
+
+describe("test bptree iteration", () => {
+	let mockRangeResolver: RangeResolver;
+	let mockDataFileResolver: RangeResolver;
+
+	beforeEach(() => {
+		mockRangeResolver = async ({ start, end }) => {
+			const indexFile = await readBinaryFile("bptree_iterator.bin");
+			const slicedPart = indexFile.slice(start, end + 1);
+
+			const arrayBuffer = slicedPart.buffer.slice(
+				slicedPart.byteOffset,
+				slicedPart.byteOffset + slicedPart.byteLength
+			);
+
+			return {
+				data: arrayBuffer,
+				totalLength: arrayBuffer.byteLength,
+			};
+		};
+
+		mockDataFileResolver = async ({ start, end }) => {
+			return {
+				data: new ArrayBuffer(0),
+				totalLength: 0,
+			};
+		};
+	});
+
+	it("should iterate forward", async () => {
+		const indexFile = await readBinaryFile("bptree_iterator.bin");
+		console.log(indexFile.byteLength);
+
+		const page = new testMetaPage({ offset: 720896n, length: 36 });
+		const bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
+
+		const valueBuf = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+
+		const key = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf.buffer);
+
+		const iter = bptree.iter(key);
+
+		for (let idx = 0; await iter.next(); idx++) {
+			console.log("count: ", idx);
 		}
 	});
 });

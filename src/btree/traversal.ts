@@ -29,7 +29,7 @@ export class TraversalIterator {
 		const offset = rootResponse.pointer;
 
 		const path = await this.tree.traverse(this.key, root, offset);
-		console.log("path: ", path.length);
+		console.log("reached here after root: ", path);
 		this.records = path;
 		return true;
 	}
@@ -42,53 +42,37 @@ export class TraversalIterator {
 		return this.records[0].node.pointer(this.records[0].index);
 	}
 
-	async increment(delta: number): Promise<boolean> {
-		if (this.records.length === 1) {
+	async increment(i: number, delta: number): Promise<boolean> {
+		if (i === this.records.length) {
 			return false;
 		}
 
-		for (let idx = 0; idx <= this.records.length - 1; idx++) {
-			this.records[idx].index += delta;
-			if (
-				this.records[idx].index < 0 ||
-				this.records[idx].index > this.records[idx].node.keys.length
-			) {
-				if (idx === this.records.length - 1) {
-					// we're at the end of the tree
-					return false;
-				}
+		this.records[i].index += delta;
+		const rolloverLeft = this.records[i].index < 0;
+		const rolloverRight =
+			this.records[i].index >= this.records[i].node.numPointers();
+
+		if (rolloverLeft || rolloverRight) {
+			if (await !this.increment(i + 1, delta)) {
+				return false;
+			}
+
+			// otherwise, update the current node
+			const node = await this.tree.readNode(
+				this.records[i + 1].node.pointer(this.records[i + 1].index)
+			);
+
+			// propagate the rollover
+			this.records[i].node = node;
+
+			if (rolloverLeft) {
+				this.records[i].index = this.records[i].node.numPointers() - 1;
 			} else {
-				for (let jdx = idx - 1; jdx >= 0; jdx--) {
-					try {
-						const node = await this.tree.readNode(
-							this.records[jdx + 1].node.pointer(this.records[jdx + 1].index)
-						);
-
-						this.records[jdx].node = node;
-
-						if (jdx === 0) {
-							this.records[jdx].index =
-								(this.records[jdx].index + this.records[jdx].node.keys.length) %
-								this.records[jdx].node.keys.length;
-						} else {
-							this.records[jdx].index =
-								(this.records[jdx].index +
-									this.records[jdx].node.keys.length +
-									1) %
-								(this.records[jdx].node.keys.length + 1);
-						}
-						break;
-					} catch {
-						return false;
-					}
-				}
+				this.records[i].index = 0;
 			}
 		}
 
-		return (
-			this.records[0].index >= 0 &&
-			this.records[0].index < this.records[0].node.keys.length
-		);
+		return true;
 	}
 
 	async next(): Promise<boolean> {
@@ -96,6 +80,14 @@ export class TraversalIterator {
 			return await this.init();
 		}
 
-		return this.increment(1);
+		return this.increment(0, 1);
+	}
+
+	async prev(): Promise<boolean> {
+		if (this.records.length === 0 && (await !this.init())) {
+			return false;
+		}
+
+		return this.increment(0, -1);
 	}
 }

@@ -26,18 +26,17 @@ export class BPTreeNode {
 
 	pointer(i: number): MemoryPointer {
 		if (this.leaf()) {
-			return this.leafPointers[
-				(this.leafPointers.length + i) % this.leafPointers.length
-			];
+			return this.leafPointers[i];
 		}
 
 		return {
-			offset:
-				this.internalPointers[
-					this.internalPointers.length + (i % this.internalPointers.length)
-				],
+			offset: this.internalPointers[i],
 			length: 0, // disregard since this is a free value in golang version
 		};
+	}
+
+	numPointers(): number {
+		return this.internalPointers.length + this.leafPointers.length;
 	}
 
 	size(): bigint {
@@ -157,6 +156,10 @@ export class BPTreeNode {
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
+
+		console.log(
+			`seek succesfully ${Number(mp.offset)}, ${Number(mp.offset) + 4095}`
+		);
 
 		const node = new BPTreeNode([], [], [], dataFilePointer);
 		const bytesRead = await node.unmarshalBinary(bufferData);
