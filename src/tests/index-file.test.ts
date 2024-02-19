@@ -47,7 +47,6 @@ describe("test index-file parsing", () => {
 
 	it("should traverse the entire index file and retrieve the index headers", async () => {
 		const indexFile = new IndexFileV1(mockRangeResolver);
-
 		const indexMetas = await indexFile.indexHeaders();
 
 		expect(indexMetas.length).toEqual(20);

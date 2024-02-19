@@ -20,7 +20,6 @@ export class TraversalIterator {
 
 	async init(): Promise<boolean> {
 		const rootResponse = await this.tree.root();
-		console.log("this is the root response: ", rootResponse);
 
 		if (rootResponse.rootNode === null) {
 			return false;
@@ -30,7 +29,7 @@ export class TraversalIterator {
 		const offset = rootResponse.pointer;
 
 		const path = await this.tree.traverse(this.key, root, offset);
-		console.log("path: ", path);
+		console.log("path: ", path.length);
 		this.records = path;
 		return true;
 	}

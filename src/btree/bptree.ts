@@ -36,8 +36,6 @@ export class BPTree {
 			};
 		}
 
-		console.log("this is the memory pointer: ", mp);
-
 		const root = await this.readNode(mp);
 		if (!root) {
 			return {
@@ -60,7 +58,7 @@ export class BPTree {
 				this.dataFileResolver
 			);
 
-			if (!bytesRead || bytesRead !== ptr.length) {
+			if (!bytesRead) {
 				throw new Error("bytes read do not line up");
 			}
 
@@ -79,8 +77,9 @@ export class BPTree {
 		node: BPTreeNode,
 		pointer: MemoryPointer
 	): Promise<TraversalRecord[]> {
+		console.log("traverse: ", node.keys, key)
 		let [index, found] = binarySearchReferencedValues(node.keys, key);
-
+		console.log("index: ", index, "found: ", found)
 		if (node.leaf()) {
 			return [{ node, index, pointer }];
 		}
@@ -99,10 +98,10 @@ export class BPTree {
 	public async find(
 		key: ReferencedValue
 	): Promise<[ReferencedValue, MemoryPointer]> {
+		console.log("key to find: ", key.value)
 		const p = this.iter(key);
 
 		if (!(await p.next())) {
-			console.log("no next");
 			return [
 				new ReferencedValue(
 					{ offset: 0n, length: 0 },
