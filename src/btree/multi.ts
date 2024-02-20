@@ -27,8 +27,6 @@ export class LinkedMetaPage {
 		const pointerOffset = view.getBigUint64(0);
 		const lengthOffset = view.getUint32(8);
 
-		console.log(pointerOffset, lengthOffset)
-
 		return {
 			offset: pointerOffset,
 			length: lengthOffset,

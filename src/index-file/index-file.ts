@@ -115,7 +115,6 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 			mp = next;
 		}
 
-		console.log(headers)
 
 		return collectIndexMetas(headers);
 	}

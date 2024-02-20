@@ -90,11 +90,7 @@ func (b *SeekableBuffer) ReadAt(p []byte, off int64) (int, error) {
 }
 
 func (b *SeekableBuffer) WriteToDisk(filename string) error {
-	if err := os.WriteFile(filename, b.buf, 0644); err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(filename, b.buf, 0644)
 }
 
 var _ io.ReadWriteSeeker = &SeekableBuffer{}

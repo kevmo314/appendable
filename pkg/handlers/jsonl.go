@@ -231,16 +231,13 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					return fmt.Errorf("unexpected token '%v'", value)
 				}
 			case nil:
-				fmt.Printf("\n\ninserting data with offset: %v\n", data.Offset)
 				// nil values are a bit of a degenerate case, we are essentially using the btree
 				// as a set. we store the value as an empty byte slice.
 				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
 					Value:       []byte{},
 					DataPointer: mp,
 				}, data); err != nil {
-					return fmt.Errorf("failed to insert into b+tree: %w\nmp: %v\n", err, data.Offset)
-				} else {
-					fmt.Printf("mp: %v\n", data.Offset)
+					return fmt.Errorf("failed to insert into b+tree: %w\nmp: %v", err, data.Offset)
 				}
 			default:
 				return fmt.Errorf("unexpected type '%T'", value)

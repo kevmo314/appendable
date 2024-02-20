@@ -1,5 +1,5 @@
 import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
-import { BPTreeNode, MemoryPointer } from "../btree/node";
+import { BPTreeNode } from "../btree/node";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
@@ -10,8 +10,6 @@ const strToArrayBuffer = (str: string) => {
 };
 
 describe("test compare bytes", () => {
-	beforeEach(() => {});
-
 	const testCases = [
 		{ a: "", b: "", i: 0 },
 		{ a: "a", b: "", i: 1 },
@@ -31,10 +29,10 @@ describe("test compare bytes", () => {
 		{ a: "abcdefghj", b: "abcdefghi", i: 1 },
 	];
 
-	// This test uses the Go test cases for `bytes.Compare` for `compareBytes()`
-	// https://cs.opensource.google/go/go/+/refs/tags/go1.21.6:src/bytes/compare_test.go
-	testCases.forEach(({ a, b, i }, idx) => {
-		it(`test ${idx} compareBytes`, async () => {
+	it(`test compareBytes`, async () => {
+		// This test uses the Go test cases for `bytes.Compare` for `compareBytes()`
+		// https://cs.opensource.google/go/go/+/refs/tags/go1.21.6:src/bytes/compare_test.go
+		testCases.forEach(({ a, b, i }) => {
 			const result = ReferencedValue.compareBytes(
 				strToArrayBuffer(a),
 				strToArrayBuffer(b)
@@ -84,22 +82,39 @@ describe("compareReferencedValues", () => {
 			new Uint8Array([5]).buffer
 		);
 
-		const [indexNeg1, foudnNeg1] = binarySearchReferencedValues(
+		const [indexNeg1, foundNeg1] = binarySearchReferencedValues(
 			values,
 			keyNeg1
 		);
 
 		expect(indexNeg1).toEqual(3);
-		expect(foudnNeg1).toBeFalsy();
+		expect(foundNeg1).toBeFalsy();
 	});
-})
+});
 
 describe("node functionality", () => {
+	let mockLeafNodeData: Uint8Array;
+	let mockInternalNodeData: Uint8Array;
+
+	let mockRangeResolver: RangeResolver;
+	let mockDataResolver: RangeResolver;
+
+	beforeAll(async () => {
+		mockLeafNodeData = await readBinaryFile("leafnode.bin");
+		mockInternalNodeData = await readBinaryFile("internalnode.bin");
+
+		mockDataResolver = async ({ start, end }) => {
+			return {
+				data: new ArrayBuffer(0),
+				totalLength: 0,
+			};
+		};
+	});
+
 	it("should read a leaf bptree node", async () => {
-		const mockRangeResolver: RangeResolver = async ({ start, end }) => {
+		mockRangeResolver = async ({ start, end }) => {
 			const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
-			const leafnode_data = await readBinaryFile("leafnode.bin");
-			view.set(leafnode_data, 0);
+			view.set(mockLeafNodeData, 0);
 			const slice = view.slice(start, end + 1);
 
 			return {
@@ -108,19 +123,10 @@ describe("node functionality", () => {
 			};
 		};
 
-		// since we're storing the values directly, we can mock
-		let dataResolver: RangeResolver = async ({ start, end }) => {
-			const mock = new ArrayBuffer(0);
-			return {
-				data: mock,
-				totalLength: 0,
-			};
-		};
-
 		const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
 			{ offset: 0n, length: 1 },
 			mockRangeResolver,
-			dataResolver
+			mockDataResolver
 		);
 
 		expect(leafNode.internalPointers.length).toEqual(0);
@@ -147,7 +153,6 @@ describe("node functionality", () => {
 			expect(rv.value).toEqual(data.buffer);
 			expect(rv.value.byteLength).toEqual(idx + 1);
 
-			// evaluating leaf pointers
 			const lp = leafNode.leafPointers[idx];
 			expect(lp.length).toEqual(idx + 1);
 			if (idx === 0) {
@@ -161,10 +166,9 @@ describe("node functionality", () => {
 	});
 
 	it("should read a internal bptree node", async () => {
-		const mockRangeResolver: RangeResolver = async ({ start, end }) => {
+		mockRangeResolver = async ({ start, end }) => {
 			const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
-			const internalnode_data = await readBinaryFile("internalnode.bin");
-			view.set(internalnode_data, 0);
+			view.set(mockInternalNodeData, 0);
 			const slice = view.slice(start, end + 1);
 
 			return {
@@ -173,21 +177,11 @@ describe("node functionality", () => {
 			};
 		};
 
-		// since we're storing the values directly, we can mock
-		let dataResolver: RangeResolver = async ({ start, end }) => {
-			const mock = new ArrayBuffer(0);
-			return {
-				data: mock,
-				totalLength: 0,
-			};
-		};
-
-		const { node: internalNode, bytesRead } =
-			await BPTreeNode.fromMemoryPointer(
-				{ offset: 0n, length: 1 },
-				mockRangeResolver,
-				dataResolver
-			);
+		const { node: internalNode } = await BPTreeNode.fromMemoryPointer(
+			{ offset: 0n, length: 1 },
+			mockRangeResolver,
+			mockDataResolver
+		);
 
 		expect(internalNode.internalPointers.length).toEqual(4);
 		expect(internalNode.leafPointers.length).toEqual(0);

@@ -107,7 +107,6 @@ export class BPTreeNode {
 			dataView = new DataView(buffer, m, m + 4);
 			const l = dataView.getUint32(0);
 			if (l === ~0 >>> 0) {
-				console.log("to buff")
 				dataView = new DataView(buffer, m + 4);
 				const dpOffset = dataView.getBigUint64(0);
 				const dpLength = dataView.getUint32(8);
@@ -123,7 +122,6 @@ export class BPTreeNode {
 
 				m += 4 + 12;
 			} else {
-				console.log("storing directly")
 				// we are storing the values directly in the referenced value
 				const value = buffer.slice(m + 4, m + 4 + l);
 				this.keys[idx].setValue(value);
@@ -158,10 +156,6 @@ export class BPTreeNode {
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
-
-		console.log(
-			`seek succesfully ${Number(mp.offset)}, ${Number(mp.offset) + 4095}`
-		);
 
 		const node = new BPTreeNode([], [], [], dataFilePointer);
 		const bytesRead = await node.unmarshalBinary(bufferData);

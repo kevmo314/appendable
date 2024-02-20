@@ -27,12 +27,9 @@ export class TraversalIterator {
 
 		const root = rootResponse.rootNode;
 		const offset = rootResponse.pointer;
-		console.log("root: ", root.keys.length);
-		console.log("rootnode: ", offset.offset);
 
 		const path = await this.tree.traverse(this.key, root, offset);
 		this.records = path;
-		console.log("ineedaonedance: ", this.records[0].index);
 		return true;
 	}
 
@@ -59,21 +56,20 @@ export class TraversalIterator {
 				return false;
 			}
 
-			try {
-				const node = await this.tree.readNode(
-					this.records[i + 1].node.pointer(this.records[i + 1].index)
-				);
-
-				// propagate the rollover
-				this.records[i].node = node;
-
-				if (rolloverLeft) {
-					this.records[i].index = this.records[i].node.numPointers() - 1;
-				} else {
-					this.records[i].index = 0;
-				}
-			} catch {
+			if (!this.records[i + 1]) {
 				return false;
+			}
+			const node = await this.tree.readNode(
+				this.records[i + 1].node.pointer(this.records[i + 1].index)
+			);
+
+			// propagate the rollover
+			this.records[i].node = node;
+
+			if (rolloverLeft) {
+				this.records[i].index = this.records[i].node.numPointers() - 1;
+			} else {
+				this.records[i].index = 0;
 			}
 
 			// otherwise, update the current node
@@ -91,8 +87,11 @@ export class TraversalIterator {
 	}
 
 	async prev(): Promise<boolean> {
-		if (this.records.length === 0 && (await !this.init())) {
-			return false;
+		if (this.records.length === 0) {
+			const res = await this.init();
+			if (!res) {
+				return false;
+			}
 		}
 
 		return this.increment(0, -1);
