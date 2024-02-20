@@ -1,186 +1,197 @@
 import { BPTreeNode, MemoryPointer } from "./node";
 import { RangeResolver } from "../resolver";
-import { LinkedMetaPage } from "./multi";
+import { TraversalIterator, TraversalRecord } from "./traversal";
 
 export interface MetaPage {
-  root(): MemoryPointer;
-  setRoot(mp: MemoryPointer): void;
+	root(): Promise<MemoryPointer>;
 }
 
 type RootResponse = {
-  rootNode: BPTreeNode;
-  pointer: MemoryPointer;
+	rootNode: BPTreeNode | null;
+	pointer: MemoryPointer;
 };
 
 export class BPTree {
-  private readonly tree: RangeResolver;
-  private meta: MetaPage;
-  private readonly dataFileResolver: RangeResolver;
+	private readonly tree: RangeResolver;
+	private meta: MetaPage;
+	private readonly dataFileResolver: RangeResolver;
 
-  constructor(
-    tree: RangeResolver,
-    meta: MetaPage,
-    dataFileResolver: RangeResolver,
-  ) {
-    this.tree = tree;
-    this.meta = meta;
-    this.dataFileResolver = dataFileResolver;
-  }
+	constructor(
+		tree: RangeResolver,
+		meta: MetaPage,
+		dataFileResolver: RangeResolver
+	) {
+		this.tree = tree;
+		this.meta = meta;
+		this.dataFileResolver = dataFileResolver;
+	}
 
-  private async root(): Promise<RootResponse | null> {
-    const mp = await this.meta.root();
+	async root(): Promise<RootResponse> {
+		const mp = await this.meta.root();
 
-    if (!mp || mp.length === 0) {
-      return null;
-    }
+		if (!mp || mp.length === 0) {
+			return {
+				rootNode: null,
+				pointer: mp,
+			};
+		}
 
-    const root = await this.readNode(mp);
-    if (!root) {
-      return null;
-    }
+		const root = await this.readNode(mp);
+		if (!root) {
+			return {
+				rootNode: null,
+				pointer: mp,
+			};
+		}
 
-    return {
-      rootNode: root,
-      pointer: mp,
-    };
-  }
+		return {
+			rootNode: root,
+			pointer: mp,
+		};
+	}
 
-  private async readNode(ptr: MemoryPointer): Promise<BPTreeNode> {
-    try {
-      const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
-        ptr,
-        this.tree,
-        this.dataFileResolver,
-      );
+	async readNode(ptr: MemoryPointer): Promise<BPTreeNode> {
+		try {
+			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
+				ptr,
+				this.tree,
+				this.dataFileResolver
+			);
 
-      if (!bytesRead || bytesRead !== ptr.length) {
-        throw new Error("bytes read do not line up");
-      }
+			if (!bytesRead) {
+				throw new Error("bytes read do not line up");
+			}
 
-      return node;
-    } catch (error) {
-      throw new Error(`${error}`);
-    }
-  }
+			return node;
+		} catch (error) {
+			throw new Error(`${error}`);
+		}
+	}
 
-  private async traverse(
-    key: ArrayBuffer,
-    node: BPTreeNode,
-    pointer: MemoryPointer,
-  ): Promise<TraversalRecord[]> {
-    const index = binarySearchReferencedValues(node.keys, key);
+	public iter(key: ReferencedValue): TraversalIterator {
+		return new TraversalIterator(this, key);
+	}
 
-    const found = index >= 0;
-    const childIndex = found ? index : ~index;
+	async traverse(
+		key: ReferencedValue,
+		node: BPTreeNode,
+		pointer: MemoryPointer
+	): Promise<TraversalRecord[]> {
+		let [index, found] = binarySearchReferencedValues(node.keys, key);
+		if (node.leaf()) {
+			return [{ node, index, pointer }];
+		}
 
-    if (node.leaf()) {
-      return [{ node, index: childIndex, found, pointer }];
-    } else {
-      const childPointer = node.pointer(childIndex);
-      const child = await this.readNode(childPointer);
-      const path = await this.traverse(key, child, childPointer);
+		if (found) {
+			index += 1;
+		}
 
-      return [...path, { node, index: childIndex, found, pointer }];
-    }
-  }
+		const childPointer = node.pointer(index);
+		const child = await this.readNode(childPointer);
+		const path = await this.traverse(key, child, childPointer);
 
-  public async find(key: Uint8Array): Promise<[MemoryPointer, boolean]> {
-    const rootResponse = await this.root();
+		return [...path, { node, index, pointer }];
+	}
 
-    if (!rootResponse) {
-      return [{ offset: BigInt(0), length: 0 }, false];
-    }
+	public async find(
+		key: ReferencedValue
+	): Promise<[ReferencedValue, MemoryPointer]> {
+		const p = this.iter(key);
 
-    let { rootNode, pointer } = rootResponse;
+		if (!(await p.next())) {
+			return [
+				new ReferencedValue(
+					{ offset: 0n, length: 0 },
+					new Uint8Array(0).buffer
+				),
+				{ offset: 0n, length: 0 },
+			];
+		}
 
-    const path = await this.traverse(key, rootNode, pointer);
-    if (!path) {
-      return [{ offset: BigInt(0), length: 0 }, false];
-    }
-
-    return [path[0].node.pointer(path[0].index), path[0].found];
-  }
-}
-
-class TraversalRecord {
-  public node: BPTreeNode;
-  public index: number;
-  public found: boolean;
-  public pointer: MemoryPointer;
-
-  constructor(
-    node: BPTreeNode,
-    index: number,
-    found: boolean,
-    pointer: MemoryPointer,
-  ) {
-    this.node = node;
-    this.index = index;
-    this.found = found;
-    this.pointer = pointer;
-  }
+		return [p.getKey(), p.getPointer()];
+	}
 }
 
 export class ReferencedValue {
-  public dataPointer: MemoryPointer;
-  public value: ArrayBuffer;
+	public dataPointer: MemoryPointer;
+	public value: ArrayBuffer;
 
-  constructor(dataPointer: MemoryPointer, value: ArrayBuffer) {
-    this.dataPointer = dataPointer;
-    this.value = value;
-  }
+	constructor(dataPointer: MemoryPointer, value: ArrayBuffer) {
+		this.dataPointer = dataPointer;
+		this.value = value;
+	}
 
-  setDataPointer(mp: MemoryPointer) {
-    this.dataPointer = mp;
-  }
+	setDataPointer(mp: MemoryPointer) {
+		this.dataPointer = mp;
+	}
 
-  setValue(value: ArrayBuffer) {
-    this.value = value;
-  }
+	setValue(value: ArrayBuffer) {
+		this.value = value;
+	}
 
-  static compareBytes(aBuffer: ArrayBuffer, bBuffer: ArrayBuffer): number {
-    const a = new Uint8Array(aBuffer);
-    const b = new Uint8Array(bBuffer);
+	static compareBytes(aBuffer: ArrayBuffer, bBuffer: ArrayBuffer): number {
+		const a = new Uint8Array(aBuffer);
+		const b = new Uint8Array(bBuffer);
 
-    const len = Math.min(a.length, b.length);
-    for (let idx = 0; idx < len; idx++) {
-      if (a[idx] !== b[idx]) {
-        return a[idx] < b[idx] ? -1 : 1;
-      }
-    }
+		const len = Math.min(a.length, b.length);
+		for (let idx = 0; idx < len; idx++) {
+			if (a[idx] !== b[idx]) {
+				return a[idx] < b[idx] ? -1 : 1;
+			}
+		}
 
-    if (a.length < b.length) {
-      return -1;
-    }
-    if (a.length > b.length) {
-      return 1;
-    }
-    return 0;
-  }
+		if (a.length < b.length) {
+			return -1;
+		}
+		if (a.length > b.length) {
+			return 1;
+		}
+		return 0;
+	}
 }
 
-function binarySearchReferencedValues(
-  values: ReferencedValue[],
-  target: ArrayBuffer,
+function compareReferencedValues(
+	a: ReferencedValue,
+	b: ReferencedValue
 ): number {
-  let lo = 0;
-  let hi = values.length;
+	const valueComparison = ReferencedValue.compareBytes(a.value, b.value);
+	if (valueComparison !== 0) {
+		return valueComparison;
+	}
 
-  while (lo < hi) {
-    const mid = lo + ((hi - lo) >> 1);
+	if (a.dataPointer.offset > b.dataPointer.offset) {
+		return 1;
+	} else if (a.dataPointer.offset < b.dataPointer.offset) {
+		return -1;
+	}
 
-    const cmp = ReferencedValue.compareBytes(values[mid].value, target);
+	if (a.dataPointer.length > b.dataPointer.length) {
+		return 1;
+	} else if (a.dataPointer.length < b.dataPointer.length) {
+		return -1;
+	}
 
-    if (cmp === 0) {
-      return mid;
-    }
+	return 0;
+}
 
-    if (cmp < 0) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
+export function binarySearchReferencedValues(
+	values: ReferencedValue[],
+	target: ReferencedValue
+): [number, boolean] {
+	const n = values.length;
 
-  return ~lo;
+	let i = 0;
+	let j = n;
+
+	while (i < j) {
+		const h = Math.floor((i + j) / 2);
+
+		if (compareReferencedValues(values[h], target) < 0) {
+			i = h + 1;
+		} else {
+			j = h;
+		}
+	}
+
+	return [i, i < n && compareReferencedValues(values[i], target) === 0];
 }

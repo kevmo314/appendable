@@ -74,7 +74,9 @@ func (p *TraversalIterator) init() bool {
 	if root == nil {
 		return false
 	}
+
 	path, err := p.tree.traverse(p.key, root, rootOffset)
+
 	if err != nil {
 		p.err = err
 		return false
@@ -174,11 +176,14 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 		// if the key is found, we need to go to the right child
 		index++
 	}
+
 	child, err := t.readNode(node.Pointer(index))
 	if err != nil {
 		return nil, err
 	}
+
 	path, err := t.traverse(key, child, node.Pointer(index))
+
 	if err != nil {
 		return nil, err
 	}

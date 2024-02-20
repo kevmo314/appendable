@@ -4,25 +4,17 @@ import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
 describe("test index-file parsing", () => {
-	const MAX_PAGE_SIZE = 4096;
 	let mockRangeResolver: RangeResolver;
 	let indexFileSize: number;
-	let indexFile: Uint8Array | null;
+	let indexFile: Uint8Array;
 
-	async function generateFile(): Promise<Uint8Array> {
-		if (indexFile) {
-			return indexFile;
-		}
-
-		const res = await readBinaryFile("green_tripdata_2023-01.index");
-		indexFile = res;
-		return indexFile;
-	}
+	beforeAll(async () => {
+		indexFile = await readBinaryFile("green_tripdata_2023-01.index");
+		indexFileSize = indexFile.byteLength;
+	});
 
 	beforeEach(() => {
 		mockRangeResolver = async ({ start, end }) => {
-			const indexFile = await generateFile();
-			indexFileSize = indexFile.byteLength;
 			const slicedPart = indexFile.slice(start, end + 1);
 
 			const arrayBuffer = slicedPart.buffer.slice(
@@ -47,10 +39,8 @@ describe("test index-file parsing", () => {
 
 	it("should traverse the entire index file and retrieve the index headers", async () => {
 		const indexFile = new IndexFileV1(mockRangeResolver);
-
 		const indexMetas = await indexFile.indexHeaders();
 
-		console.log(indexMetas, indexMetas.length);
 		expect(indexMetas.length).toEqual(20);
 	});
 });
