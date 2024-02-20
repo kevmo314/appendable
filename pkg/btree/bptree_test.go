@@ -3,6 +3,8 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
+	"math"
 	"math/rand"
 	"testing"
 
@@ -10,16 +12,42 @@ import (
 )
 
 type testMetaPage struct {
+	pf   *PageFile
 	root MemoryPointer
 }
 
 func (m *testMetaPage) SetRoot(mp MemoryPointer) error {
 	m.root = mp
-	return nil
+	return m.write()
 }
 
 func (m *testMetaPage) Root() (MemoryPointer, error) {
 	return m.root, nil
+}
+
+func (m *testMetaPage) write() error {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, m.root.Offset)
+	if _, err := m.pf.Seek(4096, io.SeekStart); err != nil {
+		return err
+	}
+	if _, err := m.pf.Write(buf); err != nil {
+		return err
+	}
+	return nil
+}
+
+func newTestMetaPage(t *testing.T, pf *PageFile) *testMetaPage {
+	meta := &testMetaPage{pf: pf}
+	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// first page is garbage collection
+	if offset != 4096 {
+		t.Fatalf("expected offset 0, got %d", offset)
+	}
+	return meta
 }
 
 func TestBPTree(t *testing.T) {
@@ -29,7 +57,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
+		tree := NewBPTree(p, newTestMetaPage(t, p))
 		// find a key that doesn't exist
 		k, _, err := tree.Find(ReferencedValue{Value: []byte("hello")})
 		if err != nil {
@@ -46,7 +74,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
+		tree := NewBPTree(p, newTestMetaPage(t, p))
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +96,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
+		tree := NewBPTree(p, newTestMetaPage(t, p))
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -103,19 +131,21 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
-		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
+		mp := newTestMetaPage(t, p)
+		tree := NewBPTree(p, mp)
+		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Insert(ReferencedValue{Value: []byte("world")}, MemoryPointer{Offset: 2}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: []byte("world")}, MemoryPointer{Offset: 2, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Insert(ReferencedValue{Value: []byte("moooo")}, MemoryPointer{Offset: 3}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: []byte("moooo")}, MemoryPointer{Offset: 3, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: []byte("cooow")}, MemoryPointer{Offset: 4, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
+
 		k1, v1, err := tree.Find(ReferencedValue{Value: []byte("hello")})
 		if err != nil {
 			t.Fatal(err)
@@ -164,7 +194,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
+		tree := NewBPTree(p, newTestMetaPage(t, p))
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x05}}, MemoryPointer{Offset: 5}); err != nil {
 			t.Fatal(err)
 		}
@@ -189,14 +219,15 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree := NewBPTree(p, &testMetaPage{})
+	tree := NewBPTree(p, newTestMetaPage(t, p))
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, uint64(i))
-		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i)}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
 	}
+
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, uint64(i))
@@ -226,7 +257,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, &testMetaPage{})
+		tree := NewBPTree(p, newTestMetaPage(t, p))
 		r := rand.New(rand.NewSource(12345))
 		for i := 0; i < 65536; i++ {
 			buf := make([]byte, 8)
@@ -262,7 +293,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTreeWithData(p, &testMetaPage{}, make([]byte, 65536*4+8), &StubDataParser{})
+		tree := NewBPTreeWithData(p, newTestMetaPage(t, p), make([]byte, 65536*4+8), &StubDataParser{})
 		for i := 0; i < 65536*4; i++ {
 			if err := tree.Insert(ReferencedValue{
 				Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -291,4 +322,151 @@ func TestBPTree_RandomTests(t *testing.T) {
 	// 	}
 	// 	fmt.Printf(tree.String())
 	// })
+}
+
+func TestBPTree_Iteration(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	metaPage := newTestMetaPage(t, p)
+	tree := NewBPTreeWithData(p, metaPage, make([]byte, 16384*4+8), &StubDataParser{})
+	for i := 0; i < 16384*4; i++ {
+		if err := tree.Insert(ReferencedValue{
+			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			// DataPointer is used as a disambiguator.
+			DataPointer: MemoryPointer{Offset: uint64(i), Length: 8},
+		}, MemoryPointer{Offset: uint64(i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("forward iteration", func(t *testing.T) {
+		iter, err := tree.Iter(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		i := 0
+		for ; iter.Next(); i++ {
+			if i > 16384*4 {
+				t.Fatalf("expected to find %d keys", 16384*4)
+			}
+			k := iter.Key()
+			if !bytes.Equal(k.Value, []byte{1, 2, 3, 4, 5, 6, 7, 8}) {
+				t.Fatalf("expected to find key %d", i)
+			}
+			v := iter.Pointer()
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+		if i != 16384*4 {
+			t.Fatalf("expected to find %d keys, got %d", 16384*4, i)
+		}
+	})
+
+	t.Run("reverse iteration", func(t *testing.T) {
+		iter, err := tree.Iter(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}, DataPointer: MemoryPointer{Offset: math.MaxUint64}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		i := 16384*4 - 1
+		for ; iter.Prev(); i-- {
+			if i < 0 {
+				t.Fatalf("expected to find %d keys", 16384*4)
+			}
+			k := iter.Key()
+			if !bytes.Equal(k.Value, []byte{1, 2, 3, 4, 5, 6, 7, 8}) {
+				t.Fatalf("expected to find key %d", i)
+			}
+			v := iter.Pointer()
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+		if i != -1 {
+			t.Fatalf("expected to find %d keys, got %d", 16384*4, i)
+		}
+	})
+}
+
+func TestBPTree_Iteration_SinglePage(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	metaPage := newTestMetaPage(t, p)
+	tree := NewBPTreeWithData(p, metaPage, make([]byte, 64+8), &StubDataParser{})
+	for i := 0; i < 64; i++ {
+		if err := tree.Insert(ReferencedValue{
+			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
+			// DataPointer is used as a disambiguator.
+			DataPointer: MemoryPointer{Offset: uint64(i), Length: 8},
+		}, MemoryPointer{Offset: uint64(i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("forward iteration", func(t *testing.T) {
+		iter, err := tree.Iter(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		i := 0
+		for ; iter.Next(); i++ {
+			if i > 64 {
+				t.Fatalf("expected to find %d keys", 64)
+			}
+			k := iter.Key()
+			if !bytes.Equal(k.Value, []byte{1, 2, 3, 4, 5, 6, 7, 8}) {
+				t.Fatalf("expected to find key %d", i)
+			}
+			v := iter.Pointer()
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+		if i != 64 {
+			t.Fatalf("expected to find %d keys, got %d", 64, i)
+		}
+	})
+
+	t.Run("reverse iteration", func(t *testing.T) {
+		iter, err := tree.Iter(ReferencedValue{Value: []byte{1, 2, 3, 4, 5, 6, 7, 8}, DataPointer: MemoryPointer{Offset: math.MaxUint64}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		i := 64 - 1
+		for ; iter.Prev(); i-- {
+			if i < 0 {
+				t.Fatalf("expected to find %d keys", 64)
+			}
+			k := iter.Key()
+			if !bytes.Equal(k.Value, []byte{1, 2, 3, 4, 5, 6, 7, 8}) {
+				t.Fatalf("expected to find key %d", i)
+			}
+			v := iter.Pointer()
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+		if i != -1 {
+			t.Fatalf("expected to find %d keys, got %d", 64, i)
+		}
+	})
 }

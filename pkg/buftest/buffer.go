@@ -1,6 +1,9 @@
 package buftest
 
-import "io"
+import (
+	"io"
+	"os"
+)
 
 // SeekableBuffer is a buffer that can be seeked into.
 // this replicates the behavior of a file on disk without having to write to disk
@@ -84,6 +87,10 @@ func (b *SeekableBuffer) ReadAt(p []byte, off int64) (int, error) {
 	}
 	n := copy(p, b.buf[off:])
 	return n, nil
+}
+
+func (b *SeekableBuffer) WriteToDisk(filename string) error {
+	return os.WriteFile(filename, b.buf, 0644)
 }
 
 var _ io.ReadWriteSeeker = &SeekableBuffer{}

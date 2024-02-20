@@ -225,8 +225,6 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				fmt.Printf("rv1: %v", rv1)
-
 				rv2, mp2, err := collected2.BPTree(cr, CSVHandler{}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {

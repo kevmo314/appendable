@@ -127,22 +127,22 @@ type IndexMeta struct {
 }
 
 func (m *IndexMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 8+len(m.FieldName)+2)
-	binary.BigEndian.PutUint64(buf[0:], uint64(m.FieldType))
-	binary.BigEndian.PutUint16(buf[8:], uint16(len(m.FieldName)))
-	copy(buf[10:], m.FieldName)
+	buf := make([]byte, 2+len(m.FieldName)+2)
+	binary.BigEndian.PutUint16(buf[0:], uint16(m.FieldType))
+	binary.BigEndian.PutUint16(buf[2:], uint16(len(m.FieldName)))
+	copy(buf[4:], m.FieldName)
 	return buf, nil
 }
 
 func (m *IndexMeta) UnmarshalBinary(buf []byte) error {
-	if len(buf) < 10 {
+	if len(buf) < 4 {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
-	m.FieldType = FieldType(binary.BigEndian.Uint64(buf[0:]))
-	nameLength := binary.BigEndian.Uint16(buf[8:])
-	if len(buf) < 10+int(nameLength) {
+	m.FieldType = FieldType(binary.BigEndian.Uint16(buf[0:]))
+	nameLength := binary.BigEndian.Uint16(buf[2:])
+	if len(buf) < 4+int(nameLength) {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
-	m.FieldName = string(buf[10 : 10+nameLength])
+	m.FieldName = string(buf[4 : 4+nameLength])
 	return nil
 }

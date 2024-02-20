@@ -54,6 +54,21 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 		} else if i > 1 {
 			panic("expected to only reset the first page once")
 		} else {
+			// validate the metadata
+			buf, err := tree.Metadata()
+			if err != nil {
+				return nil, fmt.Errorf("failed to read metadata: %w", err)
+			}
+			metadata := &FileMeta{}
+			if err := metadata.UnmarshalBinary(buf); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+			}
+			if metadata.Version != CurrentVersion {
+				return nil, fmt.Errorf("unsupported version: %d", metadata.Version)
+			}
+			if metadata.Format != dataHandler.Format() {
+				return nil, fmt.Errorf("unsupported format: %x", metadata.Format)
+			}
 			return &IndexFile{tree: tree, dataHandler: dataHandler}, nil
 		}
 	}
