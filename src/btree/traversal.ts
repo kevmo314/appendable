@@ -71,8 +71,6 @@ export class TraversalIterator {
 			} else {
 				this.records[i].index = 0;
 			}
-
-			// otherwise, update the current node
 		}
 
 		return true;
