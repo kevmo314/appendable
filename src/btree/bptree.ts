@@ -36,6 +36,7 @@ export class BPTree {
 			};
 		}
 
+		console.log("root mp: ", mp);
 		const root = await this.readNode(mp);
 		if (!root) {
 			return {

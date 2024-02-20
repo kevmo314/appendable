@@ -101,10 +101,9 @@ export class BPTreeNode {
 		}
 
 		let m = 4;
-
 		for (let idx = 0; idx <= this.keys.length - 1; idx++) {
 			// this is the case when we store the pointer to the datafile
-			dataView = new DataView(buffer, m, m + 4);
+			dataView = new DataView(buffer, m, 4);
 			const l = dataView.getUint32(0);
 			if (l === ~0 >>> 0) {
 				dataView = new DataView(buffer, m + 4);
@@ -113,9 +112,10 @@ export class BPTreeNode {
 				this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
 
 				const dp = this.keys[idx].dataPointer;
+
 				const { data } = await this.dataFileResolver({
 					start: Number(dp.offset),
-					end: Number(dp.offset + BigInt(dp.length)) - 1,
+					end: Number(dp.offset) + dp.length - 1,
 				});
 
 				this.keys[idx].setValue(data);
@@ -156,10 +156,8 @@ export class BPTreeNode {
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
-
 		const node = new BPTreeNode([], [], [], dataFilePointer);
 		const bytesRead = await node.unmarshalBinary(bufferData);
-
 		return { node, bytesRead };
 	}
 }

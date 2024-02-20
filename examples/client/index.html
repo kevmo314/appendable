@@ -11,7 +11,7 @@
 		<script>
 			Appendable.init(
 				"green_tripdata_2023-01.csv",
-				"green_tripdata_2023-01.csv.index",
+				"green_tripdata_2023-01.csv.index"
 			).then(async (db) => {
 				let dbFields = [];
 
@@ -33,62 +33,73 @@
 						2
 					);
 				});
+				/*
+							document.getElementById("execute").onclick = async () => {
+								document.getElementById("results-header").innerHTML = "";
+								document.getElementById("results").innerHTML = "";
 
-				// then execute the query
-				document.getElementById("execute").onclick = async () => {
-					document.getElementById("results-header").innerHTML = "";
-					document.getElementById("results").innerHTML = "";
+								const editorContent = editor.getValue();
 
-					const editorContent = editor.getValue();
+								if (window.activeEditor === "json") {
+									const queryJson = JSON.parse(editorContent);
+									try {
+										const query = await db.query(queryJson);
+										console.log("query succesful: ", query);
+										let queryHeaders = queryJson.select ?? dbFields;
+										await bindQuery(query, queryHeaders);
+									} catch (error) {
+										console.log("error: ", error);
+										document.getElementById("results-header").innerHTML = "";
+										document.getElementById("results").innerHTML = error.message;
+									}
+								} else if (window.activeEditor === "javascript") {
+									function extractSelect(content) {
+										const selectRegex = /\.select\(\s*\[([^\]]*)\]\s*\)/;
+										const match = content.match(selectRegex);
 
-					if (window.activeEditor === "json") {
-						const queryJson = JSON.parse(editorContent);
-						try {
-							const query = await db.query(queryJson);
-							let queryHeaders = queryJson.select ?? dbFields;
-							await bindQuery(query, queryHeaders);
-						} catch (error) {
-							console.log("error: ", error);
-							document.getElementById("results-header").innerHTML = "";
-							document.getElementById("results").innerHTML = error.message;
-						}
-					} else if (window.activeEditor === "javascript") {
-						function extractSelect(content) {
-							const selectRegex = /\.select\(\s*\[([^\]]*)\]\s*\)/;
-							const match = content.match(selectRegex);
+										if (match && match[1]) {
+											const headersContent = match[1].trim();
+											const headers = headersContent
+												.split(",")
+												.map((e) => e.trim().replace(/['"`]/g, ""));
 
-							if (match && match[1]) {
-								const headersContent = match[1].trim();
-								const headers = headersContent
-									.split(",")
-									.map((e) => e.trim().replace(/['"`]/g, ""));
+											return headers;
+										}
 
-								return headers;
-							}
+										return null;
+									}
 
-							return null;
-						}
+									try {
+										const query = await eval(editorContent);
 
-						try {
-							const query = await eval(editorContent);
+										const queryHeaders = extractSelect(editorContent) ?? dbFields;
 
-							const queryHeaders = extractSelect(editorContent) ?? dbFields;
+										if (query) {
+											await bindQuery(query, queryHeaders);
+										}
+									} catch (error) {
+										console.log("error: ", error);
+										document.getElementById("results-header").innerHTML = "";
+										document.getElementById("results").innerHTML = error.message;
+									}
+								}
+							};
+			*/
+				//const queryJson = JSON.parse(editor.getValue());
 
-							if (query) {
-								await bindQuery(query, queryHeaders);
-							}
-						} catch (error) {
-							console.log("error: ", error);
-							document.getElementById("results-header").innerHTML = "";
-							document.getElementById("results").innerHTML = error.message;
-						}
-					}
-				};
+				for await (const value of await db.query({
+					where: [
+						{
+							operation: ">=",
+							key: "trip_distance",
+							value: 10,
+						},
+					],
+				})) {
+					console.log(value);
+				}
 
-				const queryJson = JSON.parse(editor.getValue());
-				const query = await db.query(JSON.parse(editor.getValue()));
-
-				await bindQuery(query, queryJson.select);
+				//	await bindQuery(query, queryJson.select);
 			});
 
 			async function bindQuery(query, headers) {
