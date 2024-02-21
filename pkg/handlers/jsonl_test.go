@@ -679,6 +679,9 @@ func TestJSONL(t *testing.T) {
 
 		idx := 0
 		for ; iter.Next(); idx++ {
+			if idx > 2 {
+				t.Fatal("overflow")
+			}
 
 			k := iter.Key()
 			if !bytes.Equal(k.Value, v2) {
