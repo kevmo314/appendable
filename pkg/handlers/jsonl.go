@@ -105,9 +105,9 @@ func (j JSONLHandler) Parse(value []byte) []byte {
 				slog.Error("failed to parse float", "err", err)
 				return nil
 			}
-			binary.BigEndian.PutUint64(buf, math.Float64bits(f))
+			binary.LittleEndian.PutUint64(buf, math.Float64bits(f))
 		case float64:
-			binary.BigEndian.PutUint64(buf, math.Float64bits(token))
+			binary.LittleEndian.PutUint64(buf, math.Float64bits(token))
 		}
 		return buf
 	case bool:
@@ -170,9 +170,9 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					if err != nil {
 						return fmt.Errorf("failed to parse float: %w", err)
 					}
-					binary.BigEndian.PutUint64(buf, math.Float64bits(f))
+					binary.LittleEndian.PutUint64(buf, math.Float64bits(f))
 				case float64:
-					binary.BigEndian.PutUint64(buf, math.Float64bits(value))
+					binary.LittleEndian.PutUint64(buf, math.Float64bits(value))
 				}
 				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
 					DataPointer: mp, Value: buf}, data); err != nil {
