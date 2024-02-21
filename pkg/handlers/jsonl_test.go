@@ -266,7 +266,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		v2 := make([]byte, 8)
-		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
+		binary.LittleEndian.PutUint64(v2, math.Float64bits(123))
 		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
@@ -639,6 +639,54 @@ func TestJSONL(t *testing.T) {
 
 		if md1.FieldName != "nullheader" || md1.FieldType != appendable.FieldTypeNull {
 			t.Errorf("expected md1.FieldName nullheader, got: %v\nexpected field type to be null, got: %v", md1.FieldName, md1.FieldType)
+		}
+	})
+
+	t.Run("correctly iterates through btree", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r2 := []byte("{\"test\":1234}\n{\"test\":1234}\n")
+		if err := i.Synchronize(r2); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 1 {
+			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		}
+
+		v2 := make([]byte, 8)
+		binary.LittleEndian.PutUint64(v2, math.Float64bits(1234))
+
+		iter, err := collected[0].BPTree(r2, JSONLHandler{}).Iter(btree.ReferencedValue{Value: v2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		idx := 0
+		for ; iter.Next(); idx++ {
+			if idx > 2 {
+				t.Fatal("overflow")
+			}
+
+			k := iter.Key()
+			if !bytes.Equal(k.Value, v2) {
+				t.Fatal("keys are not equal")
+			}
 		}
 	})
 }

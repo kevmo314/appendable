@@ -131,7 +131,7 @@ func (c CSVHandler) Parse(value []byte) []byte {
 	switch fieldType {
 	case appendable.FieldTypeFloat64:
 		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, math.Float64bits(parsed.(float64)))
+		binary.LittleEndian.PutUint64(buf, math.Float64bits(parsed.(float64)))
 		return buf
 	case appendable.FieldTypeBoolean:
 		if parsed.(bool) {
