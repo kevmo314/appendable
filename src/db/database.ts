@@ -226,7 +226,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 			} else if (operation === ">=") {
@@ -243,7 +242,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 			} else if (operation === "==") {
@@ -260,7 +258,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 			} else if (operation === "<=") {
@@ -280,7 +277,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 
@@ -300,7 +296,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 			} else {
@@ -317,7 +312,6 @@ export class Database<T extends Schema> {
 						);
 
 						yield JSON.parse(data);
-						break;
 					}
 				}
 			}
