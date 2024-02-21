@@ -144,6 +144,12 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 			mp = next;
 		}
 
+		if (headerMps.length === 0) {
+			throw new Error(
+				`No LinkedMetaPage with ${header} and type ${fieldType} exists`
+			);
+		}
+
 		return headerMps;
 	}
 

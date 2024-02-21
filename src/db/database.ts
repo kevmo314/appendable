@@ -151,93 +151,177 @@ export class Database<T extends Schema> {
 
 		const headers = await this.indexFile.indexHeaders();
 
-		const fieldRanges = await Promise.all(
-			(query.where ?? []).map(async ({ key, value, operation }) => {
-				const header = headers.find((header) => header.fieldName === key);
-				if (!header) {
-					throw new Error("field not found");
+		for (const { key, value, operation } of query.where ?? []) {
+			const header = headers.find((header) => header.fieldName === key);
+			if (!header) {
+				throw new Error("field not found");
+			}
+
+			let valueBuf: ArrayBuffer;
+			let fieldType: number;
+
+			if (key === null) {
+				fieldType = FieldType.Null;
+				valueBuf = new ArrayBuffer(0);
+			} else {
+				switch (typeof value) {
+					case "bigint":
+					case "number":
+						fieldType = FieldType.Float64;
+						valueBuf = new ArrayBuffer(8);
+						new DataView(valueBuf).setFloat64(0, Number(value), true);
+						break;
+
+					case "boolean":
+						fieldType = FieldType.Boolean;
+						valueBuf = new ArrayBuffer(1);
+						new DataView(valueBuf).setUint8(0, value ? 1 : 0);
+						break;
+
+					case "string":
+						fieldType = FieldType.String;
+						valueBuf = new TextEncoder().encode(value as string).buffer;
+						break;
+					default:
+						throw new Error("unmatched key type");
 				}
+			}
+			const mps = await this.indexFile.seek(key as string, fieldType);
+			const mp = mps[0];
 
-				let valueBuf: ArrayBuffer;
-				let fieldType: number;
+			const dfResolver = this.dataFile.getResolver();
 
-				if (key === null) {
-					fieldType = FieldType.Null;
-					valueBuf = new ArrayBuffer(0);
-				} else {
-					switch (typeof value) {
-						case "bigint":
-						case "number":
-							fieldType = FieldType.Float64;
-							valueBuf = new ArrayBuffer(8);
-							new DataView(valueBuf).setFloat64(0, Number(value), true);
-							break;
+			if (dfResolver === undefined) {
+				throw new Error("data file is undefined");
+			}
 
-						case "boolean":
-							fieldType = FieldType.Boolean;
-							valueBuf = new ArrayBuffer(1);
-							new DataView(valueBuf).setUint8(0, value ? 1 : 0);
-							break;
+			const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf);
 
-						case "string":
-							fieldType = FieldType.String;
-							valueBuf = new TextEncoder().encode(value as string).buffer;
-							break;
-						default:
-							throw new Error("unmatched key type");
+			const { format } = await this.indexFile.metadata();
+			const { fieldType: mpFieldType } = await readIndexMeta(
+				await mp.metadata()
+			);
+
+			const bptree = new BPTree(
+				this.indexFile.getResolver(),
+				mp,
+				dfResolver,
+				format,
+				mpFieldType
+			);
+
+			const iter = bptree.iter(valueRef);
+
+			if (operation === ">") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+						break;
 					}
 				}
-				const mps = await this.indexFile.seek(key as string, fieldType);
-				const rangeMemoryPointers = [];
+			} else if (operation === ">=") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
 
-				const mp = mps[0];
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 1 || res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
 
-				const dfResolver = this.dataFile.getResolver();
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
 
-				if (dfResolver === undefined) {
-					throw new Error("data file is undefined");
-				}
-
-				const valueRef = new ReferencedValue(
-					{ offset: 0n, length: 0 },
-					valueBuf
-				);
-
-				const { format } = await this.indexFile.metadata();
-				const { fieldType: mpFieldType } = await readIndexMeta(
-					await mp.metadata()
-				);
-
-				const bptree = new BPTree(
-					this.indexFile.getResolver(),
-					mp,
-					dfResolver,
-					format,
-					mpFieldType
-				);
-
-				let memoryPointers: MemoryPointer[] = [];
-
-				if (operation === "<" || operation === "<=" || operation === "==") {
-				}
-
-				// memoryPointers = memoryPointers.reverse();
-
-
-				if (operation === "==") {
-					const iter = bptree.iter(valueRef);
-
-					while (await iter.next()) {
-						const currentKey = iter.getKey();
-
-						if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 0) {
-							console.log("equal")
-							// yield memory pointer here
-						}
+						yield JSON.parse(data);
+						break;
 					}
 				}
-			})
-		);
+			} else if (operation === "==") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+						break;
+					}
+				}
+			} else if (operation === "<=") {
+				// this is the only case where we need to go both ways.
+				// first we'll go prev() to catch everything <
+				// then we'll go next() to catch everything ==
+				while (await iter.prev()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === -1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+						break;
+					}
+				}
+
+				// reset iterator
+				const iter2 = bptree.iter(valueRef);
+
+				while (await iter2.next()) {
+					const currentKey = iter2.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+						break;
+					}
+				}
+			} else {
+				while (await iter.prev()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === -1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+						break;
+					}
+				}
+			}
+		}
 	}
 
 	where(

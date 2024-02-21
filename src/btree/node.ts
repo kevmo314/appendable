@@ -1,7 +1,9 @@
 import { FieldType } from "../db/database";
 import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
-import { BPTree, ReferencedValue } from "./bptree";
+import { ReferencedValue } from "./bptree";
+
+export const pageSizeBytes = 4096;
 
 export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {
@@ -221,6 +223,6 @@ export class BPTreeNode {
 
 		await node.unmarshalBinary(bufferData);
 
-		return { node, bytesRead: 4096 };
+		return { node, bytesRead: pageSizeBytes };
 	}
 }

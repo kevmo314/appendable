@@ -6,155 +6,37 @@
 			type="text/javascript"
 			charset="utf-8"
 		></script>
-		<link rel="stylesheet" href="styles.css" />
 		<script src="appendable.min.js"></script>
-		<script>
-			Appendable.init(
-				"green_tripdata_2023-01.jsonl",
-				"green_tripdata_2023-01.index"
-			).then(async (db) => {
-				let dbFields = [];
 
-				// populate fields
-				db.fields().then((fields) => {
-					fields.map((field) => {
-						dbFields.push(field.fieldName);
-					});
-
-					document.getElementById("fields").innerHTML = JSON.stringify(
-						fields,
-						(key, value) => {
-							if (typeof value === "bigint") {
-								return value.toString();
-							}
-
-							return value;
-						},
-						2
-					);
-				});
-				/*
-							document.getElementById("execute").onclick = async () => {
-								document.getElementById("results-header").innerHTML = "";
-								document.getElementById("results").innerHTML = "";
-
-								const editorContent = editor.getValue();
-
-								if (window.activeEditor === "json") {
-									const queryJson = JSON.parse(editorContent);
-									try {
-										const query = await db.query(queryJson);
-										console.log("query succesful: ", query);
-										let queryHeaders = queryJson.select ?? dbFields;
-										await bindQuery(query, queryHeaders);
-									} catch (error) {
-										console.log("error: ", error);
-										document.getElementById("results-header").innerHTML = "";
-										document.getElementById("results").innerHTML = error.message;
-									}
-								} else if (window.activeEditor === "javascript") {
-									function extractSelect(content) {
-										const selectRegex = /\.select\(\s*\[([^\]]*)\]\s*\)/;
-										const match = content.match(selectRegex);
-
-										if (match && match[1]) {
-											const headersContent = match[1].trim();
-											const headers = headersContent
-												.split(",")
-												.map((e) => e.trim().replace(/['"`]/g, ""));
-
-											return headers;
-										}
-
-										return null;
-									}
-
-									try {
-										const query = await eval(editorContent);
-
-										const queryHeaders = extractSelect(editorContent) ?? dbFields;
-
-										if (query) {
-											await bindQuery(query, queryHeaders);
-										}
-									} catch (error) {
-										console.log("error: ", error);
-										document.getElementById("results-header").innerHTML = "";
-										document.getElementById("results").innerHTML = error.message;
-									}
-								}
-							};
-			*/
-				//const queryJson = JSON.parse(editor.getValue());
-
-				for await (const value of await db.query({
-					where: [
-						{
-							operation: ">=",
-							key: "trip_distance",
-							value: 10,
-						},
-					],
-				})) {
-					console.log(value);
-				}
-
-				//	await bindQuery(query, queryJson.select);
-			});
-
-			async function bindQuery(query, headers) {
-				const resultsHeaderElement = document.getElementById("results-header");
-				resultsHeaderElement.innerHTML = "";
-
-				resultsHeaderElement.style.display = "grid";
-				resultsHeaderElement.style.gridTemplateColumns = `repeat(${headers.length}, minmax(	0, 4fr))`;
-
-				headers.forEach((header) => {
-					const headerDiv = document.createElement("div");
-					headerDiv.textContent = header;
-					headerDiv.classList.add("header-item");
-					resultsHeaderElement.appendChild(headerDiv);
-				});
-
-				const resultsElement = document.getElementById("results");
-				document.getElementById("next").disabled = true;
-
-				async function appendResult() {
-					const result = await query.next();
-					if (result.done) {
-						return;
-					}
-
-					const resultRow = document.createElement("div");
-					resultRow.classList.add("result-row");
-					resultRow.style.display = "grid";
-					resultRow.style.gridTemplateColumns = `repeat(${headers.length}, minmax(0, 4fr))`;
-
-					headers.forEach((header) => {
-						const cellDiv = document.createElement("div");
-						cellDiv.classList.add("result-cell");
-						cellDiv.textContent = result.value[header]
-							? result.value[header]
-							: "";
-						resultRow.appendChild(cellDiv);
-					});
-
-					resultsElement.appendChild(resultRow);
-				}
-
-				for (let i = 0; i < 10; i++) {
-					await appendResult();
-				}
-				while (true) {
-					document.getElementById("next").disabled = false;
-					await new Promise(
-						(resolve) => (document.getElementById("next").onclick = resolve)
-					);
-					document.getElementById("next").disabled = true;
-					await appendResult();
-				}
+		<style>
+			body,
+			html {
+				margin: 0;
+				padding: 0px 0px 4px 4px;
 			}
-		</script>
+			.flex-1 {
+				flex: 1;
+				display: flex;
+				gap: 0 30px;
+				height: 100vh;
+				width: 100vw;
+			}
+			.result-item {
+				padding: 4px 0;
+				cursor: pointer;
+			}
+			.result-item:hover {
+				background-color: yellow;
+			}
+			#fields {
+				max-height: calc(100vh - 50px);
+				overflow-y: auto;
+			}
+			#results {
+				max-height: calc(100vh - 500px);
+				overflow-y: auto;
+			}
+		</style>
 	</head>
 	<body>
 		<div>
@@ -165,7 +47,7 @@
 			<div>
 				Download the raw data here:
 				<a href="green_tripdata_2023-01.jsonl">JSONL</a> -
-				<a href="green_tripdata_2023-01.csv.index">Appendable Index</a> -
+				<a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
 				<a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
 					>Source</a
 				>
@@ -188,21 +70,190 @@
 			</div>
 			<div>
 				<h2>Query</h2>
-				<div>
-					<button id="jsonTab">json</button>
-					<button id="jsTab">javascript</button>
-					<div id="editor" style="height: 400px; width: 628px"></div>
-				</div>
-				<h2>Results</h2>
-
 				<button id="execute">Execute</button>
+				<div
+					id="json-editor"
+					style="height: 300px; width: 600px; margin-top: 40px"
+				></div>
+				<h2>Results</h2>
 				<button id="next">Fetch more</button>
-				<div>
-					<pre id="results-header"></pre>
-					<pre id="results"></pre>
-				</div>
+				<pre id="results"></pre>
 			</div>
 		</div>
-		<script src="editor.js"></script>
+		<script>
+			var editor = ace.edit("json-editor");
+			editor.session.setMode("ace/mode/json");
+			editor.setTheme("ace/theme/chrome");
+			editor.getSession().setTabSize(2);
+			editor.getSession().setUseSoftTabs(true);
+
+			// NOTE: when composite indexes get supported, remove this UX feature
+			// <---- start of UX feature ---->
+			let isProgramChange = false;
+			let lastEdited = "none";
+			let prevWhereKey = "trip_distance";
+			let prevOrderByKey = "trip_distance";
+
+			function updateKey(editorContent) {
+				try {
+					let query = JSON.parse(editorContent);
+					if (query.where && query.orderBy) {
+						const whereKey = query.where[0].key;
+						const orderByKey = query.orderBy[0].key;
+
+						if (lastEdited === "where") {
+							query.orderBy[0].key = whereKey;
+						} else if (lastEdited === "orderBy") {
+							query.where[0].key = orderByKey;
+						}
+
+						prevWhereKey = whereKey;
+						prevOrderByKey = orderByKey;
+
+						return JSON.stringify(query, null, 2);
+					}
+				} catch (e) {
+					console.log("Error parsing JSON:", e.message);
+					console.log("Incomplete string content:", editorContent);
+				}
+				return editorContent;
+			}
+
+			editor.getSession().on("change", function (e) {
+				if (isProgramChange) {
+					isProgramChange = false;
+					return;
+				}
+
+				const cursorPosition = editor.getCursorPosition();
+				const editorContent = editor.getSession().getValue();
+
+				let query;
+				try {
+					query = JSON.parse(editorContent);
+				} catch (e) {
+					return;
+				}
+
+				const currentWhereKey = query.where ? query.where[0].key : "";
+				const currentOrderByKey = query.orderBy ? query.orderBy[0].key : "";
+
+				if (currentWhereKey !== prevWhereKey) {
+					lastEdited = "where";
+				} else if (currentOrderByKey !== prevOrderByKey) {
+					lastEdited = "orderBy";
+				}
+
+				const updatedContent = updateKey(editorContent);
+
+				if (updatedContent !== editorContent) {
+					isProgramChange = true;
+
+					const doc = editor.getSession().getDocument();
+					doc.setValue(updatedContent);
+
+					editor.moveCursorToPosition(cursorPosition);
+					editor.clearSelection();
+				}
+			});
+
+			// <---- end of UX feature ---->
+
+			editor.setValue(
+				JSON.stringify(
+					{
+						where: [
+							{
+								operation: ">=",
+								key: "trip_distance",
+								value: 10,
+							},
+						],
+						orderBy: [
+							{
+								key: "trip_distance",
+								direction: "ASC",
+							},
+						],
+					},
+					null,
+					2
+				),
+				-1
+			);
+		</script>
+		<script>
+			Appendable.init(
+				"green_tripdata_2023-01.jsonl",
+				"green_tripdata_2023-01.index"
+			).then(async (db) => {
+				let dbFields = new Set();
+				let fieldTypes = {};
+
+				// populate fields
+				db.fields().then((fields) => {
+					fields.map((field) => {
+						dbFields.add(field.fieldName);
+						fieldTypes[field.fieldName] = field.fieldType;
+					});
+
+					document.getElementById("fields").innerHTML = JSON.stringify(
+						fields,
+						(key, value) => {
+							if (typeof value === "bigint") {
+								return value.toString();
+							}
+
+							return value;
+						},
+						2
+					);
+				});
+
+				// then execute the query
+				document.getElementById("execute").onclick = () => {
+					document.getElementById("results").innerHTML = "";
+					const queryJson = JSON.parse(editor.getValue());
+
+					const query = db.query(queryJson);
+					bindQuery(query);
+				};
+
+				document.getElementById("results").innerHTML = "";
+
+				const query = db.query(JSON.parse(editor.getValue()));
+
+				bindQuery(query);
+			});
+
+			async function bindQuery(query) {
+				const resultsElement = document.getElementById("results");
+				document.getElementById("next").disabled = true;
+
+				async function appendResult() {
+					const result = await query.next();
+					if (result.done) {
+						return;
+					}
+
+					const resultDiv = document.createElement("div");
+					resultDiv.classList.add("result-item");
+					resultDiv.textContent = JSON.stringify(result.value);
+					resultsElement.appendChild(resultDiv);
+				}
+
+				for (let i = 0; i < 10; i++) {
+					await appendResult();
+				}
+				while (true) {
+					document.getElementById("next").disabled = false;
+					await new Promise(
+						(resolve) => (document.getElementById("next").onclick = resolve)
+					);
+					document.getElementById("next").disabled = true;
+					await appendResult();
+				}
+			}
+		</script>
 	</body>
 </html>
