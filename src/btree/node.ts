@@ -196,6 +196,7 @@ export class BPTreeNode {
 				}
 
 			case FileFormat.CSV:
+				return incomingData;
 		}
 
 		throw new Error("unexpected parsing error occured");

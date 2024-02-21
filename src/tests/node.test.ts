@@ -1,5 +1,7 @@
 import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
 import { BPTreeNode } from "../btree/node";
+import { FieldType } from "../db/database";
+import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
@@ -126,7 +128,9 @@ describe("node functionality", () => {
 		const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
 			{ offset: 0n, length: 1 },
 			mockRangeResolver,
-			mockDataResolver
+			mockDataResolver,
+			FileFormat.JSONL,
+			FieldType.String
 		);
 
 		expect(leafNode.internalPointers.length).toEqual(0);
@@ -180,7 +184,9 @@ describe("node functionality", () => {
 		const { node: internalNode } = await BPTreeNode.fromMemoryPointer(
 			{ offset: 0n, length: 1 },
 			mockRangeResolver,
-			mockDataResolver
+			mockDataResolver,
+			FileFormat.CSV,
+			FieldType.String
 		);
 
 		expect(internalNode.internalPointers.length).toEqual(4);
