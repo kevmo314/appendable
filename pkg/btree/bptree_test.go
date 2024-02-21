@@ -222,7 +222,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	tree := NewBPTree(p, newTestMetaPage(t, p))
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, uint64(i))
+		binary.LittleEndian.PutUint64(buf, uint64(i))
 		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
@@ -230,7 +230,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, uint64(i))
+		binary.LittleEndian.PutUint64(buf, uint64(i))
 		k, v, err := tree.Find(ReferencedValue{Value: buf})
 		if err != nil {
 			t.Fatal(err)
