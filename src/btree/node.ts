@@ -1,5 +1,7 @@
+import { FieldType } from "../db/database";
+import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
-import { ReferencedValue } from "./bptree";
+import { BPTree, ReferencedValue } from "./bptree";
 
 export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {
@@ -7,17 +9,23 @@ export class BPTreeNode {
 	public leafPointers: MemoryPointer[];
 	public internalPointers: bigint[];
 	private readonly dataFileResolver: RangeResolver;
+	private fileFormat: FileFormat;
+	private pageFieldType: FieldType;
 
 	constructor(
 		keys: ReferencedValue[],
 		leafPointers: MemoryPointer[],
 		internalPointers: bigint[],
-		dataFileResolver: RangeResolver
+		dataFileResolver: RangeResolver,
+		fileFormat: FileFormat,
+		pageFieldType: FieldType
 	) {
 		this.keys = keys;
 		this.leafPointers = leafPointers;
 		this.internalPointers = internalPointers;
 		this.dataFileResolver = dataFileResolver;
+		this.fileFormat = fileFormat;
+		this.pageFieldType = pageFieldType;
 	}
 
 	leaf(): boolean {
@@ -61,7 +69,7 @@ export class BPTreeNode {
 		return BigInt(size);
 	}
 
-	async unmarshalBinary(buffer: ArrayBuffer): Promise<number> {
+	async unmarshalBinary(buffer: ArrayBuffer) {
 		let dataView = new DataView(buffer);
 		let size = dataView.getUint32(0);
 
@@ -118,8 +126,9 @@ export class BPTreeNode {
 					end: Number(dp.offset) + dp.length - 1,
 				});
 
-				this.keys[idx].setValue(data);
+				const parsedData = await this.parseValue(data);
 
+				this.keys[idx].setValue(parsedData);
 				m += 4 + 12;
 			} else {
 				// we are storing the values directly in the referenced value
@@ -138,26 +147,80 @@ export class BPTreeNode {
 		}
 
 		for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
-			dataView = new DataView(buffer, m, 8);
+			dataView = new DataView(buffer, m);
 			this.internalPointers[idx] = dataView.getBigUint64(0);
 
 			m += 8;
 		}
+	}
 
-		return m;
+	async parseValue(incomingData: ArrayBuffer): Promise<ArrayBuffer> {
+		const stringData = new TextDecoder().decode(incomingData);
+
+		switch (this.fileFormat) {
+			case FileFormat.JSONL:
+				const jValue = JSON.parse(stringData);
+
+				switch (this.pageFieldType) {
+					case FieldType.Null:
+						if (jValue !== null) {
+							throw new Error(`unrecognized value for null type: ${jValue}`);
+						}
+						return new ArrayBuffer(0);
+
+					case FieldType.Boolean:
+						const boolBuf = new ArrayBuffer(1);
+						let boolBufView = new DataView(boolBuf);
+						boolBufView.setUint8(0, jValue ? 1 : 0); // we can do extra validation here
+						return boolBuf;
+
+					case FieldType.Float64:
+					case FieldType.Int64:
+					case FieldType.Uint64:
+						const floatBuf = new ArrayBuffer(8);
+						let floatBufView = new DataView(floatBuf);
+						floatBufView.setFloat64(0, jValue, true);
+
+						return floatBuf;
+
+					case FieldType.String:
+						const e = new TextEncoder().encode(jValue);
+						return e.buffer;
+
+					default:
+						throw new Error(
+							`Unexpected Field Type. Got: ${this.pageFieldType}`
+						);
+				}
+
+			case FileFormat.CSV:
+		}
+
+		throw new Error("unexpected parsing error occured");
 	}
 
 	static async fromMemoryPointer(
 		mp: MemoryPointer,
 		resolver: RangeResolver,
-		dataFilePointer: RangeResolver
+		dataFilePointer: RangeResolver,
+		fileFormat: FileFormat,
+		pageFieldType: FieldType
 	): Promise<{ node: BPTreeNode; bytesRead: number }> {
 		const { data: bufferData } = await resolver({
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
-		const node = new BPTreeNode([], [], [], dataFilePointer);
-		const bytesRead = await node.unmarshalBinary(bufferData);
-		return { node, bytesRead };
+		const node = new BPTreeNode(
+			[],
+			[],
+			[],
+			dataFilePointer,
+			fileFormat,
+			pageFieldType
+		);
+
+		await node.unmarshalBinary(bufferData);
+
+		return { node, bytesRead: 4096 };
 	}
 }

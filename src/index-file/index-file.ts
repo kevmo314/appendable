@@ -14,7 +14,6 @@ export class IndexFile {
 	static async forUrl<T = any>(url: string) {
 		return await IndexFile.forResolver<T>(
 			async ({ start, end, expectedLength }) => {
-				console.log(start, end)
 				const response = await fetch(url, {
 					headers: { Range: `bytes=${start}-${end}` },
 				});
@@ -144,7 +143,6 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
 			mp = next;
 		}
-		console.log(headerMps);
 
 		return headerMps;
 	}

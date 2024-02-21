@@ -149,9 +149,15 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				return fmt.Errorf("failed to find or create index: %w", err)
 			}
 
+			length := uint32(dec.InputOffset() - fieldOffset)
+
 			mp := btree.MemoryPointer{
 				Offset: data.Offset + uint64(fieldOffset),
-				Length: uint32(dec.InputOffset() - fieldOffset),
+				Length: length,
+			}
+
+			if key == "trip_distance" {
+				fmt.Printf("length: %v", length)
 			}
 
 			switch value := value.(type) {

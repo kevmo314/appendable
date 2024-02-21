@@ -1,6 +1,8 @@
 import { BPTreeNode, MemoryPointer } from "./node";
 import { RangeResolver } from "../resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
+import { FileFormat } from "../index-file/meta";
+import { FieldType } from "../db/database";
 
 export interface MetaPage {
 	root(): Promise<MemoryPointer>;
@@ -15,15 +17,21 @@ export class BPTree {
 	private readonly tree: RangeResolver;
 	private meta: MetaPage;
 	private readonly dataFileResolver: RangeResolver;
+	private fileFormat: FileFormat;
+	private pageFieldType: FieldType;
 
 	constructor(
 		tree: RangeResolver,
 		meta: MetaPage,
-		dataFileResolver: RangeResolver
+		dataFileResolver: RangeResolver,
+		fileFormat: FileFormat,
+		pageFieldType: FieldType
 	) {
 		this.tree = tree;
 		this.meta = meta;
 		this.dataFileResolver = dataFileResolver;
+		this.fileFormat = fileFormat;
+		this.pageFieldType = pageFieldType;
 	}
 
 	async root(): Promise<RootResponse> {
@@ -36,7 +44,6 @@ export class BPTree {
 			};
 		}
 
-		console.log("root mp: ", mp);
 		const root = await this.readNode(mp);
 		if (!root) {
 			return {
@@ -56,7 +63,9 @@ export class BPTree {
 			const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
 				ptr,
 				this.tree,
-				this.dataFileResolver
+				this.dataFileResolver,
+				this.fileFormat,
+				this.pageFieldType
 			);
 
 			if (!bytesRead) {
