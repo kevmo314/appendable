@@ -217,7 +217,7 @@ export class Database<T extends Schema> {
 					const currentKey = iter.getKey();
 
 					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-					if (res === 1) {
+					if (res === -1) {
 						const [_, mp] = await bptree.find(currentKey);
 
 						const data = await this.dataFile.get(
@@ -233,7 +233,7 @@ export class Database<T extends Schema> {
 					const currentKey = iter.getKey();
 
 					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-					if (res === 1 || res === 0) {
+					if (res === -1 || res === 0) {
 						const [_, mp] = await bptree.find(currentKey);
 
 						const data = await this.dataFile.get(
@@ -268,7 +268,7 @@ export class Database<T extends Schema> {
 					const currentKey = iter.getKey();
 
 					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-					if (res === -1) {
+					if (res === 1) {
 						const [_, mp] = await bptree.find(currentKey);
 
 						const data = await this.dataFile.get(
@@ -303,7 +303,7 @@ export class Database<T extends Schema> {
 					const currentKey = iter.getKey();
 
 					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-					if (res === -1) {
+					if (res === 1) {
 						const [_, mp] = await bptree.find(currentKey);
 
 						const data = await this.dataFile.get(
