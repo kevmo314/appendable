@@ -3,6 +3,7 @@ package appendable
 import (
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/kevmo314/appendable/pkg/btree"
 )
@@ -19,6 +20,9 @@ type DataHandler interface {
 type IndexFile struct {
 	tree        *btree.LinkedMetaPage
 	dataHandler DataHandler
+
+	pf                *btree.PageFile
+	BenchmarkCallback func(int)
 }
 
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
@@ -69,7 +73,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 			if metadata.Format != dataHandler.Format() {
 				return nil, fmt.Errorf("unsupported format: %x", metadata.Format)
 			}
-			return &IndexFile{tree: tree, dataHandler: dataHandler}, nil
+			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf}, nil
 		}
 	}
 }
@@ -193,4 +197,13 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.
 // Synchronize() on the data handler itself.
 func (i *IndexFile) Synchronize(df []byte) error {
 	return i.dataHandler.Synchronize(i, df)
+}
+
+func (i *IndexFile) SetBenchmarkFile(f io.Writer) {
+	t0 := time.Now()
+	i.BenchmarkCallback = func(n int) {
+		// write timestamp, number of records, and number of pages
+		dt := time.Since(t0)
+		fmt.Fprintf(f, "%d,%d,%d\n", dt.Microseconds(), n, i.pf.PageCount())
+	}
 }
