@@ -266,7 +266,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		v2 := make([]byte, 8)
-		binary.LittleEndian.PutUint64(v2, math.Float64bits(123))
+		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
 		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
@@ -670,7 +670,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		v2 := make([]byte, 8)
-		binary.LittleEndian.PutUint64(v2, math.Float64bits(1234))
+		binary.BigEndian.PutUint64(v2, math.Float64bits(1234))
 
 		iter, err := collected[0].BPTree(r2, JSONLHandler{}).Iter(btree.ReferencedValue{Value: v2})
 		if err != nil {

@@ -223,7 +223,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	tree := NewBPTree(p, newTestMetaPage(t, p))
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(buf, uint64(i))
+		binary.BigEndian.PutUint64(buf, uint64(i))
 		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
@@ -231,7 +231,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(buf, uint64(i))
+		binary.BigEndian.PutUint64(buf, uint64(i))
 		k, v, err := tree.Find(ReferencedValue{Value: buf})
 		if err != nil {
 			t.Fatal(err)
@@ -485,7 +485,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 
 	for i := start; i < 256; i += increments[currentIncrementIndex] {
 		buf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(buf, math.Float64bits(i))
+		binary.BigEndian.PutUint64(buf, math.Float64bits(i))
 
 		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i * 100), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
@@ -502,7 +502,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 			t.Fatal(err)
 		}
 		firstBuf := make([]byte, 8)
-		binary.LittleEndian.PutUint64(firstBuf, math.Float64bits(10))
+		binary.BigEndian.PutUint64(firstBuf, math.Float64bits(10))
 
 		if !bytes.Equal(first.Value, firstBuf) {
 			t.Fatal("expected 10 as first reference value")
@@ -519,7 +519,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 			k := iter.Key()
 			var c float64
 			reader := bytes.NewReader(k.Value)
-			err := binary.Read(reader, binary.LittleEndian, &c)
+			err := binary.Read(reader, binary.BigEndian, &c)
 			if err != nil {
 				fmt.Println("binary.Read failed:", err)
 				return
@@ -551,7 +551,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 			k := iter.Key()
 			var l float64
 			reader := bytes.NewReader(k.Value)
-			err := binary.Read(reader, binary.LittleEndian, &l)
+			err := binary.Read(reader, binary.BigEndian, &l)
 			if err != nil {
 				fmt.Println("binary.Read failed:", err)
 				return
