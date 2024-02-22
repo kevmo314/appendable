@@ -3,6 +3,7 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math"
 	"math/rand"
@@ -468,5 +469,100 @@ func TestBPTree_Iteration_SinglePage(t *testing.T) {
 		if i != -1 {
 			t.Fatalf("expected to find %d keys, got %d", 64, i)
 		}
+	})
+}
+
+func TestBPTree_Iteration_FirstLast(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := NewBPTree(p, newTestMetaPage(t, p))
+	start := 10.0
+	increments := []float64{0.01, 0.05, 0.3}
+	currentIncrementIndex := 0
+
+	for i := start; i < 256; i += increments[currentIncrementIndex] {
+		buf := make([]byte, 8)
+		binary.LittleEndian.PutUint64(buf, math.Float64bits(i))
+
+		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i * 100), Length: uint32(len(buf))}); err != nil {
+			t.Fatal(err)
+		}
+
+		if int(i*100)%10 == 0 && currentIncrementIndex < len(increments)-1 {
+			currentIncrementIndex++
+		}
+	}
+
+	t.Run("find first and iter", func(t *testing.T) {
+		first, err := tree.first()
+		if err != nil {
+			t.Fatal(err)
+		}
+		firstBuf := make([]byte, 8)
+		binary.LittleEndian.PutUint64(firstBuf, math.Float64bits(10))
+
+		if !bytes.Equal(first.Value, firstBuf) {
+			t.Fatal("expected 10 as first reference value")
+		}
+
+		iter, err := tree.Iter(first)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		i := 0
+		var p *float64 = nil
+		for ; iter.Next(); i++ {
+			k := iter.Key()
+			var c float64
+			reader := bytes.NewReader(k.Value)
+			err := binary.Read(reader, binary.LittleEndian, &c)
+			if err != nil {
+				fmt.Println("binary.Read failed:", err)
+				return
+			}
+
+			if p != nil && *p > c {
+				t.Errorf("expected a non-decreasing traversal but got prev: %v, curr: %v", *p, c)
+				return
+			}
+			p = &c
+		}
+
+	})
+
+	t.Run("find last and iter", func(t *testing.T) {
+		last, err := tree.last()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		iter, err := tree.Iter(last)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		i := 0
+		var r *float64 = nil
+		for ; iter.Prev(); i++ {
+			k := iter.Key()
+			var l float64
+			reader := bytes.NewReader(k.Value)
+			err := binary.Read(reader, binary.LittleEndian, &l)
+			if err != nil {
+				fmt.Println("binary.Read failed:", err)
+				return
+			}
+
+			if r != nil && !(l <= *r) {
+				t.Errorf("expected a non-increasing traversal but got curr: %v, prev: %v", l, *r)
+				return
+			}
+			r = &l
+		}
+
 	})
 }
