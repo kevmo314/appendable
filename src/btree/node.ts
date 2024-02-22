@@ -128,7 +128,7 @@ export class BPTreeNode {
 					end: Number(dp.offset) + dp.length - 1,
 				});
 
-				const parsedData = await this.parseValue(data);
+				const parsedData = this.parseValue(data);
 
 				this.keys[idx].setValue(parsedData);
 				m += 4 + 12;
@@ -156,7 +156,7 @@ export class BPTreeNode {
 		}
 	}
 
-	async parseValue(incomingData: ArrayBuffer): Promise<ArrayBuffer> {
+	parseValue(incomingData: ArrayBuffer): ArrayBuffer {
 		const stringData = new TextDecoder().decode(incomingData);
 
 		switch (this.fileFormat) {
@@ -171,10 +171,7 @@ export class BPTreeNode {
 						return new ArrayBuffer(0);
 
 					case FieldType.Boolean:
-						const boolBuf = new ArrayBuffer(1);
-						let boolBufView = new DataView(boolBuf);
-						boolBufView.setUint8(0, jValue ? 1 : 0); // we can do extra validation here
-						return boolBuf;
+						return new Uint8Array([jValue ? 1 : 0]).buffer;
 
 					case FieldType.Float64:
 					case FieldType.Int64:
