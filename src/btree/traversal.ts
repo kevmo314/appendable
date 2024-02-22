@@ -58,21 +58,17 @@ export class TraversalIterator {
 			if (!this.records[i + 1]) {
 				return false;
 			}
-			try {
-				const node = await this.tree.readNode(
-					this.records[i + 1].node.pointer(this.records[i + 1].index)
-				);
+			const node = await this.tree.readNode(
+				this.records[i + 1].node.pointer(this.records[i + 1].index)
+			);
 
-				// propagate the rollover
-				this.records[i].node = node;
+			// propagate the rollover
+			this.records[i].node = node;
 
-				if (rolloverLeft) {
-					this.records[i].index = this.records[i].node.numPointers() - 1;
-				} else {
-					this.records[i].index = 0;
-				}
-			} catch {
-				return false;
+			if (rolloverLeft) {
+				this.records[i].index = this.records[i].node.numPointers() - 1;
+			} else {
+				this.records[i].index = 0;
 			}
 		}
 
