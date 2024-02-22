@@ -54,7 +54,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 		}
 	} else {
 		for i := 0; i < len(pf.freePageIndexes); i++ {
-			offset := int64(binary.BigEndian.Uint64(buf[i*8 : (i+1)*8]))
+			offset := int64(binary.LittleEndian.Uint64(buf[i*8 : (i+1)*8]))
 			if offset != 0 {
 				pf.freePageIndexes[pf.freePageHead] = offset
 				pf.freePageHead = (pf.freePageHead + 1) % len(pf.freePageIndexes)
@@ -89,7 +89,7 @@ func (pf *PageFile) writeFreePageIndices() error {
 	tail := (pf.freePageHead - pf.freePageCount + len(pf.freePageIndexes)) % len(pf.freePageIndexes)
 	for i := 0; i < pf.freePageCount; i++ {
 		offset := pf.freePageIndexes[tail+i]
-		binary.BigEndian.PutUint64(buf[i*8:(i+1)*8], uint64(offset))
+		binary.LittleEndian.PutUint64(buf[i*8:(i+1)*8], uint64(offset))
 	}
 	if _, err := pf.ReadWriteSeeker.Seek(0, io.SeekStart); err != nil {
 		return err

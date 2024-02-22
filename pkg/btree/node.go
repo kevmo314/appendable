@@ -101,9 +101,9 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, n.Size())
 	// set the first bit to 1 if it's a leaf
 	if n.leaf() {
-		binary.BigEndian.PutUint32(buf[:4], uint32(-size))
+		binary.LittleEndian.PutUint32(buf[:4], uint32(-size))
 	} else {
-		binary.BigEndian.PutUint32(buf[:4], uint32(size))
+		binary.LittleEndian.PutUint32(buf[:4], uint32(size))
 	}
 	if size == 0 {
 		panic("writing empty node")
@@ -111,12 +111,12 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	ct := 4
 	for _, k := range n.Keys {
 		if k.DataPointer.Length > 0 {
-			binary.BigEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
-			binary.BigEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
-			binary.BigEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
+			binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
+			binary.LittleEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
+			binary.LittleEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
 			ct += 4 + 12
 		} else {
-			binary.BigEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
+			binary.LittleEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
 			m := copy(buf[ct+4:ct+4+len(k.Value)], k.Value)
 			if m != len(k.Value) {
 				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
@@ -125,12 +125,12 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		}
 	}
 	for _, p := range n.leafPointers {
-		binary.BigEndian.PutUint64(buf[ct:ct+8], p.Offset)
-		binary.BigEndian.PutUint32(buf[ct+8:ct+12], p.Length)
+		binary.LittleEndian.PutUint64(buf[ct:ct+8], p.Offset)
+		binary.LittleEndian.PutUint32(buf[ct+8:ct+12], p.Length)
 		ct += 12
 	}
 	for _, p := range n.internalPointers {
-		binary.BigEndian.PutUint64(buf[ct:ct+8], p)
+		binary.LittleEndian.PutUint64(buf[ct:ct+8], p)
 		ct += 8
 	}
 	if ct != int(n.Size()) {
@@ -149,7 +149,7 @@ func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 }
 
 func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
-	size := int32(binary.BigEndian.Uint32(buf[:4]))
+	size := int32(binary.LittleEndian.Uint32(buf[:4]))
 	leaf := size < 0
 	if leaf {
 		n.leafPointers = make([]MemoryPointer, -size)
@@ -164,11 +164,11 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 
 	m := 4
 	for i := range n.Keys {
-		l := binary.BigEndian.Uint32(buf[m : m+4])
+		l := binary.LittleEndian.Uint32(buf[m : m+4])
 		if l == ^uint32(0) {
 			// read the key out of the memory pointer stored at this position
-			n.Keys[i].DataPointer.Offset = binary.BigEndian.Uint64(buf[m+4 : m+12])
-			n.Keys[i].DataPointer.Length = binary.BigEndian.Uint32(buf[m+12 : m+16])
+			n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m+4 : m+12])
+			n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+12 : m+16])
 			dp := n.Keys[i].DataPointer
 			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
 			m += 4 + 12
@@ -178,12 +178,12 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		}
 	}
 	for i := range n.leafPointers {
-		n.leafPointers[i].Offset = binary.BigEndian.Uint64(buf[m : m+8])
-		n.leafPointers[i].Length = binary.BigEndian.Uint32(buf[m+8 : m+12])
+		n.leafPointers[i].Offset = binary.LittleEndian.Uint64(buf[m : m+8])
+		n.leafPointers[i].Length = binary.LittleEndian.Uint32(buf[m+8 : m+12])
 		m += 12
 	}
 	for i := range n.internalPointers {
-		n.internalPointers[i] = binary.BigEndian.Uint64(buf[m : m+8])
+		n.internalPointers[i] = binary.LittleEndian.Uint64(buf[m : m+8])
 		m += 8
 	}
 	return nil
