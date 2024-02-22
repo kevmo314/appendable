@@ -15,6 +15,22 @@ jobs:
           path: "baseline"
           ref: ${{ github.event.pull_request.base.ref }}
 
+      - uses: actions/setup-python@v4.7.1
+      - run: |
+          # Fetch the data in workspace
+          cd examples/workspace
+          python3 -m pip install -r requirements.txt
+          python3 fetch_jsonl.py
+          cd -
+        working-directory: comparison
+      - run: |
+          # Fetch the data in workspace
+          cd examples/workspace
+          python3 -m pip install -r requirements.txt
+          python3 fetch_jsonl.py
+          cd -
+        working-directory: baseline
+
       - uses: actions/setup-go@v4
         with:
           go-version: "1.21"
