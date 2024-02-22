@@ -1,6 +1,8 @@
 import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
 import { maxUint64 } from "../btree/multi";
 import { MemoryPointer } from "../btree/node";
+import { FieldType } from "../db/database";
+import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
 
@@ -45,7 +47,13 @@ describe("test btree", () => {
 		};
 
 		const page = new testMetaPage({ offset: 8192n, length: 88 });
-		bptree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
+		bptree = new BPTree(
+			mockRangeResolver,
+			page,
+			mockDataFileResolver,
+			FileFormat.JSONL,
+			FieldType.String
+		);
 	});
 
 	it("should read a bptree and find items", async () => {
@@ -95,7 +103,7 @@ describe("test single page bptree iteration", () => {
 		};
 
 		const page = new testMetaPage({ offset: 8192n, length: 32 });
-		tree = new BPTree(mockRangeResolver, page, mockDataFileResolver);
+		tree = new BPTree(mockRangeResolver, page, mockDataFileResolver, FileFormat.CSV, FieldType.String);
 	});
 
 	it("should iterate forward", async () => {

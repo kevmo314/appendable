@@ -173,6 +173,8 @@ export async function validateQuery<T extends Schema>(
 	query: Query<T>,
 	headers: IndexHeader[]
 ): Promise<void> {
+
+	// validate the query
 	validateWhere(query.where, headers);
 	validateOrderBy(query.orderBy, query.where![0].key as string);
 	validateSelect(query.select, headers);

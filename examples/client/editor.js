@@ -8,25 +8,25 @@ var jsonSession = ace.createEditSession(
 		{
 			where: [
 				{
-					operation: ">=",
+					operation: "==",
 					key: "trip_distance",
 					value: 10,
 				},
 			],
-			orderBy: [
-				{
-					key: "trip_distance",
-					direction: "ASC",
-				},
-			],
-			select: [
-				"VendorID",
-				"trip_distance",
-				"passenger_count",
-				"fare_amount",
-				"tip_amount",
-				"mta_tax",
-			],
+			// orderBy: [
+			// 	{
+			// 		key: "trip_distance",
+			// 		direction: "ASC",
+			// 	},
+			// ],
+			// select: [
+			// 	"VendorID",
+			// 	"trip_distance",
+			// 	"passenger_count",
+			// 	"fare_amount",
+			// 	"tip_amount",
+			// 	"mta_tax",
+			// ],
 		},
 		null,
 		2
@@ -34,9 +34,9 @@ var jsonSession = ace.createEditSession(
 	"ace/mode/json"
 );
 
-var jsCode =
-	"db\n" +
-	"  .where('trip_distance', '>=', 10)\n" +
+var jsCode = "db\n" + "  .where('trip_distance', '==', 10)\n";
+/*
+	+
 	"  .orderBy('trip_distance', 'ASC')\n" +
 	"  .select([\n" +
 	"      'VendorID',\n" +
@@ -47,6 +47,7 @@ var jsCode =
 	"      'mta_tax'\n" +
 	"  ])\n" +
 	"  .get();";
+	*/
 
 var jsSession = ace.createEditSession(jsCode, "ace/mode/javascript");
 

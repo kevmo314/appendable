@@ -1,38 +1,46 @@
-import { LengthIntegrityError, RangeResolver } from "./resolver";
+import { RangeResolver } from "./resolver";
 
 export class DataFile {
-  private constructor(
-    private resolver: (start: number, end: number) => Promise<ArrayBuffer>
-  ) {}
+	private originalResolver?: RangeResolver;
 
-  static forUrl(url: string) {
-    return DataFile.forResolver(async ({ start, end }) => {
-      const response = await fetch(url, {
-        headers: { Range: `bytes=${start}-${end}` },
-      });
-      const totalLength = Number(
-        response.headers.get("Content-Range")!.split("/")[1]
-      );
-      return {
-        data: await response.arrayBuffer(),
-        totalLength: totalLength,
-      };
-    });
-  }
+	private constructor(
+		private resolver: (
+			start: number,
+			end: number,
+			expectedLength?: number
+		) => Promise<ArrayBuffer>
+	) {}
 
-  static forResolver(resolver: RangeResolver) {
-    return new DataFile(async (start, end) => {
-      return (
-        await resolver({
-          start,
-          end,
-        })
-      ).data;
-    });
-  }
+	static forUrl(url: string) {
+		return DataFile.forResolver(async ({ start, end }) => {
+			const response = await fetch(url, {
+				headers: { Range: `bytes=${start}-${end}` },
+			});
+			const totalLength = Number(
+				response.headers.get("Content-Range")!.split("/")[1]
+			);
+			return {
+				data: await response.arrayBuffer(),
+				totalLength: totalLength,
+			};
+		});
+	}
 
-  async get(startByteOffset: number, endByteOffset: number) {
-    const data = await this.resolver(startByteOffset, endByteOffset);
-    return new TextDecoder().decode(data);
+	static forResolver(resolver: RangeResolver) {
+		const instance = new DataFile(async (start, end, expectedLength?) => {
+			const result = await resolver({ start, end, expectedLength });
+			return result.data;
+		});
+		instance.originalResolver = resolver; 
+		return instance;
   }
+  
+  getResolver(): RangeResolver | undefined {
+    return this.originalResolver;
+}
+
+	async get(startByteOffset: number, endByteOffset: number) {
+		const data = await this.resolver(startByteOffset, endByteOffset);
+		return new TextDecoder().decode(data);
+	}
 }

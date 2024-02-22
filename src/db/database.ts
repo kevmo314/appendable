@@ -1,6 +1,8 @@
+import { BPTree, ReferencedValue } from "../btree/bptree";
+import { MemoryPointer } from "../btree/node";
 import { DataFile } from "../data-file";
 import { VersionedIndexFile } from "../index-file/index-file";
-import { FileFormat } from "../index-file/meta";
+import { FileFormat, readIndexMeta } from "../index-file/meta";
 import { QueryBuilder } from "./query-builder";
 
 export type Schema = {
@@ -142,163 +144,179 @@ export class Database<T extends Schema> {
 		return await this.indexFile.indexHeaders();
 	}
 
-	/*
 	async *query(query: Query<T>) {
-		// verify that the query does not require a composite index
 		if (new Set((query.where ?? []).map((where) => where.key)).size > 1) {
 			throw new Error("composite indexes not supported... yet");
 		}
-		// convert each of the where nodes into a range of field values.
+
 		const headers = await this.indexFile.indexHeaders();
-		const headerFields = headers.map((header) => header.fieldName);
 
-		try {
-			await validateQuery(query, headers);
-		} catch (error) {
-			throw new Error(`Query validation failed: ${(error as Error).message}`);
-		}
+		for (const { key, value, operation } of query.where ?? []) {
+			const header = headers.find((header) => header.fieldName === key);
+			if (!header) {
+				throw new Error("field not found");
+			}
 
-		const fieldRanges = await Promise.all(
-			(query.where ?? []).map(async ({ key, value, operation }) => {
-				const header = headers.find((header) => header.fieldName === key);
-				if (!header) {
-					throw new Error("field not found");
-				}
-				let firstIndex = 0,
-					lastIndex = Number(header.indexRecordCount);
-				if (operation === ">" || operation === ">=" || operation === "==") {
-					let start = 0;
-					let end = Number(header.indexRecordCount);
-					while (start + 1 < end) {
-						const mid = Math.floor((start + end) / 2);
-						const indexRecord = await this.indexFile.indexRecord(key, mid);
-						const data = await this.dataFile.get(
-							indexRecord.fieldStartByteOffset,
-							indexRecord.fieldStartByteOffset + indexRecord.fieldLength
-						);
-						const dataFieldValue = parseIgnoringSuffix(
-							data,
-							this.formatType,
-							headerFields
-						);
-						console.log(mid, dataFieldValue);
-						if (cmp(value, dataFieldValue) < 0) {
-							end = mid;
-						} else if (cmp(value, dataFieldValue) > 0) {
-							start = mid + 1;
-						} else if (operation === ">") {
-							start = mid + 1;
-						} else {
-							end = mid;
-						}
-					}
-					firstIndex = end;
-				}
-				if (operation === "<" || operation === "<=" || operation === "==") {
-					let start = 0;
-					let end = Number(header.indexRecordCount);
-					while (start + 1 < end) {
-						const mid = Math.floor((start + end) / 2);
-						const indexRecord = await this.indexFile.indexRecord(key, mid);
-						const dataFieldValue = parseIgnoringSuffix(
-							await this.dataFile.get(
-								indexRecord.fieldStartByteOffset,
-								indexRecord.fieldStartByteOffset + indexRecord.fieldLength
-							),
-							this.formatType,
-							headerFields
-						);
-						if (cmp(value, dataFieldValue) < 0) {
-							end = mid;
-						} else if (cmp(value, dataFieldValue) > 0) {
-							start = mid + 1;
-						} else if (operation === "<") {
-							end = mid;
-						} else {
-							start = mid + 1;
-						}
-					}
-					lastIndex = end;
-				}
-				return [key, [firstIndex, lastIndex]] as [keyof T, [number, number]];
-			})
-		);
-		// group the field ranges by the field name and merge them into single ranges.
-		const fieldRangeMap = new Map<keyof T, [number, number]>();
+			let valueBuf: ArrayBuffer;
+			let fieldType: number;
 
-		for (const [key, value] of fieldRanges) {
-			const existing = fieldRangeMap.get(key);
-			if (existing) {
-				fieldRangeMap.set(key, [
-					Math.max(existing[0], value[0]),
-					Math.min(existing[1], value[1]),
-				]);
+			if (key === null) {
+				fieldType = FieldType.Null;
+				valueBuf = new ArrayBuffer(0);
 			} else {
-				fieldRangeMap.set(key, value);
+				switch (typeof value) {
+					case "bigint":
+					case "number":
+						fieldType = FieldType.Float64;
+						valueBuf = new ArrayBuffer(8);
+						new DataView(valueBuf).setFloat64(0, Number(value), true);
+						break;
+
+					case "boolean":
+						fieldType = FieldType.Boolean;
+						valueBuf = new ArrayBuffer(1);
+						new DataView(valueBuf).setUint8(0, value ? 1 : 0);
+						break;
+
+					case "string":
+						fieldType = FieldType.String;
+						valueBuf = new TextEncoder().encode(value as string).buffer;
+						break;
+					default:
+						throw new Error("unmatched key type");
+				}
 			}
-		}
-		// sort the field ranges by size.
-		const fieldRangesSorted = [...fieldRangeMap.entries()].sort(
-			(a, b) => a[1][1] - a[1][0] - (b[1][1] - b[1][0])
-		);
-		// move the order by fields to the front of the field ranges.
-		const orderByFields = (query.orderBy ?? []).map((orderBy) => orderBy.key);
-		for (const orderByField of orderByFields) {
-			const index = fieldRangesSorted.findIndex(
-				(fieldRange) => fieldRange[0] === orderByField
+			const mps = await this.indexFile.seek(key as string, fieldType);
+			const mp = mps[0];
+
+			const dfResolver = this.dataFile.getResolver();
+
+			if (dfResolver === undefined) {
+				throw new Error("data file is undefined");
+			}
+
+			const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf);
+
+			const { format } = await this.indexFile.metadata();
+			const { fieldType: mpFieldType } = await readIndexMeta(
+				await mp.metadata()
 			);
-			if (index >= 0) {
-				fieldRangesSorted.unshift(...fieldRangesSorted.splice(index, 1));
-			}
-		}
 
-		// evaluate the field ranges in order.
-		for (const [key, [start, end]] of fieldRangesSorted) {
-			// check if the iteration order should be reversed.
-			const orderBy = query.orderBy?.find((orderBy) => orderBy.key === key);
-			const reverse = orderBy?.direction === "DESC";
-			const length = end - start;
-			for (let offset = 0; offset < length; offset++) {
-				const index = reverse ? end - offset - 1 : start + offset;
-				const indexRecord = await this.indexFile.indexRecord(key, index);
-				const dataRecord = await this.indexFile.dataRecord(
-					indexRecord.dataNumber
-				);
+			const bptree = new BPTree(
+				this.indexFile.getResolver(),
+				mp,
+				dfResolver,
+				format,
+				mpFieldType
+			);
 
-				console.log(`Data record: `, dataRecord);
-				const parsedFieldValue = parseIgnoringSuffix(
-					await this.dataFile.get(
-						dataRecord.startByteOffset,
-						dataRecord.endByteOffset
-					),
-					this.formatType,
-					headerFields
-				);
+			const iter = bptree.iter(valueRef);
 
-				let dataFieldValue = parsedFieldValue;
+			if (operation === ">") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
 
-				if (query.select && query.select.length > 0) {
-					if (
-						typeof parsedFieldValue === "object" &&
-						parsedFieldValue !== null
-					) {
-						dataFieldValue = query.select.reduce(
-							(acc, field) => {
-								if (field in parsedFieldValue) {
-									acc[field] = parsedFieldValue[field];
-								}
-								return acc;
-							},
-							{} as Pick<T, keyof T>
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === -1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
 						);
+
+						yield JSON.parse(data);
+					}
+				}
+			} else if (operation === ">=") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === -1 || res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+					}
+				}
+			} else if (operation === "==") {
+				while (await iter.next()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+					}
+				}
+			} else if (operation === "<=") {
+				// this is the only case where we need to go both ways.
+				// first we'll go prev() to catch everything <
+				// then we'll go next() to catch everything ==
+				while (await iter.prev()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
 					}
 				}
 
-				yield dataFieldValue;
+				// reset iterator
+				const iter2 = bptree.iter(valueRef);
+
+				while (await iter2.next()) {
+					const currentKey = iter2.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 0) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+					}
+				}
+			} else {
+				while (await iter.prev()) {
+					const currentKey = iter.getKey();
+
+					let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
+					if (res === 1) {
+						const [_, mp] = await bptree.find(currentKey);
+
+						const data = await this.dataFile.get(
+							Number(mp.offset),
+							Number(mp.offset) + mp.length - 1
+						);
+
+						yield JSON.parse(data);
+					}
+				}
 			}
 		}
 	}
-	*/
 
 	where(
 		key: keyof T,
