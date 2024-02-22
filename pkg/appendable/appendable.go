@@ -96,7 +96,7 @@ func (m *FileMeta) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 10)
 	buf[0] = byte(m.Version)
 	buf[1] = byte(m.Format)
-	binary.BigEndian.PutUint64(buf[2:], m.ReadOffset)
+	binary.LittleEndian.PutUint64(buf[2:], m.ReadOffset)
 	return buf, nil
 }
 
@@ -117,7 +117,7 @@ func (m *FileMeta) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("unrecognized file format: %v", buf[1])
 	}
 
-	m.ReadOffset = binary.BigEndian.Uint64(buf[2:])
+	m.ReadOffset = binary.LittleEndian.Uint64(buf[2:])
 	return nil
 }
 
@@ -128,8 +128,8 @@ type IndexMeta struct {
 
 func (m *IndexMeta) MarshalBinary() ([]byte, error) {
 	buf := make([]byte, 2+len(m.FieldName)+2)
-	binary.BigEndian.PutUint16(buf[0:], uint16(m.FieldType))
-	binary.BigEndian.PutUint16(buf[2:], uint16(len(m.FieldName)))
+	binary.LittleEndian.PutUint16(buf[0:], uint16(m.FieldType))
+	binary.LittleEndian.PutUint16(buf[2:], uint16(len(m.FieldName)))
 	copy(buf[4:], m.FieldName)
 	return buf, nil
 }
@@ -138,8 +138,8 @@ func (m *IndexMeta) UnmarshalBinary(buf []byte) error {
 	if len(buf) < 4 {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
-	m.FieldType = FieldType(binary.BigEndian.Uint16(buf[0:]))
-	nameLength := binary.BigEndian.Uint16(buf[2:])
+	m.FieldType = FieldType(binary.LittleEndian.Uint16(buf[0:]))
+	nameLength := binary.LittleEndian.Uint16(buf[2:])
 	if len(buf) < 4+int(nameLength) {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}

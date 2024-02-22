@@ -4,6 +4,7 @@ node_modules
 .DS_Store
 pprof.out
 
-examples/workspace/data.index
-examples/workspace/green_tripdata_2023-01.jsonl
-examples/workspace/green_tripdata_2023-01.csv
+# Ignore files
+*.index
+*.jsonl
+*.csv
