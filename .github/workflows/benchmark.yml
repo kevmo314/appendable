@@ -1,0 +1,66 @@
+name: Benchmark
+on:
+  pull_request:
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: "comparison"
+          ref: ${{ github.event.pull_request.head.ref }}
+      - uses: actions/checkout@v4
+        with:
+          path: "baseline"
+          ref: ${{ github.event.pull_request.base.ref }}
+
+      - uses: actions/setup-python@v4.7.1
+      - run: |
+          # Fetch the data in workspace
+          cd examples/workspace
+          python3 -m pip install -r requirements.txt
+          python3 fetch_jsonl.py
+        working-directory: comparison
+      - run: |
+          # Fetch the data in workspace
+          cd examples/workspace
+          python3 -m pip install -r requirements.txt
+          python3 fetch_jsonl.py
+        working-directory: baseline
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - run: |
+          go run cmd/main.go \
+            -i output.index \
+            -jsonl \
+            -b benchmark.txt \
+            examples/workspace/green_tripdata_2023-01.jsonl
+        working-directory: comparison
+
+      - run: |
+          go run cmd/main.go \
+            -i output.index \
+            -jsonl \
+            -b benchmark.txt \
+            examples/workspace/green_tripdata_2023-01.jsonl
+        working-directory: baseline
+
+      - run: go run examples/benchmarkdiff/main.go ../baseline/benchmark.txt benchmark.txt
+        working-directory: comparison
+
+      - uses: actions/upload-artifact@v4
+        id: upload-artifact
+        with:
+          name: benchmark-diff
+          path: comparison/output.html
+
+      # post a comment to the PR
+      - name: Post comment
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            Benchmark results: ${{ steps.upload-artifact.outputs.artifact-url }}

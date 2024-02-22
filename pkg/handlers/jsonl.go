@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"strings"
-	"time"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
@@ -55,8 +54,6 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 		}
 
 		metadata.ReadOffset += uint64(i) + 1 // include the newline
-
-		time.Sleep(1 * time.Millisecond)
 
 		if f.BenchmarkCallback != nil {
 			f.BenchmarkCallback(int(metadata.ReadOffset))
