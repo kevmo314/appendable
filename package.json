@@ -5,8 +5,8 @@
 	"main": "index.js",
 	"scripts": {
 		"build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
-		"build-index-jsonl": "go run cmd/main.go -jsonl examples/workspace/green_tripdata_2023-01.jsonl",
-		"build-index-csv": "go run cmd/main.go -csv examples/workspace/green_tripdata_2023-01.csv",
+		"build-index-jsonl": "go run cmd/main.go -i examples/client/green_tripdata_2023-01.index -jsonl examples/workspace/green_tripdata_2023-01.jsonl",
+		"build-index-csv": "go run cmd/main.go -i examples/client/green_tripdata_2023-01.index -csv examples/workspace/green_tripdata_2023-01.csv",
 		"reset": "rm -rf dist examples/client/appendable.min.js examples/client/appendable.min.js.map",
 		"warp": "rm -rf dist examples/client/appendable.min.js examples/client/appendable.min.js.map && esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
 		"example": "cd examples/client && go run server.go",
