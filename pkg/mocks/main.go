@@ -26,7 +26,7 @@ func (m *testMetaPage) Root() (btree.MemoryPointer, error) {
 
 func (m *testMetaPage) write() error {
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, m.root.Offset)
+	binary.LittleEndian.PutUint64(buf, m.root.Offset)
 	if _, err := m.pf.Seek(4096, io.SeekStart); err != nil {
 		return err
 	}

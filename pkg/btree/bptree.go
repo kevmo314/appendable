@@ -162,6 +162,54 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 	return node, nil
 }
 
+func (t *BPTree) first() (ReferencedValue, error) {
+	rootNode, _, err := t.root()
+
+	if err != nil {
+		return ReferencedValue{}, err
+	}
+
+	currNode, err := t.readNode(rootNode.Pointer(0))
+	if err != nil {
+		return ReferencedValue{}, err
+	}
+
+	for !currNode.leaf() {
+		childPointer := currNode.Pointer(0)
+		currNode, err = t.readNode(childPointer)
+
+		if err != nil {
+			return ReferencedValue{}, err
+		}
+	}
+
+	return currNode.Keys[0], nil
+}
+
+func (t *BPTree) last() (ReferencedValue, error) {
+	rootNode, _, err := t.root()
+
+	if err != nil {
+		return ReferencedValue{}, err
+	}
+
+	currNode, err := t.readNode(rootNode.Pointer(rootNode.NumPointers() - 1))
+	if err != nil {
+		return ReferencedValue{}, err
+	}
+
+	for !currNode.leaf() {
+		childPointer := currNode.Pointer(currNode.NumPointers() - 1)
+		currNode, err = t.readNode(childPointer)
+
+		if err != nil {
+			return ReferencedValue{}, err
+		}
+	}
+
+	return currNode.Keys[0], nil
+}
+
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
 func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPointer) ([]TraversalRecord, error) {

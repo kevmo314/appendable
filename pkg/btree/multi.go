@@ -28,14 +28,14 @@ func (m *LinkedMetaPage) Root() (MemoryPointer, error) {
 		return MemoryPointer{}, err
 	}
 	var mp MemoryPointer
-	return mp, binary.Read(m.rws, binary.BigEndian, &mp)
+	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
 }
 
 func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err
 	}
-	return binary.Write(m.rws, binary.BigEndian, mp)
+	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
 // BPTree returns a B+ tree that uses this meta page as the root
@@ -62,7 +62,7 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 		return nil, err
 	}
 	// the first four bytes represents the length
-	length := binary.BigEndian.Uint32(buf[:4])
+	length := binary.LittleEndian.Uint32(buf[:4])
 	return buf[4 : 4+length], nil
 }
 
@@ -82,7 +82,7 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 		return err
 	}
 	buf := append(make([]byte, 4), data...)
-	binary.BigEndian.PutUint32(buf, uint32(len(data)))
+	binary.LittleEndian.PutUint32(buf, uint32(len(data)))
 	if _, err := m.rws.Write(buf); err != nil {
 		return err
 	}
@@ -102,7 +102,7 @@ func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
 		return nil, err
 	}
 	var next MemoryPointer
-	if err := binary.Read(m.rws, binary.BigEndian, &next); err != nil {
+	if err := binary.Read(m.rws, binary.LittleEndian, &next); err != nil {
 		return nil, err
 	}
 	return &LinkedMetaPage{rws: m.rws, offset: next.Offset}, nil
@@ -128,7 +128,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(m.rws, binary.BigEndian, next.offset); err != nil {
+	if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
 		return nil, err
 	}
 	return next, nil
@@ -158,7 +158,7 @@ func (m *LinkedMetaPage) Exists() (bool, error) {
 func (m *LinkedMetaPage) Reset() error {
 	// write a full page of zeros
 	emptyPage := make([]byte, m.rws.PageSize())
-	binary.BigEndian.PutUint64(emptyPage[12:20], ^uint64(0))
+	binary.LittleEndian.PutUint64(emptyPage[12:20], ^uint64(0))
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err
 	}

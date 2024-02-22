@@ -215,7 +215,7 @@ func compareMetaPages(i1, i2 []*btree.LinkedMetaPage, jr, cr []byte) (bool, stri
 			for _, val := range h2 {
 
 				v2 := make([]byte, 8)
-				binary.LittleEndian.PutUint64(v2, math.Float64bits(val))
+				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
 				rv1, mp1, err := collected1.BPTree(jr, JSONLHandler{}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
