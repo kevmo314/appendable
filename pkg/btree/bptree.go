@@ -174,7 +174,7 @@ func (t *BPTree) first() (ReferencedValue, error) {
 		return ReferencedValue{}, err
 	}
 
-	for !currNode.leaf() {
+	for !currNode.Leaf() {
 		childPointer := currNode.Pointer(0)
 		currNode, err = t.readNode(childPointer)
 
@@ -198,7 +198,7 @@ func (t *BPTree) last() (ReferencedValue, error) {
 		return ReferencedValue{}, err
 	}
 
-	for !currNode.leaf() {
+	for !currNode.Leaf() {
 		childPointer := currNode.Pointer(currNode.NumPointers() - 1)
 		currNode, err = t.readNode(childPointer)
 
@@ -216,7 +216,7 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 	// binary search node.Keys to find the first key greater than key
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
-	if node.leaf() {
+	if node.Leaf() {
 		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}
 
@@ -292,7 +292,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 
 			// n is the left node, m the right node
 			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
-			if n.leaf() {
+			if n.Leaf() {
 				m.leafPointers = n.leafPointers[mid:]
 				m.Keys = n.Keys[mid:]
 			} else {
@@ -309,7 +309,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				return err
 			}
 
-			if n.leaf() {
+			if n.Leaf() {
 				n.leafPointers = n.leafPointers[:mid]
 				n.Keys = n.Keys[:mid]
 			} else {
@@ -475,7 +475,7 @@ type Entry struct {
 func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
 	// print the node itself
 	var buf bytes.Buffer
-	if !n.leaf() {
+	if !n.Leaf() {
 		for i := range n.internalPointers {
 			child, err := t.readNode(n.Pointer(i))
 			if err != nil {

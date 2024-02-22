@@ -40,7 +40,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !node2.leaf() {
+	if !node2.Leaf() {
 		t.Fatal("expected leaf node")
 	}
 
@@ -70,7 +70,7 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if node2.leaf() {
+	if node2.Leaf() {
 		t.Fatal("expected intermediate node")
 	}
 

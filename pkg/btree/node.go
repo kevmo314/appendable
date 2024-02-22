@@ -63,12 +63,12 @@ type BPTreeNode struct {
 	Keys             []ReferencedValue
 }
 
-func (n *BPTreeNode) leaf() bool {
+func (n *BPTreeNode) Leaf() bool {
 	return len(n.leafPointers) > 0
 }
 
 func (n *BPTreeNode) Pointer(i int) MemoryPointer {
-	if n.leaf() {
+	if n.Leaf() {
 		return n.leafPointers[i]
 	}
 	return MemoryPointer{Offset: n.internalPointers[i]}
@@ -100,7 +100,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	size := int32(len(n.Keys))
 	buf := make([]byte, n.Size())
 	// set the first bit to 1 if it's a leaf
-	if n.leaf() {
+	if n.Leaf() {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(-size))
 	} else {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(size))
