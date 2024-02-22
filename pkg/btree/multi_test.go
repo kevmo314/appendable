@@ -1,13 +1,11 @@
 package btree
 
 import (
-	"os"
 	"reflect"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
 )
-
 
 func TestMultiBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
