@@ -49,7 +49,7 @@ jobs:
             examples/workspace/green_tripdata_2023-01.jsonl
         working-directory: baseline
 
-      - run: go run examples/benchmark_diff/main.go ../baseline/benchmark.txt benchmark.txt
+      - run: go run examples/benchmarkdiff/main.go ../baseline/benchmark.txt benchmark.txt
         working-directory: comparison
 
       - uses: actions/upload-artifact@v4
