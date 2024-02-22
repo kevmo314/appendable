@@ -9,7 +9,7 @@ Appendable currently supports data files in the following formats:
 
 - [x] [JSON Lines](https://jsonlines.org/) `.jsonl`
 - [ ] Parquet
-- [x] CSV
+- [ ] CSV
 - [ ] TSV
 - [ ] RecordIO
 
