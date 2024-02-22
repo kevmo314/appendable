@@ -27,7 +27,6 @@ export class TraversalIterator {
 
 		const root = rootResponse.rootNode;
 		const offset = rootResponse.pointer;
-
 		const path = await this.tree.traverse(this.key, root, offset);
 		this.records = path;
 		return true;

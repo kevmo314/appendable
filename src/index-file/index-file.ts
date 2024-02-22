@@ -1,7 +1,14 @@
 import { LinkedMetaPage, ReadMultiBPTree } from "../btree/multi";
 import { LengthIntegrityError, RangeResolver } from "../resolver";
 import { PageFile } from "../btree/pagefile";
-import { FileFormat, IndexHeader, IndexMeta, collectIndexMetas, readIndexMeta } from "./meta";
+import {
+	FileFormat,
+	IndexHeader,
+	IndexMeta,
+	collectIndexMetas,
+	readIndexMeta,
+} from "./meta";
+import { FieldType } from "../db/database";
 
 export class IndexFile {
 	static async forUrl<T = any>(url: string) {
@@ -44,17 +51,25 @@ export type FileMeta = {
 };
 
 export interface VersionedIndexFile<T> {
+	getResolver(): RangeResolver;
+
 	tree(): Promise<LinkedMetaPage>;
 
-	metadata(): Promise<FileMeta | null>;
+	metadata(): Promise<FileMeta>;
 
 	indexHeaders(): Promise<IndexHeader[]>;
+
+	seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]>;
 }
 
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
 	private _tree?: LinkedMetaPage;
 
 	constructor(private resolver: RangeResolver) {}
+
+	getResolver(): RangeResolver {
+		return this.resolver;
+	}
 
 	async tree(): Promise<LinkedMetaPage> {
 		if (this._tree) {
@@ -75,13 +90,14 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
 		// unmarshall binary for FileMeta
 		if (buffer.byteLength < 10) {
-			throw new Error(`incorrect byte length! Want: 10, got ${buffer.byteLength}`);
+			throw new Error(
+				`incorrect byte length! Want: 10, got ${buffer.byteLength}`
+			);
 		}
 
 		const dataView = new DataView(buffer);
 		const version = dataView.getUint8(0);
 		const formatByte = dataView.getUint8(1);
-
 
 		if (Object.values(FileFormat).indexOf(formatByte) === -1) {
 			throw new Error(`unexpected file format. Got: ${formatByte}`);
@@ -96,6 +112,47 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 		};
 	}
 
+	async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
+		let mp = await this.tree();
+
+		let headerMps = [];
+
+		while (mp) {
+			const next = await mp.next();
+			if (next === null) {
+				return headerMps;
+			}
+
+			const indexMeta = await readIndexMeta(await next.metadata());
+			if (indexMeta.fieldName === header) {
+				if (fieldType === FieldType.Float64) {
+					// if key is a number or bigint, we cast it as a float64 type
+					if (
+						indexMeta.fieldType === FieldType.Float64 ||
+						indexMeta.fieldType === FieldType.Int64 ||
+						indexMeta.fieldType === FieldType.Uint64
+					) {
+						headerMps.push(next);
+					}
+				} else {
+					if (indexMeta.fieldType === fieldType) {
+						headerMps.push(next);
+					}
+				}
+			}
+
+			mp = next;
+		}
+
+		if (headerMps.length === 0) {
+			throw new Error(
+				`No LinkedMetaPage with ${header} and type ${fieldType} exists`
+			);
+		}
+
+		return headerMps;
+	}
+
 	async indexHeaders(): Promise<IndexHeader[]> {
 		let headers: IndexMeta[] = [];
 
@@ -107,14 +164,13 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 				return collectIndexMetas(headers);
 			}
 
-			const nextBuffer = await next?.metadata();
+			const nextBuffer = await next.metadata();
 			const indexMeta = await readIndexMeta(nextBuffer);
 
 			headers.push(indexMeta);
 
 			mp = next;
 		}
-
 
 		return collectIndexMetas(headers);
 	}

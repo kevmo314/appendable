@@ -1,5 +1,9 @@
+import { FieldType } from "../db/database";
+import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { ReferencedValue } from "./bptree";
+
+export const pageSizeBytes = 4096;
 
 export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {
@@ -7,17 +11,23 @@ export class BPTreeNode {
 	public leafPointers: MemoryPointer[];
 	public internalPointers: bigint[];
 	private readonly dataFileResolver: RangeResolver;
+	private fileFormat: FileFormat;
+	private pageFieldType: FieldType;
 
 	constructor(
 		keys: ReferencedValue[],
 		leafPointers: MemoryPointer[],
 		internalPointers: bigint[],
-		dataFileResolver: RangeResolver
+		dataFileResolver: RangeResolver,
+		fileFormat: FileFormat,
+		pageFieldType: FieldType
 	) {
 		this.keys = keys;
 		this.leafPointers = leafPointers;
 		this.internalPointers = internalPointers;
 		this.dataFileResolver = dataFileResolver;
+		this.fileFormat = fileFormat;
+		this.pageFieldType = pageFieldType;
 	}
 
 	leaf(): boolean {
@@ -61,7 +71,7 @@ export class BPTreeNode {
 		return BigInt(size);
 	}
 
-	async unmarshalBinary(buffer: ArrayBuffer): Promise<number> {
+	async unmarshalBinary(buffer: ArrayBuffer) {
 		let dataView = new DataView(buffer);
 		let size = dataView.getUint32(0);
 
@@ -101,10 +111,9 @@ export class BPTreeNode {
 		}
 
 		let m = 4;
-
 		for (let idx = 0; idx <= this.keys.length - 1; idx++) {
 			// this is the case when we store the pointer to the datafile
-			dataView = new DataView(buffer, m, m + 4);
+			dataView = new DataView(buffer, m, 4);
 			const l = dataView.getUint32(0);
 			if (l === ~0 >>> 0) {
 				dataView = new DataView(buffer, m + 4);
@@ -113,13 +122,15 @@ export class BPTreeNode {
 				this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
 
 				const dp = this.keys[idx].dataPointer;
+
 				const { data } = await this.dataFileResolver({
 					start: Number(dp.offset),
-					end: Number(dp.offset + BigInt(dp.length)) - 1,
+					end: Number(dp.offset) + dp.length - 1,
 				});
 
-				this.keys[idx].setValue(data);
+				const parsedData = this.parseValue(data);
 
+				this.keys[idx].setValue(parsedData);
 				m += 4 + 12;
 			} else {
 				// we are storing the values directly in the referenced value
@@ -138,28 +149,78 @@ export class BPTreeNode {
 		}
 
 		for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
-			dataView = new DataView(buffer, m, 8);
+			dataView = new DataView(buffer, m);
 			this.internalPointers[idx] = dataView.getBigUint64(0);
 
 			m += 8;
 		}
+	}
 
-		return m;
+	parseValue(incomingData: ArrayBuffer): ArrayBuffer {
+		const stringData = new TextDecoder().decode(incomingData);
+
+		switch (this.fileFormat) {
+			case FileFormat.JSONL:
+				const jValue = JSON.parse(stringData);
+
+				switch (this.pageFieldType) {
+					case FieldType.Null:
+						if (jValue !== null) {
+							throw new Error(`unrecognized value for null type: ${jValue}`);
+						}
+						return new ArrayBuffer(0);
+
+					case FieldType.Boolean:
+						return new Uint8Array([jValue ? 1 : 0]).buffer;
+
+					case FieldType.Float64:
+					case FieldType.Int64:
+					case FieldType.Uint64:
+						const floatBuf = new ArrayBuffer(8);
+						let floatBufView = new DataView(floatBuf);
+						floatBufView.setFloat64(0, jValue, true);
+
+						return floatBuf;
+
+					case FieldType.String:
+						const e = new TextEncoder().encode(jValue);
+						return e.buffer;
+
+					default:
+						throw new Error(
+							`Unexpected Field Type. Got: ${this.pageFieldType}`
+						);
+				}
+
+			case FileFormat.CSV:
+				return incomingData;
+		}
+
+		throw new Error("unexpected parsing error occured");
 	}
 
 	static async fromMemoryPointer(
 		mp: MemoryPointer,
 		resolver: RangeResolver,
-		dataFilePointer: RangeResolver
+		dataFilePointer: RangeResolver,
+		fileFormat: FileFormat,
+		pageFieldType: FieldType
 	): Promise<{ node: BPTreeNode; bytesRead: number }> {
 		const { data: bufferData } = await resolver({
 			start: Number(mp.offset),
 			end: Number(mp.offset) + 4096 - 1,
 		});
+		const node = new BPTreeNode(
+			[],
+			[],
+			[],
+			dataFilePointer,
+			fileFormat,
+			pageFieldType
+		);
 
-		const node = new BPTreeNode([], [], [], dataFilePointer);
-		const bytesRead = await node.unmarshalBinary(bufferData);
+		await node.unmarshalBinary(bufferData);
 
-		return { node, bytesRead };
+		return { node, bytesRead: pageSizeBytes };
 	}
 }
