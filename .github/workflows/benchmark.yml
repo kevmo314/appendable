@@ -21,32 +21,32 @@ jobs:
           cd examples/workspace
           python3 -m pip install -r requirements.txt
           python3 fetch_jsonl.py
-          cd -
         working-directory: comparison
       - run: |
           # Fetch the data in workspace
           cd examples/workspace
           python3 -m pip install -r requirements.txt
           python3 fetch_jsonl.py
-          cd -
         working-directory: baseline
 
       - uses: actions/setup-go@v4
         with:
           go-version: "1.21"
 
-      - run: go run cmd/main.go \
-          -i output.index \
-          -jsonl \
-          -b benchmark.txt \
-          examples/workspace/green_tripdata_2023-01.jsonl
+      - run: |
+          go run cmd/main.go \
+            -i output.index \
+            -jsonl \
+            -b benchmark.txt \
+            examples/workspace/green_tripdata_2023-01.jsonl
         working-directory: comparison
 
-      - run: go run cmd/main.go \
-          -i output.index \
-          -jsonl \
-          -b benchmark.txt \
-          examples/workspace/green_tripdata_2023-01.jsonl
+      - run: |
+          go run cmd/main.go \
+            -i output.index \
+            -jsonl \
+            -b benchmark.txt \
+            examples/workspace/green_tripdata_2023-01.jsonl
         working-directory: baseline
 
       - run: go run examples/benchmark_diff/main.go ../baseline/benchmark.txt benchmark.txt
