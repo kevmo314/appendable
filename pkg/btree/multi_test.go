@@ -8,12 +8,6 @@ import (
 	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
-func writeBufferToFile(bytes []byte, filename string) error {
-	if err := os.WriteFile(filename, bytes, 0644); err != nil {
-		return err
-	}
-	return nil
-}
 
 func TestMultiBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
@@ -169,8 +163,6 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		metadata, err := tree.Metadata()
-
-		writeBufferToFile(metadata, "filled_metadata.bin")
 
 		if err != nil {
 			t.Fatal(err)
