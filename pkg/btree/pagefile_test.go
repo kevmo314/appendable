@@ -192,4 +192,40 @@ func TestPageFile(t *testing.T) {
 			t.Fatal("expected error")
 		}
 	})
+
+	t.Run("track number of pages", func(t *testing.T) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pf.PageCount() != 1 {
+			t.Fatalf("expected 1, got %d", pf.PageCount())
+		}
+		offset, err := pf.NewPage(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pf.PageCount() != 2 {
+			t.Fatalf("expected 2, got %d", pf.PageCount())
+		}
+		if err := pf.FreePage(offset); err != nil {
+			t.Fatal(err)
+		}
+		if pf.PageCount() != 2 {
+			t.Fatalf("expected 2, got %d", pf.PageCount())
+		}
+		if _, err := pf.NewPage(nil); err != nil {
+			t.Fatal(err)
+		}
+		if pf.PageCount() != 2 {
+			t.Fatalf("expected 2, got %d", pf.PageCount())
+		}
+		if _, err := pf.NewPage(nil); err != nil {
+			t.Fatal(err)
+		}
+		if pf.PageCount() != 3 {
+			t.Fatalf("expected 3, got %d", pf.PageCount())
+		}
+	})
 }

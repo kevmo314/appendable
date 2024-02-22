@@ -23,6 +23,8 @@ type PageFile struct {
 	// local cache of free pages to avoid reading from disk too often.
 	freePageIndexes             [512]int64
 	freePageHead, freePageCount int
+
+	lastPage int64
 }
 
 var _ ReadWriteSeekPager = &PageFile{}
@@ -62,6 +64,15 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 			}
 		}
 	}
+	// figure out what the last page is
+	n, err := rws.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	if n%int64(pf.pageSize) != 0 {
+		return nil, errors.New("file size is not a multiple of the page size")
+	}
+	pf.lastPage = n / int64(pf.pageSize)
 	return pf, nil
 }
 
@@ -128,6 +139,7 @@ func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 			return 0, err
 		}
 		offset = n
+		pf.lastPage++
 	}
 
 	// if the offset is not a multiple of the page size, we need to pad the file
@@ -178,4 +190,8 @@ func (pf *PageFile) FreePage(offset int64) error {
 
 func (pf *PageFile) PageSize() int {
 	return pf.pageSize
+}
+
+func (pf *PageFile) PageCount() int64 {
+	return pf.lastPage
 }
