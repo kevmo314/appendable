@@ -21,9 +21,6 @@ export class BPTree {
   private fileFormat: FileFormat;
   private pageFieldType: FieldType;
 
-  private firstRef: ReferencedValue = new ReferencedValue({ offset: 0n, length: 0 }, new Uint8Array([0x00]).buffer)
-  private lastRef: ReferencedValue = new ReferencedValue({ offset: maxUint64, length: 0 }, new Uint8Array([0xFF]).buffer)
-
   constructor(
     tree: RangeResolver,
     meta: MetaPage,

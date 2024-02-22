@@ -19,7 +19,7 @@ export function processWhere<T>(value: T[keyof T]): QueryWhere | null {
       case "bigint":
       case "number":
         valueBuf = new ArrayBuffer(8);
-        new DataView(valueBuf).setFloat64(0, Number(value), true)
+        new DataView(valueBuf).setFloat64(0, Number(value))
         return {
           fieldType: FieldType.Float64,
           valueBuf
