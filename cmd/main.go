@@ -15,7 +15,7 @@ import (
 
 func main() {
 	var debugFlag, jsonlFlag, csvFlag, showTimings bool
-	var indexFilename, pprofFilename string
+	var indexFilename, pprofFilename, benchmarkFilename string
 
 	flag.BoolVar(&debugFlag, "debug", false, "Use logger that prints at the debug-level")
 	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
@@ -23,6 +23,7 @@ func main() {
 	flag.BoolVar(&showTimings, "t", false, "Show time-related metrics")
 	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.StringVar(&pprofFilename, "pprof", "", "Specify the file to write the pprof data to")
+	flag.StringVar(&benchmarkFilename, "b", "", "Specify the file to write the benchmark data to")
 
 	flag.Parse()
 	logLevel := &slog.LevelVar{}
@@ -94,6 +95,15 @@ func main() {
 	i, err := appendable.NewIndexFile(mmpif, dataHandler)
 	if err != nil {
 		panic(err)
+	}
+
+	if benchmarkFilename != "" {
+		f, err := os.Create(benchmarkFilename)
+		if err != nil {
+			panic(err)
+		}
+		defer f.Close() // error handling omitted for example
+		i.SetBenchmarkFile(f)
 	}
 
 	if err := i.Synchronize(df.Bytes()); err != nil {
