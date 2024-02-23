@@ -5,6 +5,7 @@ import { VersionedIndexFile } from "../index-file/index-file";
 import { readIndexMeta } from "../index-file/meta";
 import { QueryBuilder } from "./query-builder";
 import { handleSelect, processWhere } from "./query-logic";
+import { validateQuery } from "./query-validation";
 
 export type Schema = {
   [key: string]: {};
@@ -102,12 +103,13 @@ export class Database<T extends Schema> {
 
     const { format } = await this.indexFile.metadata();
     const dfResolver = this.dataFile.getResolver();
-
     if (!dfResolver) {
       throw new Error("data file is undefined");
     }
 
     const headers = await this.indexFile.indexHeaders();
+
+    await validateQuery(query, headers);
 
     for (const { key, value, operation } of query.where ?? []) {
       const header = headers.find((header) => header.fieldName === key);

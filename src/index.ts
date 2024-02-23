@@ -2,6 +2,7 @@ import { DataFile } from "./data-file";
 import { Database, FieldType, fieldTypeToString } from "./db/database";
 import { IndexFile } from "./index-file/index-file";
 import { RangeResolver } from "./resolver";
+import { validateQuery } from "./db/query-validation";
 
 export async function init(
   dataUrl: string | RangeResolver,
@@ -22,6 +23,7 @@ interface GlobalMap {
     init: Function;
     FieldType: typeof FieldType;
     fieldTypeToString: Function;
+    validateQuery: Function;
   };
 }
 
@@ -33,4 +35,5 @@ globalThis.Appendable = {
   init,
   FieldType,
   fieldTypeToString,
+  validateQuery,
 };
