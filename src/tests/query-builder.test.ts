@@ -1,7 +1,7 @@
 import { Database, Query } from "../db/database";
 import { QueryBuilder } from "../db/query-builder";
 import { validateQuery } from "../db/query-validation";
-import { IndexHeader, IndexMeta } from "../index-file/meta";
+import { IndexHeader } from "../index-file/meta";
 
 describe("test validate queries", () => {
   interface MockSchema {
@@ -33,17 +33,17 @@ describe("test validate queries", () => {
 
   let database: Database<MockSchema>;
 
-  it(`test query builder`, async () => {
+  it(`test query builder`, () => {
     let qb = new QueryBuilder(database);
 
     let qb1 = qb.where("VendorID", "<=", 2);
 
-    expect(async () => {
-      await validateQuery(qb1.toQuery(), headers);
+    expect(() => {
+      validateQuery(qb1.toQuery(), headers);
     }).not.toThrow();
   });
 
-  it(`test basic query chain`, async () => {
+  it(`test basic query chain`, () => {
     let q = new QueryBuilder(database).where("VendorID", "<=", 2);
     let query = q.toQuery();
 
@@ -52,8 +52,8 @@ describe("test validate queries", () => {
       { key: "VendorID", operation: "<=", value: 2 },
     ]);
 
-    expect(async () => {
-      await validateQuery(query, headers);
+    expect(() => {
+      validateQuery(query, headers);
     }).not.toThrow();
 
     q = q.orderBy("VendorID", "ASC");
@@ -65,8 +65,8 @@ describe("test validate queries", () => {
     ]);
     expect(query.orderBy).not.toBeNull();
     expect(query.orderBy).toEqual([{ key: "VendorID", direction: "ASC" }]);
-    expect(async () => {
-      await validateQuery(query, headers);
+    expect(() => {
+      validateQuery(query, headers);
     }).not.toThrow();
 
     q = q.select(["VendorID", "store_and_fwd_flag", "fare_amount"]);
@@ -85,7 +85,7 @@ describe("test validate queries", () => {
     ]);
   });
 
-  it(`test basic derived query chain`, async () => {
+  it(`test basic derived query chain`, () => {
     const q0 = new QueryBuilder(database).where("fare_amount", "==", 1);
     let query = q0.toQuery();
 
@@ -116,7 +116,7 @@ describe("test validate queries", () => {
     expect(query.select).toEqual(["fare_amount"]);
   });
 
-  it(`test multi derived query chain`, async () => {
+  it(`test multi derived query chain`, () => {
     const q0 = new QueryBuilder(database).where("fare_amount", "==", 2);
     let query = q0.toQuery();
 
@@ -135,7 +135,7 @@ describe("test validate queries", () => {
     ]);
   });
 
-  it(`test green + red queries`, async () => {
+  it(`test green + red queries`, () => {
     const q0 = new QueryBuilder(database).where("payment_type", ">", 3);
     const failQuery = q0.orderBy("VendorID", "ASC");
     expect(failQuery.toQuery().orderBy).toEqual([
@@ -155,14 +155,14 @@ describe("test validate queries", () => {
     ]);
 
     // red queries
-    [failQuery, failQuery2].forEach(async (query) => {
-      await expect(() =>
+    [failQuery, failQuery2].forEach((query) => {
+      expect(() =>
         validateQuery(query.toQuery(), headers)
-      ).rejects.toThrow();
+      ).toThrow();
     });
 
     // green queries
-    [passQuery, passQuery2].forEach(async (query) => {
+    [passQuery, passQuery2].forEach((query) => {
       expect(() => validateQuery(query.toQuery(), headers)).not.toThrow();
     });
   });

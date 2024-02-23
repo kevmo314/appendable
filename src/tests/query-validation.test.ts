@@ -1,6 +1,6 @@
 import { Query } from "../db/database";
 import { validateQuery } from "../db/query-validation";
-import { IndexHeader, IndexMeta } from "../index-file/meta";
+import { IndexHeader } from "../index-file/meta";
 
 describe("test validate queries", () => {
   interface MockSchema {
@@ -84,9 +84,9 @@ describe("test validate queries", () => {
   ];
 
   validQueries.forEach((query) => {
-    it("test valid query", async () => {
-      expect(async () => {
-        await validateQuery(query, headers);
+    it("test valid query", () => {
+      expect(() => {
+        validateQuery(query, headers);
       }).not.toThrow();
     });
   });
@@ -139,8 +139,8 @@ describe("test validate queries", () => {
   ];
 
   notValidQueries.forEach((query, index) => {
-    it(`test invalid query ${index}`, async () => {
-      await expect(validateQuery(query, headers)).rejects.toThrow();
+    it(`test invalid query ${index}`, () => {
+      expect(() => validateQuery(query, headers)).toThrow();
     });
   });
 });
