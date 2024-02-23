@@ -109,7 +109,7 @@ export class Database<T extends Schema> {
 
     const headers = await this.indexFile.indexHeaders();
 
-    await validateQuery(query, headers);
+    validateQuery(query, headers);
 
     for (const { key, value, operation } of query.where ?? []) {
       const header = headers.find((header) => header.fieldName === key);
