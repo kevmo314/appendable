@@ -209,18 +209,24 @@
             });
 
             // then execute the query
-            document.getElementById("execute").onclick = () => {
+            document.getElementById("execute").onclick = async () => {
                 document.getElementById("results").innerHTML = "";
                 const queryJson = JSON.parse(editor.getValue());
 
-                const query = db.query(queryJson);
-                bindQuery(query);
+                try {
+                    const fields = await db.fields();
+                    Appendable.validateQuery(queryJson, fields)
+
+                    const query = db.query(queryJson);
+                    bindQuery(query);
+                } catch (error) {
+                    console.log("error: ", error);
+                    document.getElementById("results").innerHTML = error.message;
+                }
             };
 
             document.getElementById("results").innerHTML = "";
-
             const query = db.query(JSON.parse(editor.getValue()));
-
             bindQuery(query);
         });
 
