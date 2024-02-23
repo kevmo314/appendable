@@ -164,10 +164,10 @@ function validateSelect<T extends Schema>(
  * @param {IndexMeta[]} headers - The headers against which to validate the query fields.
  * @throws {Error} Throws an error if query is invalid.
  */
-export async function validateQuery<T extends Schema>(
+export function validateQuery<T extends Schema>(
   query: Query<T>,
   headers: IndexHeader[]
-): Promise<void> {
+): void {
 
   // validate the query
   validateWhere(query.where, headers);
