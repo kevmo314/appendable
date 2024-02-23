@@ -1,259 +1,260 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<script
-			src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"
-			type="text/javascript"
-			charset="utf-8"
-		></script>
-		<script src="appendable.min.js"></script>
 
-		<style>
-			body,
-			html {
-				margin: 0;
-				padding: 0px 0px 4px 4px;
-			}
-			.flex-1 {
-				flex: 1;
-				display: flex;
-				gap: 0 30px;
-				height: 100vh;
-				width: 100vw;
-			}
-			.result-item {
-				padding: 4px 0;
-				cursor: pointer;
-			}
-			.result-item:hover {
-				background-color: yellow;
-			}
-			#fields {
-				max-height: calc(100vh - 50px);
-				overflow-y: auto;
-			}
-			#results {
-				max-height: calc(100vh - 500px);
-				overflow-y: auto;
-			}
-		</style>
-	</head>
-	<body>
-		<div>
-			<h1>
-				<a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
-				Green Cab Trip Data in 01/2023
-			</h1>
-			<div>
-				Download the raw data here:
-				<a href="green_tripdata_2023-01.jsonl">JSONL</a> -
-				<a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
-				<a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page"
-					>Source</a
-				>
-			</div>
-			<p>
-				Appendable is querying the JSONL and index files that GitHub pages hosts
-				<em>directly</em>. There is no server involved here!
-			</p>
-			<p>
-				Keep in mind that while the query syntax supports a lot of different
-				operations, Appendable doesn't support composite indexes yet. Therefore,
-				only one field at a time can be filtered on and that field must be used
-				for sorting.
-			</p>
-		</div>
-		<div class="flex-1">
-			<div>
-				<h2>Fields</h2>
-				<pre id="fields"></pre>
-			</div>
-			<div>
-				<h2>Query</h2>
-				<button id="execute">Execute</button>
-				<div
-					id="json-editor"
-					style="height: 300px; width: 600px; margin-top: 40px"
-				></div>
-				<h2>Results</h2>
-				<button id="next">Fetch more</button>
-				<pre id="results"></pre>
-			</div>
-		</div>
-		<script>
-			var editor = ace.edit("json-editor");
-			editor.session.setMode("ace/mode/json");
-			editor.setTheme("ace/theme/chrome");
-			editor.getSession().setTabSize(2);
-			editor.getSession().setUseSoftTabs(true);
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript"
+        charset="utf-8"></script>
+    <script src="appendable.min.js"></script>
 
-			// NOTE: when composite indexes get supported, remove this UX feature
-			// <---- start of UX feature ---->
-			let isProgramChange = false;
-			let lastEdited = "none";
-			let prevWhereKey = "trip_distance";
-			let prevOrderByKey = "trip_distance";
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0px 0px 4px 4px;
+        }
 
-			function updateKey(editorContent) {
-				try {
-					let query = JSON.parse(editorContent);
-					if (query.where && query.orderBy) {
-						const whereKey = query.where[0].key;
-						const orderByKey = query.orderBy[0].key;
+        .flex-1 {
+            flex: 1;
+            display: flex;
+            gap: 0 30px;
+            height: 100vh;
+            width: 100vw;
+        }
 
-						if (lastEdited === "where") {
-							query.orderBy[0].key = whereKey;
-						} else if (lastEdited === "orderBy") {
-							query.where[0].key = orderByKey;
-						}
+        .result-item {
+            padding: 4px 0;
+            cursor: pointer;
+        }
 
-						prevWhereKey = whereKey;
-						prevOrderByKey = orderByKey;
+        .result-item:hover {
+            background-color: yellow;
+        }
 
-						return JSON.stringify(query, null, 2);
-					}
-				} catch (e) {
-					console.log("Error parsing JSON:", e.message);
-					console.log("Incomplete string content:", editorContent);
-				}
-				return editorContent;
-			}
+        #fields {
+            max-height: calc(100vh - 50px);
+            overflow-y: auto;
+        }
 
-			editor.getSession().on("change", function (e) {
-				if (isProgramChange) {
-					isProgramChange = false;
-					return;
-				}
+        #results {
+            max-height: calc(100vh - 500px);
+            overflow-y: auto;
+        }
+    </style>
+</head>
 
-				const cursorPosition = editor.getCursorPosition();
-				const editorContent = editor.getSession().getValue();
+<body>
+    <div>
+        <h1>
+            <a href="https://github.com/kevmo314/appendable">Appendable</a> - NYC
+            Green Cab Trip Data in 01/2023
+        </h1>
+        <div>
+            Download the raw data here:
+            <a href="green_tripdata_2023-01.jsonl">JSONL</a> -
+            <a href="green_tripdata_2023-01.jsonl.index">Appendable Index</a> -
+            <a href="https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page">Source</a>
+        </div>
+        <p>
+            Appendable is querying the JSONL and index files that GitHub pages hosts
+            <em>directly</em>. There is no server involved here!
+        </p>
+        <p>
+            Keep in mind that while the query syntax supports a lot of different
+            operations, Appendable doesn't support composite indexes yet. Therefore,
+            only one field at a time can be filtered on and that field must be used
+            for sorting.
+        </p>
+    </div>
+    <div class="flex-1">
+        <div>
+            <h2>Fields</h2>
+            <pre id="fields"></pre>
+        </div>
+        <div>
+            <h2>Query</h2>
+            <button id="execute">Execute</button>
+            <div id="json-editor" style="height: 300px; width: 600px; margin-top: 40px"></div>
+            <h2>Results</h2>
+            <button id="next">Fetch more</button>
+            <pre id="results"></pre>
+        </div>
+    </div>
+    <script>
+        var editor = ace.edit("json-editor");
+        editor.session.setMode("ace/mode/json");
+        editor.setTheme("ace/theme/chrome");
+        editor.getSession().setTabSize(2);
+        editor.getSession().setUseSoftTabs(true);
 
-				let query;
-				try {
-					query = JSON.parse(editorContent);
-				} catch (e) {
-					return;
-				}
+        // NOTE: when composite indexes get supported, remove this UX feature
+        // <---- start of UX feature ---->
+        let isProgramChange = false;
+        let lastEdited = "none";
+        let prevWhereKey = "trip_distance";
+        let prevOrderByKey = "trip_distance";
 
-				const currentWhereKey = query.where ? query.where[0].key : "";
-				const currentOrderByKey = query.orderBy ? query.orderBy[0].key : "";
+        function updateKey(editorContent) {
+            try {
+                let query = JSON.parse(editorContent);
+                if (query.where && query.orderBy) {
+                    const whereKey = query.where[0].key;
+                    const orderByKey = query.orderBy[0].key;
 
-				if (currentWhereKey !== prevWhereKey) {
-					lastEdited = "where";
-				} else if (currentOrderByKey !== prevOrderByKey) {
-					lastEdited = "orderBy";
-				}
+                    if (lastEdited === "where") {
+                        query.orderBy[0].key = whereKey;
+                    } else if (lastEdited === "orderBy") {
+                        query.where[0].key = orderByKey;
+                    }
 
-				const updatedContent = updateKey(editorContent);
+                    prevWhereKey = whereKey;
+                    prevOrderByKey = orderByKey;
 
-				if (updatedContent !== editorContent) {
-					isProgramChange = true;
+                    return JSON.stringify(query, null, 2);
+                }
+            } catch (e) {
+                console.log("Error parsing JSON:", e.message);
+                console.log("Incomplete string content:", editorContent);
+            }
+            return editorContent;
+        }
 
-					const doc = editor.getSession().getDocument();
-					doc.setValue(updatedContent);
+        editor.getSession().on("change", function (e) {
+            if (isProgramChange) {
+                isProgramChange = false;
+                return;
+            }
 
-					editor.moveCursorToPosition(cursorPosition);
-					editor.clearSelection();
-				}
-			});
+            const cursorPosition = editor.getCursorPosition();
+            const editorContent = editor.getSession().getValue();
 
-			// <---- end of UX feature ---->
+            let query;
+            try {
+                query = JSON.parse(editorContent);
+            } catch (e) {
+                return;
+            }
 
-			editor.setValue(
-				JSON.stringify(
-					{
-						where: [
-							{
-								operation: ">",
-								key: "trip_distance",
-								value: 10,
-							},
-						],
-						orderBy: [
-							{
-								key: "trip_distance",
-								direction: "ASC",
-							},
-						],
-					},
-					null,
-					2
-				),
-				-1
-			);
-		</script>
-		<script>
-			Appendable.init(
-				"green_tripdata_2023-01.jsonl",
-				"green_tripdata_2023-01.index"
-			).then(async (db) => {
-				let dbFields = new Set();
-				let fieldTypes = {};
+            const currentWhereKey = query.where ? query.where[0].key : "";
+            const currentOrderByKey = query.orderBy ? query.orderBy[0].key : "";
 
-				// populate fields
-				db.fields().then((fields) => {
-					fields.map((field) => {
-						dbFields.add(field.fieldName);
-						fieldTypes[field.fieldName] = field.fieldType;
-					});
+            if (currentWhereKey !== prevWhereKey) {
+                lastEdited = "where";
+            } else if (currentOrderByKey !== prevOrderByKey) {
+                lastEdited = "orderBy";
+            }
 
-					document.getElementById("fields").innerHTML = JSON.stringify(
-						fields,
-						(key, value) => {
-							if (typeof value === "bigint") {
-								return value.toString();
-							}
+            const updatedContent = updateKey(editorContent);
 
-							return value;
-						},
-						2
-					);
-				});
+            if (updatedContent !== editorContent) {
+                isProgramChange = true;
 
-				// then execute the query
-				document.getElementById("execute").onclick = () => {
-					document.getElementById("results").innerHTML = "";
-					const queryJson = JSON.parse(editor.getValue());
+                const doc = editor.getSession().getDocument();
+                doc.setValue(updatedContent);
 
-					const query = db.query(queryJson);
-					bindQuery(query);
-				};
+                editor.moveCursorToPosition(cursorPosition);
+                editor.clearSelection();
+            }
+        });
 
-				document.getElementById("results").innerHTML = "";
+        // <---- end of UX feature ---->
 
-				const query = db.query(JSON.parse(editor.getValue()));
+        editor.setValue(
+            JSON.stringify(
+                {
+                    where: [
+                        {
+                            operation: ">",
+                            key: "trip_distance",
+                            value: 10,
+                        },
+                    ],
+                    orderBy: [
+                        {
+                            key: "trip_distance",
+                            direction: "ASC",
+                        }
+                    ],
+                    select: ["VendorID", "trip_distance", "fare_amount", "tip_amount"]
+                },
+                null,
+                2
+            ),
+            -1
+        );
+    </script>
+    <script>
+        Appendable.init(
+            "green_tripdata_2023-01.jsonl",
+            "green_tripdata_2023-01.index"
+        ).then(async (db) => {
+            let dbFields = new Set();
+            let fieldTypes = {};
 
-				bindQuery(query);
-			});
+            // populate fields
+            db.fields().then((fields) => {
+                fields.map((field) => {
+                    dbFields.add(field.fieldName);
+                    fieldTypes[field.fieldName] = field.fieldType;
+                });
 
-			async function bindQuery(query) {
-				const resultsElement = document.getElementById("results");
-				document.getElementById("next").disabled = true;
+                document.getElementById("fields").innerHTML = JSON.stringify(
+                    fields,
+                    (key, value) => {
+                        if (typeof value === "bigint") {
+                            return value.toString();
+                        }
 
-				async function appendResult() {
-					const result = await query.next();
-					if (result.done) {
-						return;
-					}
+                        return value;
+                    },
+                    2
+                );
+            });
 
-					const resultDiv = document.createElement("div");
-					resultDiv.classList.add("result-item");
-					resultDiv.textContent = JSON.stringify(result.value);
-					resultsElement.appendChild(resultDiv);
-				}
+            // then execute the query
+            document.getElementById("execute").onclick = () => {
+                document.getElementById("results").innerHTML = "";
+                const queryJson = JSON.parse(editor.getValue());
 
-				for (let i = 0; i < 10; i++) {
-					await appendResult();
-				}
-				while (true) {
-					document.getElementById("next").disabled = false;
-					await new Promise(
-						(resolve) => (document.getElementById("next").onclick = resolve)
-					);
-					document.getElementById("next").disabled = true;
-					await appendResult();
-				}
-			}
-		</script>
-	</body>
+                const query = db.query(queryJson);
+                bindQuery(query);
+            };
+
+            document.getElementById("results").innerHTML = "";
+
+            const query = db.query(JSON.parse(editor.getValue()));
+
+            bindQuery(query);
+        });
+
+        async function bindQuery(query) {
+            const resultsElement = document.getElementById("results");
+            document.getElementById("next").disabled = true;
+
+            async function appendResult() {
+                const result = await query.next();
+                if (result.done) {
+                    return;
+                }
+
+                const resultDiv = document.createElement("div");
+                resultDiv.classList.add("result-item");
+                resultDiv.textContent = JSON.stringify(result.value);
+                resultsElement.appendChild(resultDiv);
+            }
+
+            for (let i = 0; i < 10; i++) {
+                await appendResult();
+            }
+            while (true) {
+                document.getElementById("next").disabled = false;
+                await new Promise(
+                    (resolve) => (document.getElementById("next").onclick = resolve)
+                );
+                document.getElementById("next").disabled = true;
+                await appendResult();
+            }
+        }
+    </script>
+</body>
+
 </html>

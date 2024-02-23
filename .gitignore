@@ -8,3 +8,8 @@ pprof.out
 *.index
 *.jsonl
 *.csv
+
+# But include these files in src/tests/mock_binaries
+!src/tests/mock_binaries/*.index
+!src/tests/mock_binaries/*.jsonl
+!src/tests/mock_binaries/*.cs
