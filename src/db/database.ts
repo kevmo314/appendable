@@ -41,6 +41,43 @@ export enum FieldType {
   Null = 7,
 }
 
+export function fieldTypeToString(f: FieldType): string {
+  let str;
+  switch (f) {
+    case FieldType.String:
+      str = "String";
+      break;
+
+    case FieldType.Int64:
+      str = "Int64";
+      break;
+
+    case FieldType.Uint64:
+      str = "Uint64";
+      break;
+
+    case FieldType.Float64:
+      str = "Float64";
+      break;
+
+    case FieldType.Object:
+      str = "Object";
+      break;
+
+    case FieldType.Array:
+      str = "Array";
+      break;
+
+    case FieldType.Boolean:
+      str = "Boolean";
+      break;
+    case FieldType.Null:
+      str = "Null";
+      break;
+  }
+  return str;
+}
+
 export class Database<T extends Schema> {
   private constructor(
     private dataFile: DataFile,
@@ -80,7 +117,7 @@ export class Database<T extends Schema> {
 
       const res = processWhere(value);
       if (res === null) {
-        throw new Error(`unable to process key with a type ${typeof value}`)
+        throw new Error(`unable to process key with a type ${typeof value}`);
       }
       const { fieldType, valueBuf } = res;
 
@@ -90,10 +127,9 @@ export class Database<T extends Schema> {
         await mp.metadata()
       );
 
-
       let ord: "ASC" | "DESC" = "ASC";
       if (query.orderBy && query.orderBy[0]) {
-        ord = query.orderBy[0].direction
+        ord = query.orderBy[0].direction;
       }
 
       const bptree = new BPTree(
@@ -106,7 +142,10 @@ export class Database<T extends Schema> {
 
       if (operation === ">") {
         if (ord === "ASC") {
-          const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf)
+          const valueRef = new ReferencedValue(
+            { offset: 0n, length: 0 },
+            valueBuf
+          );
           const iter = bptree.iter(valueRef);
 
           while (await iter.next()) {
@@ -143,7 +182,10 @@ export class Database<T extends Schema> {
         }
       } else if (operation === ">=") {
         if (ord === "ASC") {
-          const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf)
+          const valueRef = new ReferencedValue(
+            { offset: 0n, length: 0 },
+            valueBuf
+          );
           const iter = bptree.iter(valueRef);
 
           while (await iter.next()) {
@@ -180,7 +222,10 @@ export class Database<T extends Schema> {
           }
         }
       } else if (operation === "==") {
-        const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf)
+        const valueRef = new ReferencedValue(
+          { offset: 0n, length: 0 },
+          valueBuf
+        );
         const iter = bptree.iter(valueRef);
 
         while (await iter.next()) {
@@ -199,7 +244,10 @@ export class Database<T extends Schema> {
         }
       } else if (operation === "<=") {
         if (ord === "DESC") {
-          const valueRef = new ReferencedValue({ offset: maxUint64, length: 0 }, valueBuf)
+          const valueRef = new ReferencedValue(
+            { offset: maxUint64, length: 0 },
+            valueBuf
+          );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
             const currentKey = iter.getKey();
@@ -236,12 +284,17 @@ export class Database<T extends Schema> {
         }
       } else if (operation === "<") {
         if (ord === "DESC") {
-          const valueRef = new ReferencedValue({ offset: maxUint64, length: 0 }, valueBuf)
+          const valueRef = new ReferencedValue(
+            { offset: maxUint64, length: 0 },
+            valueBuf
+          );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1) {
+            if (
+              ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1
+            ) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -259,7 +312,9 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1) {
+            if (
+              ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1
+            ) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -272,7 +327,6 @@ export class Database<T extends Schema> {
           }
         }
       }
-
     }
   }
 
