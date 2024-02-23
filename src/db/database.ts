@@ -66,7 +66,7 @@ export class Database<T extends Schema> {
     const { format } = await this.indexFile.metadata();
     const dfResolver = this.dataFile.getResolver();
 
-    if (dfResolver === undefined) {
+    if (!dfResolver) {
       throw new Error("data file is undefined");
     }
 
@@ -112,8 +112,7 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === -1) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) < 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -131,8 +130,7 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === -1) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) < 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -140,8 +138,6 @@ export class Database<T extends Schema> {
                 Number(mp.offset) + mp.length - 1
               );
               yield handleSelect(data, query.select);
-            } else {
-              console.log("less than")
             }
           }
         }
@@ -153,8 +149,7 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === -1 || res === 0) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) <= 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -172,8 +167,7 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === -1 || res === 0) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) <= 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -192,8 +186,7 @@ export class Database<T extends Schema> {
         while (await iter.next()) {
           const currentKey = iter.getKey();
 
-          let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-          if (res === 0) {
+          if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 0) {
             const [_, mp] = await bptree.find(currentKey);
 
             const data = await this.dataFile.get(
@@ -211,8 +204,7 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === 1 || res === 0) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) >= 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -230,8 +222,7 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === 1 || 0) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) >= 0) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -250,8 +241,7 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === 1) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(
@@ -269,8 +259,7 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            let res = ReferencedValue.compareBytes(valueBuf, currentKey.value);
-            if (res === 1) {
+            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1) {
               const [_, mp] = await bptree.find(currentKey);
 
               const data = await this.dataFile.get(

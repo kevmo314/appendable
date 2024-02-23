@@ -83,8 +83,7 @@ export class BPTree {
     return new TraversalIterator(this, key);
   }
 
-  async first(
-  ): Promise<ReferencedValue> {
+  async first(): Promise<ReferencedValue> {
     let { rootNode } = await this.root();
     if (!rootNode) {
       throw new Error("unable to get root node")
