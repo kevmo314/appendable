@@ -112,40 +112,37 @@
                 // then execute the query
                 document.getElementById("execute").onclick = async () => {
                     document.getElementById("results").innerHTML = "";
+                    const executeButton = document.getElementById("execute");
+                    executeButton.disabled = true;
 
                     const editorContent = editor.getValue();
 
-                    if (window.activeEditor === "json") {
-                        console.log("window is in json")
-
-                        const queryJson = JSON.parse(editor.getValue());
-
-                        try {
+                    try {
+                        if (window.activeEditor === "json") {
+                            const queryJson = JSON.parse(editorContent);
                             const fields = await db.fields();
                             const query = await db.query(queryJson);
                             await bindQuery(query);
-                        } catch (error) {
-                            console.log("error: ", error);
-                            document.getElementById("results").innerHTML = error.message;
-                        }
-                    } else if (window.activeEditor === "javascript") {
-                        console.log("window is in javascript");
-                        try {
+                        } else if (window.activeEditor === "javascript") {
                             const query = await eval(editorContent);
-
-                            if (query) {
-                                await bindQuery(query);
-                            }
-                        } catch (error) {
-                            console.log("error: ", error);
-                            document.getElementById("results").innerHTML = error.message;
+                            await bindQuery(query);
                         }
+                    } catch (error) {
+                        console.log("error: ", error);
+                        document.getElementById("results").innerHTML = error.message;
+                        executeButton.disabled = false;
                     }
                 };
 
                 document.getElementById("results").innerHTML = "";
-                const query = await db.query(JSON.parse(editor.getValue()));
-                await bindQuery(query);
+
+                try {
+                    const query = await db.query(JSON.parse(editor.getValue()));
+                    await bindQuery(query);
+                } catch (error) {
+                    document.getElementById("results").innerHTML = error.message;
+                    executeButton.disabled = false;
+                }
             });
 
             async function bindQuery(query) {
@@ -167,6 +164,7 @@
                 for (let i = 0; i < 10; i++) {
                     await appendResult();
                 }
+                document.getElementById("execute").disabled = false;
                 while (true) {
                     document.getElementById("next").disabled = false;
                     await new Promise(
