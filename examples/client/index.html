@@ -121,17 +121,12 @@
                         try {
                             const queryJson = JSON.parse(editorContent);
 
-                            try {
-                                const fields = await db.fields();
-                                Appendable.validateQuery(queryJson, fields)
+                            const fields = await db.fields();
+                            Appendable.validateQuery(queryJson, fields)
 
-                                const query = await db.query(queryJson);
-                                await bindQuery(query);
-                            } catch (error) {
-                                console.log("error: ", error);
-                                document.getElementById("results").innerHTML = error.message;
-                                executeButton.disabled = false;
-                            }
+                            const query = await db.query(queryJson);
+                            await bindQuery(query);
+
                         } catch (error) {
                             console.log("error: ", error);
                             document.getElementById("results").innerHTML = error.message;
