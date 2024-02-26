@@ -13,14 +13,18 @@
  *
  * @see LengthIntegrityError
  */
-export type RangeResolver = (args: {
-	start: number;
-	end: number;
-	expectedLength?: number;
-}) => Promise<{
-	data: ArrayBuffer;
-	totalLength: number;
-}>;
+export type RangeResolver = (
+  args: {
+    start: number;
+    end: number;
+    expectedLength?: number;
+  }[],
+) => Promise<
+  {
+    data: ArrayBuffer;
+    totalLength: number;
+  }[]
+>;
 
 /**
  * LengthIntegrityError is thrown by a RangeResolver when the length argument is
@@ -34,7 +38,7 @@ export type RangeResolver = (args: {
  * @see RangeResolver
  */
 export class LengthIntegrityError extends Error {
-	constructor() {
-		super("length integrity error");
-	}
+  constructor() {
+    super("length integrity error");
+  }
 }

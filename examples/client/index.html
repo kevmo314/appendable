@@ -122,8 +122,6 @@
 
                         try {
                             const fields = await db.fields();
-                            Appendable.validateQuery(queryJson, fields)
-
                             const query = await db.query(queryJson);
                             await bindQuery(query);
                         } catch (error) {

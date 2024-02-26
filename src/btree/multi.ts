@@ -60,11 +60,14 @@ export class LinkedMetaPage {
     }
 
     if (!this.metaPagePromise) {
-      this.metaPagePromise = this.resolver({
-        start: Number(this.offset),
-        end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
-      })
-        .then(({ data }) => {
+      this.metaPagePromise = this.resolver([
+        {
+          start: Number(this.offset),
+          end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
+        },
+      ])
+        .then((r) => {
+          const { data } = r[0];
           this.metaPageData = data;
           this.metaPagePromise = null;
           return data;
@@ -101,7 +104,7 @@ export class LinkedMetaPage {
 
 export function ReadMultiBPTree(
   resolver: RangeResolver,
-  pageFile: PageFile
+  pageFile: PageFile,
 ): LinkedMetaPage {
   const offset = pageFile.page(0);
   return new LinkedMetaPage(resolver, offset);

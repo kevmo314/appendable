@@ -37,7 +37,7 @@ describe("test compare bytes", () => {
     testCases.forEach(({ a, b, i }) => {
       const result = ReferencedValue.compareBytes(
         strToArrayBuffer(a),
-        strToArrayBuffer(b)
+        strToArrayBuffer(b),
       );
       expect(result).toBe(i);
     });
@@ -49,21 +49,21 @@ describe("compareReferencedValues", () => {
     const values: ReferencedValue[] = [
       new ReferencedValue(
         { offset: 0n, length: 10 },
-        new Uint8Array([0]).buffer
+        new Uint8Array([0]).buffer,
       ),
       new ReferencedValue(
         { offset: 10n, length: 20 },
-        new Uint8Array([1]).buffer
+        new Uint8Array([1]).buffer,
       ),
       new ReferencedValue(
         { offset: 20n, length: 30 },
-        new Uint8Array([2]).buffer
+        new Uint8Array([2]).buffer,
       ),
     ];
 
     const key0: ReferencedValue = new ReferencedValue(
       { offset: 0n, length: 10 },
-      new Uint8Array([0]).buffer
+      new Uint8Array([0]).buffer,
     );
 
     const [index0, found0] = binarySearchReferencedValues(values, key0);
@@ -72,7 +72,7 @@ describe("compareReferencedValues", () => {
 
     const key1: ReferencedValue = new ReferencedValue(
       { offset: 0n, length: 0 },
-      new Uint8Array([1]).buffer
+      new Uint8Array([1]).buffer,
     );
 
     const [index1, found1] = binarySearchReferencedValues(values, key1);
@@ -81,12 +81,12 @@ describe("compareReferencedValues", () => {
 
     const keyNeg1: ReferencedValue = new ReferencedValue(
       { offset: 0n, length: 0 },
-      new Uint8Array([5]).buffer
+      new Uint8Array([5]).buffer,
     );
 
     const [indexNeg1, foundNeg1] = binarySearchReferencedValues(
       values,
-      keyNeg1
+      keyNeg1,
     );
 
     expect(indexNeg1).toEqual(3);
@@ -105,24 +105,28 @@ describe("node functionality", () => {
     mockLeafNodeData = await readBinaryFile("leafnode.bin");
     mockInternalNodeData = await readBinaryFile("internalnode.bin");
 
-    mockDataResolver = async ({ start, end }) => {
-      return {
-        data: new ArrayBuffer(0),
-        totalLength: 0,
-      };
+    mockDataResolver = async ([{ start, end }]) => {
+      return [
+        {
+          data: new ArrayBuffer(0),
+          totalLength: 0,
+        },
+      ];
     };
   });
 
   it("should read a leaf bptree node", async () => {
-    mockRangeResolver = async ({ start, end }) => {
+    mockRangeResolver = async ([{ start, end }]) => {
       const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
       view.set(mockLeafNodeData, 0);
       const slice = view.slice(start, end + 1);
 
-      return {
-        data: slice.buffer,
-        totalLength: view.byteLength,
-      };
+      return [
+        {
+          data: slice.buffer,
+          totalLength: view.byteLength,
+        },
+      ];
     };
 
     const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
@@ -130,7 +134,7 @@ describe("node functionality", () => {
       mockRangeResolver,
       mockDataResolver,
       FileFormat.JSONL,
-      FieldType.String
+      FieldType.String,
     );
 
     expect(leafNode.internalPointers.length).toEqual(0);
@@ -170,15 +174,17 @@ describe("node functionality", () => {
   });
 
   it("should read a internal bptree node", async () => {
-    mockRangeResolver = async ({ start, end }) => {
+    mockRangeResolver = async ([{ start, end }]) => {
       const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
       view.set(mockInternalNodeData, 0);
       const slice = view.slice(start, end + 1);
 
-      return {
-        data: slice.buffer,
-        totalLength: view.byteLength,
-      };
+      return [
+        {
+          data: slice.buffer,
+          totalLength: view.byteLength,
+        },
+      ];
     };
 
     const { node: internalNode } = await BPTreeNode.fromMemoryPointer(
@@ -186,7 +192,7 @@ describe("node functionality", () => {
       mockRangeResolver,
       mockDataResolver,
       FileFormat.CSV,
-      FieldType.String
+      FieldType.String,
     );
 
     expect(internalNode.internalPointers.length).toEqual(4);

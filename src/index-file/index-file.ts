@@ -1,5 +1,5 @@
 import { LinkedMetaPage, ReadMultiBPTree } from "../btree/multi";
-import { LengthIntegrityError, RangeResolver } from "../resolver";
+import { RangeResolver } from "../resolver";
 import { PageFile } from "../btree/pagefile";
 import {
   FileFormat,
@@ -9,39 +9,73 @@ import {
   readIndexMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
+import { parseMultipartBody } from "../data-file";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string) {
-    return await IndexFile.forResolver<T>(
-      async ({ start, end, expectedLength }) => {
-        const response = await fetch(url, {
-          headers: { Range: `bytes=${start}-${end}` },
-        });
-        const totalLength = Number(
-          response.headers.get("Content-Range")!.split("/")[1]
-        );
-        if (expectedLength && totalLength !== expectedLength) {
-          throw new LengthIntegrityError();
-        }
-        return {
-          data: await response.arrayBuffer(),
-          totalLength: totalLength,
-        };
+    return await IndexFile.forResolver<T>(async (ranges) => {
+      const rangesHeader = ranges
+        .map(({ start, end }) => `${start}-${end}`)
+        .join(",");
+
+      const response = await fetch(url, {
+        headers: {
+          Range: `bytes=${rangesHeader}`,
+          Accept: "multipart/bytesranges",
+        },
+      });
+
+      if (response.status !== 206) {
+        throw new Error(`Expected 206 Partial Content, got ${response.status}`);
       }
-    );
+
+      const contentType = response.headers.get("Content-Type");
+      if (!contentType) {
+        throw new Error("Missing Content-Type in response");
+      }
+      if (contentType.includes("multipart/byteranges")) {
+        const boundary = contentType.split("boundary=")[1];
+        const abuf = await response.arrayBuffer();
+        const text = new TextDecoder().decode(abuf);
+
+        const chunks = parseMultipartBody(text, boundary);
+
+        // the last element is null since the final boundary marker is followed by another delim.
+        if (chunks[chunks.length - 1].body === undefined) {
+          chunks.pop();
+        }
+        console.log(chunks);
+        return chunks.map((c) => {
+          const enc = new TextEncoder();
+          const data = enc.encode(c.body).buffer;
+
+          const totalLengthStr = c.headers["content-range"]?.split("/")[1];
+          const totalLength = totalLengthStr ? parseInt(totalLengthStr, 10) : 0;
+
+          return { data, totalLength };
+        });
+      } else if (response.headers.has("Content-Range")) {
+        const abuf = await response.arrayBuffer();
+        const totalLength = Number(
+          response.headers.get("Content-Range")!.split("/")[1],
+        );
+        return [
+          {
+            data: abuf,
+            totalLength: totalLength,
+          },
+        ];
+      } else {
+        throw new Error(`Unexpected response format: ${contentType}`);
+      }
+    });
   }
 
   static async forResolver<T = any>(
-    resolver: RangeResolver
+    resolver: RangeResolver,
   ): Promise<VersionedIndexFile<T>> {
     return new IndexFileV1<T>(resolver);
   }
-}
-
-function decodeFloatingInt16(x: number) {
-  const exponent = x >> 11;
-  const mantissa = x & 0x7ff;
-  return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
 }
 
 export type FileMeta = {
@@ -65,7 +99,7 @@ export interface VersionedIndexFile<T> {
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
   private _tree?: LinkedMetaPage;
 
-  constructor(private resolver: RangeResolver) { }
+  constructor(private resolver: RangeResolver) {}
 
   getResolver(): RangeResolver {
     return this.resolver;
@@ -91,7 +125,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     // unmarshall binary for FileMeta
     if (buffer.byteLength < 10) {
       throw new Error(
-        `incorrect byte length! Want: 10, got ${buffer.byteLength}`
+        `incorrect byte length! Want: 10, got ${buffer.byteLength}`,
       );
     }
 
@@ -146,7 +180,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
     if (headerMps.length === 0) {
       throw new Error(
-        `No LinkedMetaPage with ${header} and type ${fieldType} exists`
+        `No LinkedMetaPage with ${header} and type ${fieldType} exists`,
       );
     }
 

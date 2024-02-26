@@ -1,5 +1,4 @@
 import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../btree/multi";
 import { MemoryPointer } from "../btree/node";
 import { FieldType } from "../db/database";
 import { FileFormat } from "../index-file/meta";
@@ -24,26 +23,30 @@ describe("test btree", () => {
   let bptree: BPTree;
 
   beforeEach(() => {
-    mockDataFileResolver = async ({ start, end }) => {
-      return {
-        data: new ArrayBuffer(0),
-        totalLength: 0,
-      };
+    mockDataFileResolver = async ([{ start, end }]) => {
+      return [
+        {
+          data: new ArrayBuffer(0),
+          totalLength: 0,
+        },
+      ];
     };
 
-    mockRangeResolver = async ({ start, end }) => {
+    mockRangeResolver = async ([{ start, end }]) => {
       const indexFile = await readBinaryFile("bptree_1.bin");
       const slicedPart = indexFile.slice(start, end + 1);
 
       const arrayBuffer = slicedPart.buffer.slice(
         slicedPart.byteOffset,
-        slicedPart.byteOffset + slicedPart.byteLength
+        slicedPart.byteOffset + slicedPart.byteLength,
       );
 
-      return {
-        data: arrayBuffer,
-        totalLength: arrayBuffer.byteLength,
-      };
+      return [
+        {
+          data: arrayBuffer,
+          totalLength: arrayBuffer.byteLength,
+        },
+      ];
     };
 
     const page = new testMetaPage({ offset: 8192n, length: 88 });
@@ -52,7 +55,7 @@ describe("test btree", () => {
       page,
       mockDataFileResolver,
       FileFormat.CSV,
-      FieldType.Float64
+      FieldType.Float64,
     );
   });
 

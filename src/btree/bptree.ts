@@ -3,7 +3,6 @@ import { RangeResolver } from "../resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
 import { FileFormat } from "../index-file/meta";
 import { FieldType } from "../db/database";
-import { maxUint64 } from "./multi";
 
 export interface MetaPage {
   root(): Promise<MemoryPointer>;
@@ -26,7 +25,7 @@ export class BPTree {
     meta: MetaPage,
     dataFileResolver: RangeResolver,
     fileFormat: FileFormat,
-    pageFieldType: FieldType
+    pageFieldType: FieldType,
   ) {
     this.tree = tree;
     this.meta = meta;
@@ -66,7 +65,7 @@ export class BPTree {
         this.tree,
         this.dataFileResolver,
         this.fileFormat,
-        this.pageFieldType
+        this.pageFieldType,
       );
 
       if (!bytesRead) {
@@ -86,39 +85,41 @@ export class BPTree {
   async first(): Promise<ReferencedValue> {
     let { rootNode } = await this.root();
     if (!rootNode) {
-      throw new Error("unable to get root node")
+      throw new Error("unable to get root node");
     }
 
-    let currNode = await this.readNode(rootNode.pointer(0))
+    let currNode = await this.readNode(rootNode.pointer(0));
 
     while (!currNode.leaf()) {
       const childPointer = currNode.pointer(0);
       currNode = await this.readNode(childPointer);
     }
 
-    return currNode.keys[0]
+    return currNode.keys[0];
   }
 
   async last(): Promise<ReferencedValue> {
     let { rootNode } = await this.root();
     if (!rootNode) {
-      throw new Error("unable to get root node")
+      throw new Error("unable to get root node");
     }
 
-    let currNode = await this.readNode(rootNode.pointer(rootNode.numPointers() - 1))
+    let currNode = await this.readNode(
+      rootNode.pointer(rootNode.numPointers() - 1),
+    );
 
     while (!currNode.leaf()) {
       const childPointer = currNode.pointer(currNode.numPointers() - 1);
       currNode = await this.readNode(childPointer);
     }
 
-    return currNode.keys[currNode.keys.length - 1]
+    return currNode.keys[currNode.keys.length - 1];
   }
 
   async traverse(
     key: ReferencedValue,
     node: BPTreeNode,
-    pointer: MemoryPointer
+    pointer: MemoryPointer,
   ): Promise<TraversalRecord[]> {
     let [index, found] = binarySearchReferencedValues(node.keys, key);
     if (node.leaf()) {
@@ -137,7 +138,7 @@ export class BPTree {
   }
 
   public async find(
-    key: ReferencedValue
+    key: ReferencedValue,
   ): Promise<[ReferencedValue, MemoryPointer]> {
     const p = this.iter(key);
 
@@ -145,7 +146,7 @@ export class BPTree {
       return [
         new ReferencedValue(
           { offset: 0n, length: 0 },
-          new Uint8Array(0).buffer
+          new Uint8Array(0).buffer,
         ),
         { offset: 0n, length: 0 },
       ];
@@ -195,7 +196,7 @@ export class ReferencedValue {
 
 function compareReferencedValues(
   a: ReferencedValue,
-  b: ReferencedValue
+  b: ReferencedValue,
 ): number {
   const valueComparison = ReferencedValue.compareBytes(a.value, b.value);
   if (valueComparison !== 0) {
@@ -219,7 +220,7 @@ function compareReferencedValues(
 
 export function binarySearchReferencedValues(
   values: ReferencedValue[],
-  target: ReferencedValue
+  target: ReferencedValue,
 ): [number, boolean] {
   const n = values.length;
 
