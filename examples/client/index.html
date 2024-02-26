@@ -117,30 +117,21 @@
 
                     const editorContent = editor.getValue();
 
-                    if (window.activeEditor === "json") {
-                        try {
+                    try {
+                        if (window.activeEditor === "json") {
                             const queryJson = JSON.parse(editorContent);
-
                             const fields = await db.fields();
                             Appendable.validateQuery(queryJson, fields)
-
                             const query = await db.query(queryJson);
                             await bindQuery(query);
-
-                        } catch (error) {
-                            console.log("error: ", error);
-                            document.getElementById("results").innerHTML = error.message;
-                            executeButton.disabled = false;
-                        }
-                    } else if (window.activeEditor === "javascript") {
-                        try {
+                        } else if (window.activeEditor === "javascript") {
                             const query = await eval(editorContent);
                             await bindQuery(query);
-                        } catch (error) {
-                            console.log("error: ", error);
-                            document.getElementById("results").innerHTML = error.message;
-                            executeButton.disabled = false;
                         }
+                    } catch (error) {
+                        console.log("error: ", error);
+                        document.getElementById("results").innerHTML = error.message;
+                        executeButton.disabled = false;
                     }
                 };
 
