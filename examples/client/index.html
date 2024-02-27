@@ -91,14 +91,14 @@
       <script>
         Appendable.init(
           "green_tripdata_2023-01.jsonl",
-          "green_tripdata_2023-01.index"
+          "green_tripdata_2023-01.index",
         ).then(async (db) => {
           // populate fields
           db.fields().then((fields) => {
             const cleanFields = fields.map((field) => ({
               ...field,
               fieldTypes: field.fieldTypes.map((ft) =>
-                Appendable.fieldTypeToString(ft)
+                Appendable.fieldTypeToString(ft),
               ),
             }));
 
@@ -111,7 +111,7 @@
 
                 return value;
               },
-              2
+              2,
             );
           });
 
@@ -174,7 +174,7 @@
           while (true) {
             document.getElementById("next").disabled = false;
             await new Promise(
-              (resolve) => (document.getElementById("next").onclick = resolve)
+              (resolve) => (document.getElementById("next").onclick = resolve),
             );
             document.getElementById("next").disabled = true;
             await appendResult();
