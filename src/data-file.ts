@@ -1,28 +1,5 @@
+import { parseMultipartBody } from "./range-request";
 import { RangeResolver } from "./resolver";
-
-interface Chunk {
-  body: string;
-  headers: { [key: string]: string };
-}
-
-export function parseMultipartBody(body: string, boundary: string): Chunk[] {
-  return body
-    .split(`--${boundary}`)
-    .reduce((chunks: Chunk[], chunk: string) => {
-      if (chunk && chunk !== "--") {
-        const [head, body] = chunk.trim().split(/\r\n\r\n/g, 2);
-        const headers = head
-          .split(/\r\n/g)
-          .reduce((headers: { [key: string]: string }, header: string) => {
-            const [key, value] = header.split(/:\s+/);
-            headers[key.toLowerCase()] = value;
-            return headers;
-          }, {});
-        chunks.push({ body, headers });
-      }
-      return chunks;
-    }, []);
-}
 
 export class DataFile {
   private originalResolver?: RangeResolver;
@@ -52,8 +29,7 @@ export class DataFile {
       }
       if (contentType.includes("multipart/byteranges")) {
         const boundary = contentType.split("boundary=")[1];
-        const abuf = await response.arrayBuffer();
-        const text = new TextDecoder().decode(abuf);
+        const text = await response.text();
 
         const chunks = parseMultipartBody(text, boundary);
 
@@ -61,9 +37,9 @@ export class DataFile {
         if (chunks[chunks.length - 1].body === undefined) {
           chunks.pop();
         }
-        console.log(chunks);
+
+        const enc = new TextEncoder();
         return chunks.map((c) => {
-          const enc = new TextEncoder();
           const data = enc.encode(c.body).buffer;
 
           const totalLengthStr = c.headers["content-range"]?.split("/")[1];

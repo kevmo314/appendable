@@ -9,7 +9,7 @@ import {
   readIndexMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
-import { parseMultipartBody } from "../data-file";
+import { parseMultipartBody } from "../range-request";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string) {

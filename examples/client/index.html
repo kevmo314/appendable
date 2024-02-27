@@ -164,10 +164,10 @@
                     resultsElement.appendChild(resultDiv);
                 }
 
-                for (let i = 0; i < 10; i++) {
+                for (let i = 0; i < 1; i++) {
                     await appendResult();
                 }
-                while (true) {
+                while (false) {
                     document.getElementById("next").disabled = false;
                     await new Promise(
                         (resolve) => (document.getElementById("next").onclick = resolve)

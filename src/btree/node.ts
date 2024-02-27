@@ -149,7 +149,6 @@ export class BPTreeNode {
       res.forEach((res, index) => {
         const dpIndex = dpIndexes[index];
         const { data } = res;
-        console.log("data: ", data);
 
         const parsedData = this.parseValue(data);
         this.keys[dpIndex].setValue(parsedData);
