@@ -10,6 +10,7 @@ import {
 } from "./meta";
 import { FieldType } from "../db/database";
 import { parseMultipartBody } from "../range-request";
+import { SkipList } from "./skiplist";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string) {
@@ -91,13 +92,16 @@ export interface VersionedIndexFile<T> {
 
   metadata(): Promise<FileMeta>;
 
+  synchronize(): Promise<void>;
+
   indexHeaders(): Promise<IndexHeader[]>;
 
-  seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]>;
+  findMetaPage(header: string, fieldType: FieldType): Promise<LinkedMetaPage>;
 }
 
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
   private _tree?: LinkedMetaPage;
+  private skipList: SkipList = new SkipList();
 
   constructor(private resolver: RangeResolver) {}
 
@@ -119,7 +123,6 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
   async metadata(): Promise<FileMeta> {
     const tree = await this.tree();
-
     const buffer = await tree.metadata();
 
     // unmarshall binary for FileMeta
@@ -146,66 +149,35 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     };
   }
 
-  async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
-    let mp = await this.tree();
+  async synchronize(): Promise<void> {
+    let root = await this.tree();
 
-    let headerMps = [];
-
+    let mp: LinkedMetaPage | null = await root.next();
     while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return headerMps;
-      }
-
-      const indexMeta = await readIndexMeta(await next.metadata());
-      if (indexMeta.fieldName === header) {
-        if (fieldType === FieldType.Float64) {
-          // if key is a number or bigint, we cast it as a float64 type
-          if (
-            indexMeta.fieldType === FieldType.Float64 ||
-            indexMeta.fieldType === FieldType.Int64 ||
-            indexMeta.fieldType === FieldType.Uint64
-          ) {
-            headerMps.push(next);
-          }
-        } else {
-          if (indexMeta.fieldType === fieldType) {
-            headerMps.push(next);
-          }
-        }
-      }
-
-      mp = next;
+      const indexMeta = await readIndexMeta(await mp.metadata());
+      this.skipList.insert(indexMeta, mp);
+      mp = await mp.next();
     }
-
-    if (headerMps.length === 0) {
-      throw new Error(
-        `No LinkedMetaPage with ${header} and type ${fieldType} exists`,
-      );
-    }
-
-    return headerMps;
   }
 
   async indexHeaders(): Promise<IndexHeader[]> {
+    let root = await this.tree();
     let headers: IndexMeta[] = [];
 
-    let mp = await this.tree();
-
+    let mp: LinkedMetaPage | null = await root.next();
     while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return collectIndexMetas(headers);
-      }
-
-      const nextBuffer = await next.metadata();
-      const indexMeta = await readIndexMeta(nextBuffer);
-
+      const indexMeta = await readIndexMeta(await mp.metadata());
       headers.push(indexMeta);
-
-      mp = next;
+      mp = await mp.next();
     }
 
     return collectIndexMetas(headers);
+  }
+
+  async findMetaPage(
+    header: string,
+    fieldType: FieldType,
+  ): Promise<LinkedMetaPage> {
+    return await this.skipList.search({ fieldName: header, fieldType });
   }
 }
