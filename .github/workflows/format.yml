@@ -1,0 +1,51 @@
+name: Format
+on:
+  pull_request:
+
+jobs:
+  go-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - run: |
+          gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
+          [ -z "$gofiles" ] && exit 0
+
+          unformatted=$(gofmt -l $gofiles)
+          [ -z "$unformatted" ] && exit 0
+
+          echo "`go fmt` returned unformatted files:" >> $GITHUB_STEP_SUMMARY
+          for fn in $unformatted; do
+              echo "* `$fn`" >> $GITHUB_STEP_SUMMARY
+          done
+
+          exit 1
+
+  go-mod-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - run: |
+          go mod tidy
+          STATUS=$(git status --porcelain go.mod go.sum)
+          if [ ! -z "$STATUS" ]; then
+            echo "Running go mod tidy modified go.mod and/or go.sum" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+          exit 0
+
+  prettier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - run: npx prettier --check . 2> $GITHUB_STEP_SUMMARY
