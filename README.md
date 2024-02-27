@@ -210,7 +210,7 @@ const db = Appendable.init(
       headers: { Range: `bytes=${start}-${end}` },
     });
     return await response.arrayBuffer();
-  }
+  },
 );
 ```
 
