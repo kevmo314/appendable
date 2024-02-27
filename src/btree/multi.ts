@@ -5,14 +5,13 @@ import { PageFile } from "./pagefile";
 const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
 
-const globalMetaPageCache = new Map<
-  bigint,
-  Promise<{ data: ArrayBuffer; totalLength: number }[]>
->();
-
 export class LinkedMetaPage {
   private resolver: RangeResolver;
   private offset: bigint;
+  private metaPagePromise?: Promise<
+    { data: ArrayBuffer; totalLength: number }[]
+  >;
+
   constructor(resolver: RangeResolver, offset: bigint) {
     this.resolver = resolver;
     this.offset = offset;
@@ -56,18 +55,16 @@ export class LinkedMetaPage {
   private async getMetaPage(): Promise<
     { data: ArrayBuffer; totalLength: number }[]
   > {
-    if (!globalMetaPageCache.has(this.offset)) {
-      const p = this.resolver([
+    if (!this.metaPagePromise) {
+      this.metaPagePromise = this.resolver([
         {
           start: Number(this.offset),
           end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
         },
       ]);
-
-      globalMetaPageCache.set(this.offset, p);
     }
 
-    return globalMetaPageCache.get(this.offset)!;
+    return this.metaPagePromise;
   }
 
   /**
