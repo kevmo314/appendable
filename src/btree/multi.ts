@@ -8,13 +8,11 @@ export const maxUint64 = 2n ** 64n - 1n;
 export class LinkedMetaPage {
   private resolver: RangeResolver;
   private offset: bigint;
-  private metaPageData: ArrayBuffer | null;
   private metaPagePromise: Promise<ArrayBuffer> | null = null;
 
   constructor(resolver: RangeResolver, offset: bigint) {
     this.resolver = resolver;
     this.offset = offset;
-    this.metaPageData = null;
   }
 
   async root(): Promise<MemoryPointer> {
@@ -55,24 +53,15 @@ export class LinkedMetaPage {
    * It caches the data in a pagefile. Note: all other methods that call this should be slicing with relative bounds.
    */
   private async getMetaPage(): Promise<ArrayBuffer> {
-    if (this.metaPageData) {
-      return this.metaPageData;
+    if (this.metaPagePromise) {
+      return this.metaPagePromise;
     }
 
     if (!this.metaPagePromise) {
       this.metaPagePromise = this.resolver({
         start: Number(this.offset),
         end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
-      })
-        .then(({ data }) => {
-          this.metaPageData = data;
-          this.metaPagePromise = null;
-          return data;
-        })
-        .catch((error) => {
-          this.metaPagePromise = null;
-          throw error;
-        });
+      });
     }
 
     return this.metaPagePromise;
