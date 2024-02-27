@@ -1,4 +1,3 @@
-
 export enum FileFormat {
   JSONL = 0,
   CSV = 1,
@@ -13,7 +12,7 @@ export type FileMeta = {
 export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
   if (buffer.byteLength !== 10) {
     throw new Error(
-      `incorrect byte length! Want: 10, got ${buffer.byteLength}`
+      `incorrect byte length! Want: 10, got ${buffer.byteLength}`,
     );
   }
 
@@ -25,7 +24,6 @@ export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
   if (Object.values(FileFormat).indexOf(formatByte) === -1) {
     throw new Error(`unexpected file format. Got: ${formatByte}`);
   }
-
 
   const readOffset = dataView.getBigUint64(2, true);
 
@@ -44,11 +42,9 @@ export type IndexMeta = {
 export type IndexHeader = {
   fieldName: string;
   fieldTypes: number[];
-}
+};
 
-export async function readIndexMeta(
-  buffer: ArrayBuffer,
-): Promise<IndexMeta> {
+export async function readIndexMeta(buffer: ArrayBuffer): Promise<IndexMeta> {
   if (buffer.byteLength < 4) {
     throw new Error(`invalid metadata size ${buffer.byteLength}`);
   }

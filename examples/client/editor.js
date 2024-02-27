@@ -29,9 +29,9 @@ var jsonSession = ace.createEditSession(
       ],
     },
     null,
-    2
+    2,
   ),
-  "ace/mode/json"
+  "ace/mode/json",
 );
 
 var jsCode =
@@ -55,14 +55,14 @@ editor.setSession(jsonSession);
 var jsonTab = document.getElementById("jsonTab");
 var jsTab = document.getElementById("jsTab");
 
-jsonTab.addEventListener("click", function() {
+jsonTab.addEventListener("click", function () {
   editor.setSession(jsonSession);
   attachJsonEditorUX();
   activeEditor = "json";
   window.activeEditor = activeEditor;
 });
 
-jsTab.addEventListener("click", function() {
+jsTab.addEventListener("click", function () {
   editor.setSession(jsSession);
   activeEditor = "javascript";
   window.activeEditor = activeEditor;
@@ -101,7 +101,7 @@ function attachJsonEditorUX() {
     return editorContent;
   }
 
-  editor.getSession().on("change", function(e) {
+  editor.getSession().on("change", function (e) {
     if (isProgramChange) {
       isProgramChange = false;
       return;

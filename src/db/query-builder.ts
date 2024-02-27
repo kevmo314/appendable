@@ -16,7 +16,7 @@ export class QueryBuilder<T extends Schema> {
    * Initializes a new instance of the QueryBuilder class.
    * @param {Database<T>} database - An Appendable database instance to execute queries against.
    */
-  constructor(private database: Database<T>) { }
+  constructor(private database: Database<T>) {}
 
   /**
    * Retrieves an immutable copy of the current query.
@@ -54,7 +54,7 @@ export class QueryBuilder<T extends Schema> {
   where(
     key: keyof T,
     operation: WhereNode<T>["operation"],
-    value: T[keyof T]
+    value: T[keyof T],
   ): QueryBuilder<T> {
     const newQuery = new QueryBuilder<T>(this.database);
     newQuery.queryObject = {

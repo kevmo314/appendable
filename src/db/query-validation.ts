@@ -17,7 +17,7 @@ import {
  * @returns {boolean} - Returns true if singleType is included in compositeType, false otherwise.
  */
 function checkType(headerType: number[], queryType: FieldType): boolean {
-  return headerType.includes(queryType)
+  return headerType.includes(queryType);
 }
 
 /**
@@ -29,12 +29,11 @@ function checkType(headerType: number[], queryType: FieldType): boolean {
  */
 function validateWhere<T extends Schema>(
   where: WhereNode<T>[] | undefined,
-  headers: IndexHeader[]
+  headers: IndexHeader[],
 ): void {
   if (!where || !Array.isArray(where) || where.length === 0) {
     throw new Error("Missing 'where' clause.");
   }
-
 
   for (const whereNode of where) {
     if (!["<", "<=", "==", ">=", ">"].includes(whereNode.operation)) {
@@ -49,7 +48,7 @@ function validateWhere<T extends Schema>(
 
     if (!header) {
       throw new Error(
-        `key: ${whereNode.key} in 'where' clause does not exist in dataset.`
+        `key: ${whereNode.key} in 'where' clause does not exist in dataset.`,
       );
     }
 
@@ -61,34 +60,45 @@ function validateWhere<T extends Schema>(
 
     if (whereNode.value === null) {
       if (!checkType(headerType, FieldType.Null)) {
-        throw new Error(`null type not included in ${whereNode.key}'s header types.`)
+        throw new Error(
+          `null type not included in ${whereNode.key}'s header types.`,
+        );
       }
     } else {
       switch (typeof whereNode.value) {
         case "bigint":
         case "number":
-          if (!checkType(headerType, FieldType.Float64) &&
+          if (
+            !checkType(headerType, FieldType.Float64) &&
             !checkType(headerType, FieldType.Uint64) &&
             !checkType(headerType, FieldType.Int64)
           ) {
-            throw new Error(`number type not included in ${whereNode.key}'s header types.`)
+            throw new Error(
+              `number type not included in ${whereNode.key}'s header types.`,
+            );
           }
           break;
 
         case "string":
           if (!checkType(headerType, FieldType.String)) {
-            throw new Error(`string type not included in ${whereNode.key}'s header types`)
+            throw new Error(
+              `string type not included in ${whereNode.key}'s header types`,
+            );
           }
           break;
 
         case "boolean":
           if (!checkType(headerType, FieldType.Boolean)) {
-            throw new Error(`boolean type not included in ${whereNode.key}'s header types`)
+            throw new Error(
+              `boolean type not included in ${whereNode.key}'s header types`,
+            );
           }
           break;
 
         default:
-          throw new Error(`unrecognized type: ${typeof whereNode.value} not included in ${whereNode.key}'s header types`)
+          throw new Error(
+            `unrecognized type: ${typeof whereNode.value} not included in ${whereNode.key}'s header types`,
+          );
       }
     }
   }
@@ -104,7 +114,7 @@ function validateWhere<T extends Schema>(
  */
 function validateOrderBy<T extends Schema>(
   orderBy: OrderBy<T>[] | undefined,
-  whereKey: string
+  whereKey: string,
 ): void {
   if (orderBy) {
     if (!Array.isArray(orderBy) || orderBy.length === 0) {
@@ -133,25 +143,27 @@ function validateOrderBy<T extends Schema>(
  */
 function validateSelect<T extends Schema>(
   select: SelectField<T>[] | undefined,
-  headers: IndexHeader[]
+  headers: IndexHeader[],
 ): void {
   if (select) {
     if (!Array.isArray(select)) {
-      throw new Error(`select is not an array: ${select}`)
+      throw new Error(`select is not an array: ${select}`);
     }
 
     if (select.length <= 0) {
-      throw new Error(`select clause is empty: ${select}`)
+      throw new Error(`select clause is empty: ${select}`);
     }
 
-    let hset = new Set()
-    headers.map(h => hset.add(h.fieldName))
+    let hset = new Set();
+    headers.map((h) => hset.add(h.fieldName));
 
-    select.map(s => {
+    select.map((s) => {
       if (!hset.has(s)) {
-        throw new Error(`${s as string} is not included in the field name headers`)
+        throw new Error(
+          `${s as string} is not included in the field name headers`,
+        );
       }
-    })
+    });
   }
 }
 
@@ -166,9 +178,8 @@ function validateSelect<T extends Schema>(
  */
 export function validateQuery<T extends Schema>(
   query: Query<T>,
-  headers: IndexHeader[]
+  headers: IndexHeader[],
 ): void {
-
   // validate the query
   validateWhere(query.where, headers);
   validateOrderBy(query.orderBy, query.where![0].key as string);
