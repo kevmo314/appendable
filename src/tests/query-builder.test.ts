@@ -156,9 +156,7 @@ describe("test validate queries", () => {
 
     // red queries
     [failQuery, failQuery2].forEach((query) => {
-      expect(() =>
-        validateQuery(query.toQuery(), headers)
-      ).toThrow();
+      expect(() => validateQuery(query.toQuery(), headers)).toThrow();
     });
 
     // green queries

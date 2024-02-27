@@ -82,12 +82,12 @@ export function fieldTypeToString(f: FieldType): string {
 export class Database<T extends Schema> {
   private constructor(
     private dataFile: DataFile,
-    private indexFile: VersionedIndexFile<T>
-  ) { }
+    private indexFile: VersionedIndexFile<T>,
+  ) {}
 
   static forDataFileAndIndexFile<T extends Schema>(
     dataFile: DataFile,
-    indexFile: VersionedIndexFile<T>
+    indexFile: VersionedIndexFile<T>,
   ) {
     return new Database(dataFile, indexFile);
   }
@@ -126,7 +126,7 @@ export class Database<T extends Schema> {
       const mps = await this.indexFile.seek(key as string, fieldType);
       const mp = mps[0];
       const { fieldType: mpFieldType } = await readIndexMeta(
-        await mp.metadata()
+        await mp.metadata(),
       );
 
       let ord: "ASC" | "DESC" = "ASC";
@@ -139,14 +139,14 @@ export class Database<T extends Schema> {
         mp,
         dfResolver,
         format,
-        mpFieldType
+        mpFieldType,
       );
 
       if (operation === ">") {
         if (ord === "ASC") {
           const valueRef = new ReferencedValue(
             { offset: 0n, length: 0 },
-            valueBuf
+            valueBuf,
           );
           const iter = bptree.iter(valueRef);
 
@@ -158,7 +158,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -176,7 +176,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
               yield handleSelect(data, query.select);
             }
@@ -186,7 +186,7 @@ export class Database<T extends Schema> {
         if (ord === "ASC") {
           const valueRef = new ReferencedValue(
             { offset: 0n, length: 0 },
-            valueBuf
+            valueBuf,
           );
           const iter = bptree.iter(valueRef);
 
@@ -198,7 +198,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -216,7 +216,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -226,7 +226,7 @@ export class Database<T extends Schema> {
       } else if (operation === "==") {
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
-          valueBuf
+          valueBuf,
         );
         const iter = bptree.iter(valueRef);
 
@@ -238,7 +238,7 @@ export class Database<T extends Schema> {
 
             const data = await this.dataFile.get(
               Number(mp.offset),
-              Number(mp.offset) + mp.length - 1
+              Number(mp.offset) + mp.length - 1,
             );
 
             yield handleSelect(data, query.select);
@@ -248,7 +248,7 @@ export class Database<T extends Schema> {
         if (ord === "DESC") {
           const valueRef = new ReferencedValue(
             { offset: maxUint64, length: 0 },
-            valueBuf
+            valueBuf,
           );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
@@ -259,7 +259,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -277,7 +277,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -288,7 +288,7 @@ export class Database<T extends Schema> {
         if (ord === "DESC") {
           const valueRef = new ReferencedValue(
             { offset: maxUint64, length: 0 },
-            valueBuf
+            valueBuf,
           );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
@@ -301,7 +301,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -321,7 +321,7 @@ export class Database<T extends Schema> {
 
               const data = await this.dataFile.get(
                 Number(mp.offset),
-                Number(mp.offset) + mp.length - 1
+                Number(mp.offset) + mp.length - 1,
               );
 
               yield handleSelect(data, query.select);
@@ -335,7 +335,7 @@ export class Database<T extends Schema> {
   where(
     key: keyof T,
     operation: WhereNode<T>["operation"],
-    value: T[keyof T]
+    value: T[keyof T],
   ): QueryBuilder<T> {
     return new QueryBuilder(this).where(key, operation, value);
   }
