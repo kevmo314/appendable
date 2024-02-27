@@ -6,28 +6,16 @@ jobs:
   go-fmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: "1.21"
-      - run: |
-          gofiles=$(git diff --cached --name-only --diff-filter=ACM | grep '\.go$')
-          [ -z "$gofiles" ] && exit 0
-
-          unformatted=$(gofmt -l $gofiles)
-          [ -z "$unformatted" ] && exit 0
-
-          echo "`go fmt` returned unformatted files:" >> $GITHUB_STEP_SUMMARY
-          for fn in $unformatted; do
-              echo "* `$fn`" >> $GITHUB_STEP_SUMMARY
-          done
-
-          exit 1
+      - run: if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then exit 1; fi
 
   go-mod-tidy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v4
         with:
           go-version: "1.21"
@@ -43,7 +31,7 @@ jobs:
   prettier:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Use Node.js 18
         uses: actions/setup-node@v3
         with:
