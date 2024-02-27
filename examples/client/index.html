@@ -121,7 +121,6 @@
                         if (window.activeEditor === "json") {
                             const queryJson = JSON.parse(editorContent);
                             const fields = await db.fields();
-                            Appendable.validateQuery(queryJson, fields)
                             const query = await db.query(queryJson);
                             await bindQuery(query);
                         } else if (window.activeEditor === "javascript") {

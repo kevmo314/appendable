@@ -13,11 +13,9 @@ describe("test metadata", () => {
   });
 
   it("reads stored metadata", async () => {
-    const mockRangeResolver: RangeResolver = async ({
-      start,
-      end,
-      expectedLength,
-    }) => {
+    const mockRangeResolver: RangeResolver = async ([
+      { start, end, expectedLength },
+    ]) => {
       const bufferSize = 4096 * 2;
       const buffer = new ArrayBuffer(bufferSize);
       const view = new Uint8Array(buffer);
@@ -34,10 +32,12 @@ describe("test metadata", () => {
         throw new LengthIntegrityError();
       }
 
-      return {
-        data: slice.buffer,
-        totalLength: view.byteLength,
-      };
+      return [
+        {
+          data: slice.buffer,
+          totalLength: view.byteLength,
+        },
+      ];
     };
 
     const pageFile = new PageFile(mockRangeResolver);
@@ -50,17 +50,14 @@ describe("test metadata", () => {
 
 describe("traversing multi pages", () => {
   it("traversing pages", async () => {
-    const mockRangeResolver: RangeResolver = async ({
-      start,
-      end,
-      expectedLength,
-    }) => {
+    const mockRangeResolver: RangeResolver = async ([
+      { start, end, expectedLength },
+    ]) => {
       const pageSize = 4096;
       const headerSize = 12;
       const bufferSize = pageSize * 5; // 1 for gc, 1 for file meta, 3 pages
       const buffer = new ArrayBuffer(bufferSize);
       const view = new Uint8Array(buffer);
-
 
       for (let i = 0; i < 4; i++) {
         let nextPageOffset;
@@ -83,10 +80,12 @@ describe("traversing multi pages", () => {
         throw new LengthIntegrityError();
       }
 
-      return {
-        data: slice.buffer,
-        totalLength: view.byteLength,
-      };
+      return [
+        {
+          data: slice.buffer,
+          totalLength: view.byteLength,
+        },
+      ];
     };
 
     const pageFile = new PageFile(mockRangeResolver);
