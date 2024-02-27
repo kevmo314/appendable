@@ -1,9 +1,7 @@
 import { LengthIntegrityError, RangeResolver } from "../resolver";
 import { PageFile } from "../btree/pagefile";
-import { ReadMultiBPTree } from "../btree/multi";
+import { ReadMultiBPTree, maxUint64 } from "../btree/multi";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
-
-const maxUint64 = 2n ** 64n - 1n;
 
 describe("test metadata", () => {
   let mockMetadata: Uint8Array;

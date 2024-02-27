@@ -102,4 +102,8 @@ export class SkipList {
       `metapage not found for ${query.fieldName} and ${query.fieldType}`,
     );
   }
+
+  getSentinel(): SkipListNode {
+    return this.head;
+  }
 }
