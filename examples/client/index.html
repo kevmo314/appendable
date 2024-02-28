@@ -116,8 +116,7 @@
           // then execute the query
           document.getElementById("execute").onclick = async () => {
             document.getElementById("results").innerHTML = "";
-            const executeButton = document.getElementById("execute");
-            executeButton.disabled = true;
+            document.getElementById("execute").disabled = true;
 
             const editorContent = editor.getValue();
 
@@ -134,7 +133,7 @@
             } catch (error) {
               console.log("error: ", error);
               document.getElementById("results").innerHTML = error.message;
-              executeButton.disabled = false;
+              document.getElementById("execute").disabled = false;
             }
           };
 
@@ -145,7 +144,7 @@
             await bindQuery(query);
           } catch (error) {
             document.getElementById("results").innerHTML = error.message;
-            executeButton.disabled = false;
+            document.getElementById("execute").disabled = false;
           }
         });
 
