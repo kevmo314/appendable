@@ -1,6 +1,9 @@
-import { LinkedMetaPage, ReadMultiBPTree } from "../btree/multi";
+import {
+  LinkedMetaPage,
+  PAGE_SIZE_BYTES,
+  ReadMultiBPTree,
+} from "../btree/multi";
 import { RangeResolver } from "../resolver";
-import { PageFile } from "../btree/pagefile";
 import {
   FileFormat,
   IndexHeader,
@@ -44,12 +47,10 @@ export class IndexFile {
         if (chunks[chunks.length - 1].body === undefined) {
           chunks.pop();
         }
-        console.log(chunks);
-        return chunks.map((c) => {
+        return chunks.map(({ body: cbody, headers: cheaders }) => {
           const enc = new TextEncoder();
-          const data = enc.encode(c.body).buffer;
-
-          const totalLengthStr = c.headers["content-range"]?.split("/")[1];
+          const data = enc.encode(cbody).buffer;
+          const totalLengthStr = cheaders["content-range"]?.split("/")[1];
           const totalLength = totalLengthStr ? parseInt(totalLengthStr, 10) : 0;
 
           return { data, totalLength };
@@ -99,6 +100,8 @@ export interface VersionedIndexFile<T> {
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
   private _tree?: LinkedMetaPage;
 
+  private linkedMetaPages: LinkedMetaPage[] = [];
+
   constructor(private resolver: RangeResolver) {}
 
   getResolver(): RangeResolver {
@@ -110,8 +113,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
       return this._tree;
     }
 
-    const pageFile = new PageFile(this.resolver);
-    const tree = ReadMultiBPTree(this.resolver, pageFile);
+    const tree = ReadMultiBPTree(this.resolver, 0);
 
     this._tree = tree;
     return tree;
@@ -148,64 +150,44 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
   async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
     let mp = await this.tree();
+    return [];
+  }
 
-    let headerMps = [];
+  async fetchMetaPages(): Promise<void> {
+    let currMp = await this.tree();
+    while (true) {
+      const offsets = await currMp.nextNOffsets();
+      if (offsets.length > 0) {
+        const ranges = offsets.map((o) => ({
+          start: Number(o),
+          end: Number(o) + PAGE_SIZE_BYTES - 1,
+        }));
 
-    while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return headerMps;
-      }
-
-      const indexMeta = await readIndexMeta(await next.metadata());
-      if (indexMeta.fieldName === header) {
-        if (fieldType === FieldType.Float64) {
-          // if key is a number or bigint, we cast it as a float64 type
-          if (
-            indexMeta.fieldType === FieldType.Float64 ||
-            indexMeta.fieldType === FieldType.Int64 ||
-            indexMeta.fieldType === FieldType.Uint64
-          ) {
-            headerMps.push(next);
-          }
-        } else {
-          if (indexMeta.fieldType === fieldType) {
-            headerMps.push(next);
-          }
+        let res = await this.resolver(ranges);
+        let idx = 0;
+        for (const { data } of res) {
+          this.linkedMetaPages.push(
+            new LinkedMetaPage(this.resolver, offsets[idx], data),
+          );
+          idx++;
         }
+
+        currMp = this.linkedMetaPages[this.linkedMetaPages.length - 1];
+      } else {
+        break;
       }
-
-      mp = next;
     }
-
-    if (headerMps.length === 0) {
-      throw new Error(
-        `No LinkedMetaPage with ${header} and type ${fieldType} exists`,
-      );
-    }
-
-    return headerMps;
   }
 
   async indexHeaders(): Promise<IndexHeader[]> {
-    let headers: IndexMeta[] = [];
+    await this.fetchMetaPages();
 
-    let mp = await this.tree();
-
-    while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return collectIndexMetas(headers);
-      }
-
-      const nextBuffer = await next.metadata();
-      const indexMeta = await readIndexMeta(nextBuffer);
-
-      headers.push(indexMeta);
-
-      mp = next;
+    let indexMetas: IndexMeta[] = [];
+    for (const mp of this.linkedMetaPages) {
+      const im = await readIndexMeta(await mp.metadata());
+      indexMetas.push(im);
     }
 
-    return collectIndexMetas(headers);
+    return collectIndexMetas(indexMetas);
   }
 }
