@@ -192,6 +192,32 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.
 	return next, next.SetMetadata(buf)
 }
 
+func (i *IndexFile) UpdateOffsets() error {
+	mp := i.tree
+
+	for {
+		next, err := mp.Next()
+		if err != nil {
+			return fmt.Errorf("failed to get next meta page: %w", err)
+		}
+		exists, err := next.Exists()
+		if err != nil {
+			return fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+		if !exists {
+			break
+		}
+
+		err = mp.SetNextNOffsets()
+		if err != nil {
+			return err
+		}
+		mp = next
+	}
+
+	return nil
+}
+
 // Synchronize will synchronize the index file with the data file.
 // This is a convenience method and is equivalent to calling
 // Synchronize() on the data handler itself.
