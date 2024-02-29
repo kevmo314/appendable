@@ -1,7 +1,7 @@
 import { RangeResolver } from "../resolver";
 import { MemoryPointer } from "./node";
 
-const N = 16;
+export const N = 16;
 export const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
 
@@ -41,8 +41,6 @@ export class LinkedMetaPage {
     const metadataLength = lengthView.getUint32(0, true);
     const start = 8 * N + 20;
 
-    console.log(`metadata length: ${metadataLength}`);
-
     return pageData.slice(start, start + metadataLength);
   }
 
@@ -68,18 +66,15 @@ export class LinkedMetaPage {
 
   async nextNOffsets(): Promise<bigint[]> {
     const pageData = await this.getMetaPage();
-
     const view = new DataView(pageData, 12);
-
     let offsets: bigint[] = [];
 
     for (let idx = 0; idx <= N - 1; idx++) {
       const nextOffset = view.getBigUint64(idx * 8, true);
 
-      if (nextOffset === maxUint64) {
-        break;
+      if (nextOffset === maxUint64 || nextOffset === 0n) {
+        return offsets;
       }
-
       offsets.push(nextOffset);
     }
 

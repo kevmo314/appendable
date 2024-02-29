@@ -1,16 +1,7 @@
-import { Chunk } from "./range-request";
-
 function getReader(stream: ReadableStream) {
   let residual: Uint8Array | null = null;
   let readDone = false;
-  let reader:
-    | ReadableStreamDefaultReader<Uint8Array>
-    | ReadableStreamBYOBReader;
-  try {
-    reader = stream.getReader({ mode: "byob" });
-  } catch (e) {
-    reader = stream.getReader();
-  }
+  let reader: ReadableStreamDefaultReader<Uint8Array> = stream.getReader();
   return async (
     buf: Uint8Array,
   ): Promise<ReadableStreamReadResult<Uint8Array>> => {
@@ -56,7 +47,7 @@ function parseContentRangeHeader(
 export default async function* parseMultipartBody(
   contentType: string,
   stream: ReadableStream,
-) {
+): AsyncGenerator<{ data: ArrayBuffer; headers: Record<string, string> }> {
   const reader = getReader(stream);
   const tokens = contentType.split(";");
   if (tokens[0] !== "multipart/byteranges") {
@@ -70,7 +61,6 @@ export default async function* parseMultipartBody(
     throw new Error("No boundary found");
   }
   const boundary = `--${boundaryToken}`;
-  console.log("this is boundary", boundary);
 
   let headers: Record<string, string> = {};
 
@@ -103,7 +93,7 @@ export default async function* parseMultipartBody(
         }
       }
       if (buf[ptr] !== boundary.charCodeAt(i)) {
-        console.log("boundary.charCode", boundary.charCodeAt(i));
+        console.log("boundary.charCode", buf[ptr], boundary.charCodeAt(i), i);
         throw new Error("Invalid boundary");
       }
       ptr = (ptr + 1) % buf.length;
@@ -186,7 +176,7 @@ export default async function* parseMultipartBody(
       ptr = (ptr + 1) % buf.length;
       length--;
     }
-    yield { data, headers };
+    yield { data: data.buffer, headers };
     headers = {};
 
     // read the trailing \r\n

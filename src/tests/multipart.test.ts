@@ -1,5 +1,4 @@
-import parseMultipartBody from "./multipart";
-import { readBinaryFile } from "./tests/test-util";
+import parseMultipartBody from "../multipart";
 
 async function collect<T>(gen: AsyncGenerator<T>) {
   const result: T[] = [];
@@ -10,12 +9,6 @@ async function collect<T>(gen: AsyncGenerator<T>) {
 }
 
 describe("multipart", () => {
-  let responseBody;
-  beforeAll(() => {
-    // to export the response, I did const blob = await response.blob();
-    responseBody = readBinaryFile("rangeresponsebody.bin");
-  });
-
   it("should parse multipart with two chunks", async () => {
     const encoder = new TextEncoder();
     const data = encoder.encode(`--3d6b6a416f9b5\r
