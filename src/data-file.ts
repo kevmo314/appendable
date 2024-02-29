@@ -18,7 +18,6 @@ export class DataFile {
           Accept: "multipart/bytesranges",
         },
       });
-
       switch (response.status) {
         case 200:
           // fallback to resolving ranges individually
@@ -30,13 +29,13 @@ export class DataFile {
               });
 
               const totalLength = Number(
-                response.headers.get("Content-Range")!.split("/")[1],
+                res.headers.get("Content-Range")!.split("/")[1],
               );
               if (expectedLength && totalLength !== expectedLength) {
                 throw new LengthIntegrityError();
               }
               return {
-                data: await response.arrayBuffer(),
+                data: await res.arrayBuffer(),
                 totalLength: totalLength,
               };
             },
