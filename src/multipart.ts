@@ -10,7 +10,7 @@ function getReader(stream: ReadableStream) {
     reader = stream.getReader();
   }
   return async (
-    buf: Uint8Array
+    buf: Uint8Array,
   ): Promise<ReadableStreamReadResult<Uint8Array>> => {
     if (reader instanceof ReadableStreamBYOBReader) {
       return await reader.read(buf);
@@ -51,7 +51,7 @@ function parseContentRangeHeader(header: string): [number, number, number] {
 
 export default async function* parseMultipartBody(
   contentType: string,
-  stream: ReadableStream
+  stream: ReadableStream,
 ) {
   const reader = getReader(stream);
   const tokens = contentType.split(";");
@@ -80,7 +80,7 @@ export default async function* parseMultipartBody(
     const { done, value } = await reader(
       ptr + length >= buf.length
         ? buf.subarray((ptr + length) % buf.length, ptr)
-        : buf.subarray(ptr + length, buf.length)
+        : buf.subarray(ptr + length, buf.length),
     );
     if (done) {
       return done;

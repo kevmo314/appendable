@@ -32,16 +32,16 @@ eta http-equiv="Content-type" content="text/html; c\r
     const multipart = await collect(
       parseMultipartBody(
         "multipart/byteranges; boundary=3d6b6a416f9b5",
-        readable
-      )
+        readable,
+      ),
     );
     expect(multipart.length).toBe(2);
     const decoder = new TextDecoder();
     expect(decoder.decode(multipart[0].data)).toBe(
-      "<!doctype html>\n<html>\n<head>\n    <title>Example Do"
+      "<!doctype html>\n<html>\n<head>\n    <title>Example Do",
     );
     expect(decoder.decode(multipart[1].data)).toBe(
-      'eta http-equiv="Content-type" content="text/html; c'
+      'eta http-equiv="Content-type" content="text/html; c',
     );
   });
 });
