@@ -38,7 +38,9 @@ function getReader(stream: ReadableStream) {
   };
 }
 
-function parseContentRangeHeader(header: string): [number, number, number] {
+function parseContentRangeHeader(
+  header: string
+): [string, number, number, number] {
   // parse bytes a-b/c
   const tokens = header.split(" ");
   if (tokens.length !== 2) {
@@ -46,7 +48,7 @@ function parseContentRangeHeader(header: string): [number, number, number] {
   }
   const [range, total] = tokens[1].split("/");
   const [start, end] = range.split("-");
-  return [Number(start), Number(end), Number(total)];
+  return [tokens[0], Number(start), Number(end), Number(total)];
 }
 
 export default async function* parseMultipartBody(
@@ -90,7 +92,6 @@ export default async function* parseMultipartBody(
   };
 
   while (true) {
-    console.log("reading boundary");
     // read boundary
     for (let i = 0; i < boundary.length; i++) {
       while (length === 0) {
@@ -104,8 +105,6 @@ export default async function* parseMultipartBody(
       ptr = (ptr + 1) % buf.length;
       length--;
     }
-
-    console.log("reading boundary terminator");
 
     // read the boundary terminator
     for (const c of ["\r", "\n"]) {
@@ -126,7 +125,6 @@ export default async function* parseMultipartBody(
       }
     }
 
-    console.log("reading headers");
     // read headers
     let lastByte = 0;
     let header: number[] = [];
@@ -160,13 +158,18 @@ export default async function* parseMultipartBody(
       lastByte = byte;
     }
 
-    console.log("reading body with headers", headers);
     // read body
     // read the Content-Range header
     if (!headers["Content-Range"]) {
+      // TODO: read until the next boundary
       throw new Error("Missing Content-Range header");
     }
-    const [start, end] = parseContentRangeHeader(headers["Content-Range"]);
+    const [unit, start, end] = parseContentRangeHeader(
+      headers["Content-Range"]
+    );
+    if (unit !== "bytes") {
+      throw new Error("Invalid Content-Range header");
+    }
     const contentLength = end - start + 1;
     const data = new Uint8Array(contentLength);
     for (let i = 0; i < contentLength; i++) {
