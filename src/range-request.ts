@@ -1,9 +1,12 @@
-interface Chunk {
+export interface Chunk {
   body: string;
   headers: { [key: string]: string };
 }
 
-export function parseMultipartBody(body: string, boundary: string): Chunk[] {
+export function parseMultipartBodyTextEncoder(
+  body: string,
+  boundary: string,
+): Chunk[] {
   return body
     .split(`--${boundary}`)
     .reduce((chunks: Chunk[], chunk: string) => {

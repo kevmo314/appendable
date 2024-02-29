@@ -1,4 +1,3 @@
-
 import {
   LinkedMetaPage,
   PAGE_SIZE_BYTES,
@@ -13,7 +12,7 @@ import {
   readIndexMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
-import { parseMultipartBody } from "../range-request";
+import parseMultipartBody from "../multipart";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string) {
@@ -67,21 +66,26 @@ export class IndexFile {
             throw new Error("Missing Content-Type in response");
           }
           if (contentType.includes("multipart/byteranges")) {
-            const boundary = contentType.split("boundary=")[1];
-            const text = await response.text();
+            let chunks = [];
 
-            const chunks = parseMultipartBody(text, boundary);
+            if (!response.body) {
+              throw new Error(`response body is null: ${response.body}`);
+            }
+
+            for await (const chunk of parseMultipartBody(
+              contentType,
+              response.body,
+            )) {
+              chunks.push(chunk);
+            }
 
             // the last element is null since the final boundary marker is followed by another delim.
-            if (chunks[chunks.length - 1].body === undefined) {
+            if (chunks[chunks.length - 1].data === undefined) {
               chunks.pop();
             }
 
-            const enc = new TextEncoder();
-            return chunks.map((c) => {
-              const data = enc.encode(c.body).buffer;
-
-              const totalLengthStr = c.headers["content-range"]?.split("/")[1];
+            return chunks.map(({ data, headers }) => {
+              const totalLengthStr = headers["content-range"]?.split("/")[1];
               const totalLength = totalLengthStr
                 ? parseInt(totalLengthStr, 10)
                 : 0;
@@ -203,6 +207,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
         let res = await this.resolver(ranges);
         let idx = 0;
+        console.log("fetching from metapages");
         for (const { data } of res) {
           this.linkedMetaPages.push(
             new LinkedMetaPage(this.resolver, offsets[idx], data),

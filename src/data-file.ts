@@ -1,4 +1,4 @@
-import { parseMultipartBody } from "./range-request";
+import { parseMultipartBodyTextEncoder } from "./range-request";
 import { LengthIntegrityError, RangeResolver } from "./resolver";
 
 export class DataFile {
@@ -58,7 +58,7 @@ export class DataFile {
             const boundary = contentType.split("boundary=")[1];
             const text = await response.text();
 
-            const chunks = parseMultipartBody(text, boundary);
+            const chunks = parseMultipartBodyTextEncoder(text, boundary);
 
             // the last element is null since the final boundary marker is followed by another delim.
             if (chunks[chunks.length - 1].body === undefined) {

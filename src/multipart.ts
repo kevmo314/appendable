@@ -1,3 +1,5 @@
+import { Chunk } from "./range-request";
+
 function getReader(stream: ReadableStream) {
   let residual: Uint8Array | null = null;
   let readDone = false;
@@ -68,6 +70,7 @@ export default async function* parseMultipartBody(
     throw new Error("No boundary found");
   }
   const boundary = `--${boundaryToken}`;
+  console.log("this is boundary", boundary);
 
   let headers: Record<string, string> = {};
 
@@ -100,6 +103,7 @@ export default async function* parseMultipartBody(
         }
       }
       if (buf[ptr] !== boundary.charCodeAt(i)) {
+        console.log("boundary.charCode", boundary.charCodeAt(i));
         throw new Error("Invalid boundary");
       }
       ptr = (ptr + 1) % buf.length;
