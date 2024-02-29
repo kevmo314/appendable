@@ -1,9 +1,10 @@
+
 import {
   LinkedMetaPage,
   PAGE_SIZE_BYTES,
   ReadMultiBPTree,
 } from "../btree/multi";
-import { RangeResolver } from "../resolver";
+import { LengthIntegrityError, RangeResolver } from "../resolver";
 import {
   FileFormat,
   IndexHeader,
@@ -28,46 +29,83 @@ export class IndexFile {
         },
       });
 
-      if (response.status !== 206) {
-        throw new Error(`Expected 206 Partial Content, got ${response.status}`);
-      }
+      switch (response.status) {
+        case 200:
+          // fallback to resolving ranges individually
+          const individualRangePromises = ranges.map(
+            async ({ start, end, expectedLength }) => {
+              const rangeHeader = `${start}-${end}`;
+              const res = await fetch(url, {
+                headers: { Range: `bytes=${rangeHeader}` },
+              });
 
-      const contentType = response.headers.get("Content-Type");
-      if (!contentType) {
-        throw new Error("Missing Content-Type in response");
-      }
-      if (contentType.includes("multipart/byteranges")) {
-        const boundary = contentType.split("boundary=")[1];
-        const abuf = await response.arrayBuffer();
-        const text = new TextDecoder().decode(abuf);
+              const totalLength = Number(
+                res.headers.get("Content-Range")!.split("/")[1],
+              );
+              if (expectedLength && totalLength !== expectedLength) {
+                throw new LengthIntegrityError();
+              }
+              return {
+                data: await res.arrayBuffer(),
+                totalLength: totalLength,
+              };
+            },
+          );
+          return Promise.all(individualRangePromises)
+            .then((res) => {
+              return res;
+            })
+            .catch((error) => {
+              throw new Error(
+                `error occured when fetching for individual range promises: ${error}`,
+              );
+            });
 
-        const chunks = parseMultipartBody(text, boundary);
+        case 206:
+          const contentType = response.headers.get("Content-Type");
+          if (!contentType) {
+            throw new Error("Missing Content-Type in response");
+          }
+          if (contentType.includes("multipart/byteranges")) {
+            const boundary = contentType.split("boundary=")[1];
+            const text = await response.text();
 
-        // the last element is null since the final boundary marker is followed by another delim.
-        if (chunks[chunks.length - 1].body === undefined) {
-          chunks.pop();
-        }
-        return chunks.map(({ body: cbody, headers: cheaders }) => {
-          const enc = new TextEncoder();
-          const data = enc.encode(cbody).buffer;
-          const totalLengthStr = cheaders["content-range"]?.split("/")[1];
-          const totalLength = totalLengthStr ? parseInt(totalLengthStr, 10) : 0;
+            const chunks = parseMultipartBody(text, boundary);
 
-          return { data, totalLength };
-        });
-      } else if (response.headers.has("Content-Range")) {
-        const abuf = await response.arrayBuffer();
-        const totalLength = Number(
-          response.headers.get("Content-Range")!.split("/")[1],
-        );
-        return [
-          {
-            data: abuf,
-            totalLength: totalLength,
-          },
-        ];
-      } else {
-        throw new Error(`Unexpected response format: ${contentType}`);
+            // the last element is null since the final boundary marker is followed by another delim.
+            if (chunks[chunks.length - 1].body === undefined) {
+              chunks.pop();
+            }
+
+            const enc = new TextEncoder();
+            return chunks.map((c) => {
+              const data = enc.encode(c.body).buffer;
+
+              const totalLengthStr = c.headers["content-range"]?.split("/")[1];
+              const totalLength = totalLengthStr
+                ? parseInt(totalLengthStr, 10)
+                : 0;
+
+              return { data, totalLength };
+            });
+          } else if (response.headers.has("Content-Range")) {
+            const abuf = await response.arrayBuffer();
+            const totalLength = Number(
+              response.headers.get("Content-Range")!.split("/")[1],
+            );
+            return [
+              {
+                data: abuf,
+                totalLength: totalLength,
+              },
+            ];
+          } else {
+            throw new Error(`Unexpected response format: ${contentType}`);
+          }
+        default:
+          throw new Error(
+            `Expected 206 or 200 response, got ${response.status}`,
+          );
       }
     });
   }
