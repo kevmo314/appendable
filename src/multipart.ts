@@ -1,21 +1,64 @@
-function isNewline(buf: Uint8Array, i: number) {
-  return (
-    i + 1 < buf.length &&
-    buf[i] === "\r".charCodeAt(0) &&
-    buf[i + 1] === "\n".charCodeAt(0)
-  );
+function getReader(stream: ReadableStream) {
+  let residual: Uint8Array | null = null;
+  let readDone = false;
+  let reader:
+    | ReadableStreamDefaultReader<Uint8Array>
+    | ReadableStreamBYOBReader;
+  try {
+    reader = stream.getReader({ mode: "byob" });
+  } catch (e) {
+    reader = stream.getReader();
+  }
+  return async (
+    buf: Uint8Array
+  ): Promise<ReadableStreamReadResult<Uint8Array>> => {
+    if (reader instanceof ReadableStreamBYOBReader) {
+      return await reader.read(buf);
+    } else {
+      while (true) {
+        if (residual) {
+          const n = Math.min(residual.length, buf.length);
+          buf.set(residual.subarray(0, n));
+          residual = residual.subarray(n);
+          if (residual.length === 0) {
+            residual = null;
+          }
+          return {
+            done: readDone && residual === null,
+            value: buf.subarray(0, n),
+          };
+        }
+        const result = await reader.read();
+        if (result.value) {
+          residual = result.value;
+        }
+        readDone ||= result.done;
+      }
+    }
+  };
+}
+
+function parseContentRangeHeader(header: string): [number, number, number] {
+  // parse bytes a-b/c
+  const tokens = header.split(" ");
+  if (tokens.length !== 2) {
+    throw new Error("Invalid Content-Range header");
+  }
+  const [range, total] = tokens[1].split("/");
+  const [start, end] = range.split("-");
+  return [Number(start), Number(end), Number(total)];
 }
 
 export default async function* parseMultipartBody(
   contentType: string,
   stream: ReadableStream
 ) {
-  const reader = stream.getReader({ mode: "byob" });
-  if (!contentType.startsWith("multipart/")) {
-    throw new Error("Not a multipart body");
+  const reader = getReader(stream);
+  const tokens = contentType.split(";");
+  if (tokens[0] !== "multipart/byteranges") {
+    throw new Error("Not a multipart/byteranges body");
   }
-  const boundaryToken = contentType
-    .split(";")
+  const boundaryToken = tokens
     .map((s) => s.trim())
     .find((s) => s.startsWith("boundary="))
     ?.split("=", 2)?.[1];
@@ -24,76 +67,134 @@ export default async function* parseMultipartBody(
   }
   const boundary = `--${boundaryToken}`;
 
-  let state: "boundary" | "headers" | "body" = "boundary";
-
-  const headers: Record<string, string> = {};
+  let headers: Record<string, string> = {};
 
   const buf = new Uint8Array(4096);
-  let pos = 0;
+  let ptr = 0;
+  let length = 0;
+
+  const extend = async () => {
+    if (length === buf.byteLength) {
+      throw new Error("no buffer space left");
+    }
+    const { done, value } = await reader(
+      ptr + length >= buf.length
+        ? buf.subarray((ptr + length) % buf.length, ptr)
+        : buf.subarray(ptr + length, buf.length)
+    );
+    if (done) {
+      return done;
+    }
+    length += value.length;
+    return false;
+  };
 
   while (true) {
-    const { done, value } = await reader.read(buf.subarray(pos));
-    if (done) {
-      break;
+    console.log("reading boundary");
+    // read boundary
+    for (let i = 0; i < boundary.length; i++) {
+      while (length === 0) {
+        if (await extend()) {
+          return;
+        }
+      }
+      if (buf[ptr] !== boundary.charCodeAt(i)) {
+        throw new Error("Invalid boundary");
+      }
+      ptr = (ptr + 1) % buf.length;
+      length--;
     }
-    const n = pos + value.byteLength;
-    switch (state) {
-      case "boundary": {
-        // in boundary state, the first n bytes correspond to the boundary read so far.
-        // validate that the bytes read are the boundary
-        for (let i = pos; i < Math.min(n, boundary.length); i++) {
-          if (buf[i] !== boundary.charCodeAt(i)) {
-            throw new Error("Invalid boundary");
-          }
-        }
-        pos += value.byteLength;
-        if (pos >= boundary.length + 2) {
-          // finished reading the boundary, erase it from the buffer and start reading the headers.
-          if (isNewline(buf, pos - 2)) {
-            state = "headers";
-            buf.copyWithin(0, pos, n);
-            pos = 0;
-            continue;
-          } else {
-            // end of file
-            return;
-          }
+
+    console.log("reading boundary terminator");
+
+    // read the boundary terminator
+    for (const c of ["\r", "\n"]) {
+      while (length === 0) {
+        if (await extend()) {
+          return;
         }
       }
-      case "headers": {
-        // in headers state, the first n bytes correspond to the headers read so far. read until an \r\n
-        for (let i = Math.max(pos - 1, 0); i + 1 < n; i++) {
-          if (isNewline(buf, i)) {
-            if (isNewline(buf, i + 2)) {
-              // end of headers
-              state = "body";
-              buf.copyWithin(0, pos, i + 4);
-              pos = 0;
-              break;
-            }
-            // emit this header
-            const header = new TextDecoder().decode(buf.subarray(pos, i));
-            const [key, value] = header.split(": ", 2);
-            headers[key] = value;
-            pos = i + 2;
-          }
-        }
-        pos += value.byteLength;
+      if (buf[ptr] === c.charCodeAt(0)) {
+        ptr = (ptr + 1) % buf.length;
+        length--;
+      } else if (buf[ptr] === "-".charCodeAt(0)) {
+        // eof
+        return;
+      } else {
+        // invalid boundary
+        throw new Error("Invalid boundary");
       }
-      case "body": {
-        // read the Content-Length header
-        const contentLength = Number(headers["Content-Length"]);
-        if (contentLength === undefined) {
-          throw new Error("Missing Content-Length header");
+    }
+
+    console.log("reading headers");
+    // read headers
+    let lastByte = 0;
+    let header: number[] = [];
+    while (true) {
+      while (length === 0) {
+        if (await extend()) {
+          return;
         }
-        if (n - pos >= contentLength) {
-          // emit the body
-          yield { data: buf.subarray(pos, pos + contentLength), headers };
-          pos += contentLength;
-          state = "boundary";
-          buf.copyWithin(0, pos, n);
-          pos = 0;
+      }
+      const byte = buf[ptr];
+      ptr = (ptr + 1) % buf.length;
+      length--;
+      if (lastByte === "\r".charCodeAt(0) && byte === "\n".charCodeAt(0)) {
+        // end of header
+        if (header.length === 1 /* it's an \r */) {
+          // end of headers
+          break;
+        } else {
+          const decoded = new TextDecoder().decode(new Uint8Array(header));
+          const tokens = decoded.split(":", 2);
+          if (tokens.length !== 2) {
+            throw new Error(`Invalid header: ${decoded}`);
+          }
+          const [key, value] = tokens;
+          headers[key.trim()] = value.trim();
+          header.length = 0;
         }
+      } else {
+        header.push(byte);
+      }
+      lastByte = byte;
+    }
+
+    console.log("reading body with headers", headers);
+    // read body
+    // read the Content-Range header
+    if (!headers["Content-Range"]) {
+      throw new Error("Missing Content-Range header");
+    }
+    const [start, end] = parseContentRangeHeader(headers["Content-Range"]);
+    const contentLength = end - start + 1;
+    const data = new Uint8Array(contentLength);
+    for (let i = 0; i < contentLength; i++) {
+      while (length === 0) {
+        if (await extend()) {
+          return;
+        }
+      }
+      data[i] = buf[ptr];
+      ptr = (ptr + 1) % buf.length;
+      length--;
+    }
+    yield { data, headers };
+    headers = {};
+
+    // read the trailing \r\n
+    for (const c of ["\r", "\n"]) {
+      while (length === 0) {
+        if (await extend()) {
+          return;
+        }
+      }
+      if (buf[ptr] === c.charCodeAt(0)) {
+        ptr = (ptr + 1) % buf.length;
+        length--;
+      } else {
+        // invalid boundary
+        throw new Error("Invalid boundary");
       }
     }
   }
