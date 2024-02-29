@@ -39,7 +39,7 @@ function getReader(stream: ReadableStream) {
 }
 
 function parseContentRangeHeader(
-  header: string
+  header: string,
 ): [string, number, number, number] {
   // parse bytes a-b/c
   const tokens = header.split(" ");
@@ -165,7 +165,7 @@ export default async function* parseMultipartBody(
       throw new Error("Missing Content-Range header");
     }
     const [unit, start, end] = parseContentRangeHeader(
-      headers["Content-Range"]
+      headers["Content-Range"],
     );
     if (unit !== "bytes") {
       throw new Error("Invalid Content-Range header");
