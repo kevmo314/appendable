@@ -2,7 +2,7 @@ import { BPTree, ReferencedValue } from "../btree/bptree";
 import { maxUint64 } from "../btree/multi";
 import { DataFile } from "../data-file";
 import { VersionedIndexFile } from "../index-file/index-file";
-import { readIndexMeta } from "../index-file/meta";
+import { IndexHeader, readIndexMeta } from "../index-file/meta";
 import { QueryBuilder } from "./query-builder";
 import { handleSelect, processWhere } from "./query-logic";
 import { validateQuery } from "./query-validation";
@@ -80,6 +80,8 @@ export function fieldTypeToString(f: FieldType): string {
 }
 
 export class Database<T extends Schema> {
+  private indexHeadersPromise?: Promise<IndexHeader[]>;
+
   private constructor(
     private dataFile: DataFile,
     private indexFile: VersionedIndexFile<T>,
@@ -93,7 +95,11 @@ export class Database<T extends Schema> {
   }
 
   async fields() {
-    return await this.indexFile.indexHeaders();
+    if (!this.indexHeadersPromise) {
+      this.indexHeadersPromise = this.indexFile.indexHeaders();
+    }
+
+    return this.indexHeadersPromise;
   }
 
   async *query(query: Query<T>) {
@@ -107,7 +113,7 @@ export class Database<T extends Schema> {
       throw new Error("data file is undefined");
     }
 
-    const headers = await this.indexFile.indexHeaders();
+    const headers = await this.fields();
 
     validateQuery(query, headers);
 

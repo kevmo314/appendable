@@ -1,23 +1,90 @@
-interface Chunk {
-  body: string;
-  headers: { [key: string]: string };
-}
+import parseMultipartBody from "./multipart";
+import { LengthIntegrityError } from "./resolver";
 
-export function parseMultipartBody(body: string, boundary: string): Chunk[] {
-  return body
-    .split(`--${boundary}`)
-    .reduce((chunks: Chunk[], chunk: string) => {
-      if (chunk && chunk !== "--") {
-        const [head, body] = chunk.trim().split(/\r\n\r\n/g, 2);
-        const headers = head
-          .split(/\r\n/g)
-          .reduce((headers: { [key: string]: string }, header: string) => {
-            const [key, value] = header.split(/:\s+/);
-            headers[key.toLowerCase()] = value;
-            return headers;
-          }, {});
-        chunks.push({ body, headers });
+export async function requestRanges(
+  url: string,
+  ranges: { start: number; end: number; expectedLength?: number }[],
+): Promise<{ data: ArrayBuffer; totalLength: number }[]> {
+  const rangesHeader = ranges
+    .map(({ start, end }) => `${start}-${end}`)
+    .join(",");
+
+  const response = await fetch(url, {
+    headers: {
+      Range: `bytes=${rangesHeader}`,
+      Accept: "multipart/bytesranges",
+    },
+  });
+
+  switch (response.status) {
+    case 200:
+      // fallback to resolving ranges individually
+      const individualRangePromises = ranges.map(
+        async ({ start, end, expectedLength }) => {
+          const rangeHeader = `${start}-${end}`;
+          const res = await fetch(url, {
+            headers: { Range: `bytes=${rangeHeader}` },
+          });
+
+          const totalLength = Number(
+            res.headers.get("Content-Range")!.split("/")[1],
+          );
+          if (expectedLength && totalLength !== expectedLength) {
+            throw new LengthIntegrityError();
+          }
+          return {
+            data: await res.arrayBuffer(),
+            totalLength: totalLength,
+          };
+        },
+      );
+      return await Promise.all(individualRangePromises);
+
+    case 206:
+      const contentType = response.headers.get("Content-Type");
+      if (!contentType) {
+        throw new Error("Missing Content-Type in response");
       }
-      return chunks;
-    }, []);
+      if (contentType.includes("multipart/byteranges")) {
+        let chunks = [];
+
+        if (!response.body) {
+          throw new Error(`response body is null: ${response.body}`);
+        }
+
+        for await (const chunk of parseMultipartBody(
+          contentType,
+          response.body,
+        )) {
+          chunks.push(chunk);
+        }
+
+        // the last element is null since the final boundary marker is followed by another delim.
+        if (chunks[chunks.length - 1].data === undefined) {
+          chunks.pop();
+        }
+
+        return chunks.map(({ data, headers }) => {
+          const totalLengthStr = headers["content-range"]?.split("/")[1];
+          const totalLength = totalLengthStr ? parseInt(totalLengthStr, 10) : 0;
+
+          return { data, totalLength };
+        });
+      } else if (response.headers.has("Content-Range")) {
+        const abuf = await response.arrayBuffer();
+        const totalLength = Number(
+          response.headers.get("Content-Range")!.split("/")[1],
+        );
+        return [
+          {
+            data: abuf,
+            totalLength: totalLength,
+          },
+        ];
+      } else {
+        throw new Error(`Unexpected response format: ${contentType}`);
+      }
+    default:
+      throw new Error(`Expected 206 or 200 response, got ${response.status}`);
+  }
 }

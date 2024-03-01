@@ -1,25 +1,26 @@
 import { RangeResolver } from "../resolver";
 import { MemoryPointer } from "./node";
-import { PageFile } from "./pagefile";
 
-const PAGE_SIZE_BYTES = 4096;
+export const N = 16;
+export const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
 
 export class LinkedMetaPage {
   private resolver: RangeResolver;
   private offset: bigint;
-  private metaPagePromise?: Promise<
+  private metaPageData?: ArrayBuffer;
+  private metaPageDataPromise?: Promise<
     { data: ArrayBuffer; totalLength: number }[]
   >;
 
-  constructor(resolver: RangeResolver, offset: bigint) {
+  constructor(resolver: RangeResolver, offset: bigint, data?: ArrayBuffer) {
     this.resolver = resolver;
     this.offset = offset;
+    this.metaPageData = data;
   }
 
   async root(): Promise<MemoryPointer> {
-    const res = await this.getMetaPage();
-    const { data: pageData } = res[0];
+    const pageData = await this.getMetaPage();
 
     // we seek by 12 bytes since offset is 8 bytes, length is 4 bytes
     const data = pageData.slice(0, 12);
@@ -34,29 +35,29 @@ export class LinkedMetaPage {
     };
   }
 
-  /**
-   * `metadata()` gets the page data. It does the following:
-   * 		(1) creates a slice from 24 to the end of the page
-   * 		(2) it reads the first four bytes of that slice which gives us the length to seek to
-   * 		(3) slices from [24, (24 + dataLength)] which contain metadata
-   */
   async metadata(): Promise<ArrayBuffer> {
-    const res = await this.getMetaPage();
-    const { data: pageData } = res[0];
+    const pageData = await this.getMetaPage();
 
-    const lengthView = new DataView(pageData, 24);
+    const lengthView = new DataView(pageData, 8 * N + 16);
 
     // read the first four because that represents length
     const metadataLength = lengthView.getUint32(0, true);
+    const start = 8 * N + 20;
 
-    return pageData.slice(28, 28 + metadataLength);
+    return pageData.slice(start, start + metadataLength);
   }
 
-  private async getMetaPage(): Promise<
-    { data: ArrayBuffer; totalLength: number }[]
-  > {
-    if (!this.metaPagePromise) {
-      this.metaPagePromise = this.resolver([
+  public setMetaPage(pageData: ArrayBuffer) {
+    this.metaPageData = pageData;
+  }
+
+  private async getMetaPage(): Promise<ArrayBuffer> {
+    if (this.metaPageData) {
+      return this.metaPageData;
+    }
+
+    if (!this.metaPageDataPromise) {
+      this.metaPageDataPromise = this.resolver([
         {
           start: Number(this.offset),
           end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
@@ -64,24 +65,27 @@ export class LinkedMetaPage {
       ]);
     }
 
-    return this.metaPagePromise;
+    const res = await this.metaPageDataPromise;
+    const { data } = res[0];
+
+    return data;
   }
 
-  /**
-   * `next()` - returns a new LinkedMetaPage
-   */
-  async next(): Promise<LinkedMetaPage | null> {
-    const res = await this.getMetaPage();
-    const { data: pageData } = res[0];
+  async nextNOffsets(): Promise<bigint[]> {
+    const pageData = await this.getMetaPage();
+    const view = new DataView(pageData, 12);
+    let offsets: bigint[] = [];
 
-    const view = new DataView(pageData, 12, 8);
-    const nextOffset = view.getBigUint64(0, true);
+    for (let idx = 0; idx <= N - 1; idx++) {
+      const nextOffset = view.getBigUint64(idx * 8, true);
 
-    if (nextOffset === maxUint64) {
-      return null;
+      if (nextOffset === maxUint64) {
+        return offsets;
+      }
+      offsets.push(nextOffset);
     }
 
-    return new LinkedMetaPage(this.resolver, nextOffset);
+    return offsets;
   }
 
   getOffset(): bigint {
@@ -91,8 +95,8 @@ export class LinkedMetaPage {
 
 export function ReadMultiBPTree(
   resolver: RangeResolver,
-  pageFile: PageFile,
+  idx: number,
 ): LinkedMetaPage {
-  const offset = pageFile.page(0);
+  let offset = idx < 0 ? BigInt(0) : BigInt(idx + 1) * BigInt(PAGE_SIZE_BYTES);
   return new LinkedMetaPage(resolver, offset);
 }
