@@ -76,7 +76,7 @@ func TestBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		tree := NewBPTree(p, newTestMetaPage(t, p))
-		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
 		k, v, err := tree.Find(ReferencedValue{Value: []byte("hello")})
