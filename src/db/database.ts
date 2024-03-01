@@ -80,7 +80,7 @@ export function fieldTypeToString(f: FieldType): string {
 }
 
 export class Database<T extends Schema> {
-  private indexHeadersPromise: Promise<IndexHeader[]>;
+  private indexHeadersPromise?: Promise<IndexHeader[]>;
 
   private constructor(
     private dataFile: DataFile,
