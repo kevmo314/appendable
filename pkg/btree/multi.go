@@ -124,13 +124,7 @@ func (m *LinkedMetaPage) NextNOffsets() ([]uint64, error) {
 	return offsets, nil
 }
 
-func (m *LinkedMetaPage) SetNextNOffsets() error {
-	offsets, err := m.NextNOffsets()
-
-	if err != nil {
-		return err
-	}
-
+func (m *LinkedMetaPage) SetNextNOffsets(offsets []uint64) error {
 	if len(offsets) > N {
 		return fmt.Errorf("too many offsets, max number of offsets should be %d", N)
 	}
@@ -145,10 +139,8 @@ func (m *LinkedMetaPage) SetNextNOffsets() error {
 		}
 	}
 
-	for i := len(offsets); i < N; i++ {
-		if err := binary.Write(m.rws, binary.LittleEndian, ^uint64(0)); err != nil {
-			return err
-		}
+	if err := binary.Write(m.rws, binary.LittleEndian, ^uint64(0)); err != nil {
+		return err
 	}
 	return nil
 }

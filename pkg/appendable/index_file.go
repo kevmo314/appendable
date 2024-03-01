@@ -208,7 +208,12 @@ func (i *IndexFile) UpdateOffsets() error {
 			break
 		}
 
-		err = mp.SetNextNOffsets()
+		offsets, err := mp.NextNOffsets()
+		if err != nil {
+			return err
+		}
+
+		err = mp.SetNextNOffsets(offsets)
 		if err != nil {
 			return err
 		}

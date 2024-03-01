@@ -38,15 +38,7 @@ export async function requestRanges(
           };
         },
       );
-      return Promise.all(individualRangePromises)
-        .then((res) => {
-          return res;
-        })
-        .catch((error) => {
-          throw new Error(
-            `error occured when fetching for individual range promises: ${error}`,
-          );
-        });
+      return await Promise.all(individualRangePromises);
 
     case 206:
       const contentType = response.headers.get("Content-Type");
