@@ -24,9 +24,9 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 			{Offset: 2, Length: 3},
 		},
 		Keys: []ReferencedValue{
-			{Value: []byte{0}},
-			{Value: []byte{1, 2}},
-			{Value: []byte{3, 4, 5}},
+			{Value: []byte{0}, UseValue: true}, // false
+			{Value: []byte{1}, UseValue: true}, // true
+			{Value: []byte{3, 4, 5}, UseValue: false},
 		},
 	}
 
@@ -45,7 +45,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(node1, node2) {
-		t.Fatalf("expected %#v, got %#v", node1, node2)
+		t.Fatalf("expected %#v\ngot %#v", node1, node2)
 	}
 }
 

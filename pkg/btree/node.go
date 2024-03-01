@@ -28,6 +28,9 @@ type ReferencedValue struct {
 	// to disambiguate between keys that compare as equal.
 	DataPointer MemoryPointer
 	Value       []byte
+
+	// a boolean value to determine whether or not to use the value directly or the memory pointer
+	UseValue bool
 }
 
 func (rv ReferencedValue) String() string {
@@ -81,7 +84,7 @@ func (n *BPTreeNode) NumPointers() int {
 func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		if k.DataPointer.Length > 0 {
+		if !k.UseValue {
 			size += 4 + 12 // length of key + length of pointer
 		} else {
 			size += 4 + len(k.Value)
@@ -110,7 +113,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 	ct := 4
 	for _, k := range n.Keys {
-		if k.DataPointer.Length > 0 {
+		if !k.UseValue {
 			binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
 			binary.LittleEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
 			binary.LittleEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
@@ -134,6 +137,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		ct += 8
 	}
 	if ct != int(n.Size()) {
+		fmt.Printf("ct: %v, node size: %v", ct, int(n.Size()))
 		panic("size mismatch")
 	}
 	return buf, nil
@@ -163,9 +167,9 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 
 	m := 4
-	for i := range n.Keys {
+	for i, k := range n.Keys {
 		l := binary.LittleEndian.Uint32(buf[m : m+4])
-		if l == ^uint32(0) {
+		if !k.UseValue {
 			// read the key out of the memory pointer stored at this position
 			n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m+4 : m+12])
 			n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+12 : m+16])

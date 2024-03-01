@@ -185,6 +185,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
 						DataPointer: mp,
 						Value:       []byte{1},
+						UseValue:    true,
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
@@ -192,6 +193,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
 						DataPointer: mp,
 						Value:       []byte{0},
+						UseValue:    true,
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
@@ -238,6 +240,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
 					Value:       []byte{},
 					DataPointer: mp,
+					UseValue:    true,
 				}, data); err != nil {
 					return fmt.Errorf("failed to insert into b+tree: %w\nmp: %v", err, data.Offset)
 				}
