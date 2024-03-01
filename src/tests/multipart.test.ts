@@ -1,4 +1,4 @@
-import parseMultipartBody from "./multipart";
+import parseMultipartBody from "../multipart";
 
 async function collect<T>(gen: AsyncGenerator<T>) {
   const result: T[] = [];

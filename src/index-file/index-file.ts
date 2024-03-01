@@ -1,6 +1,9 @@
-import { LinkedMetaPage, ReadMultiBPTree } from "../btree/multi";
-import { LengthIntegrityError, RangeResolver } from "../resolver";
-import { PageFile } from "../btree/pagefile";
+import {
+  LinkedMetaPage,
+  PAGE_SIZE_BYTES,
+  ReadMultiBPTree,
+} from "../btree/multi";
+import { RangeResolver } from "../resolver";
 import {
   FileFormat,
   IndexHeader,
@@ -9,101 +12,13 @@ import {
   readIndexMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
-import { parseMultipartBody } from "../range-request";
+import { requestRanges } from "../range-request";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string) {
-    return await IndexFile.forResolver<T>(async (ranges) => {
-      const rangesHeader = ranges
-        .map(({ start, end }) => `${start}-${end}`)
-        .join(",");
-
-      const response = await fetch(url, {
-        headers: {
-          Range: `bytes=${rangesHeader}`,
-          Accept: "multipart/bytesranges",
-        },
-      });
-
-      switch (response.status) {
-        case 200:
-          // fallback to resolving ranges individually
-          const individualRangePromises = ranges.map(
-            async ({ start, end, expectedLength }) => {
-              const rangeHeader = `${start}-${end}`;
-              const res = await fetch(url, {
-                headers: { Range: `bytes=${rangeHeader}` },
-              });
-
-              const totalLength = Number(
-                res.headers.get("Content-Range")!.split("/")[1],
-              );
-              if (expectedLength && totalLength !== expectedLength) {
-                throw new LengthIntegrityError();
-              }
-              return {
-                data: await res.arrayBuffer(),
-                totalLength: totalLength,
-              };
-            },
-          );
-          return Promise.all(individualRangePromises)
-            .then((res) => {
-              return res;
-            })
-            .catch((error) => {
-              throw new Error(
-                `error occured when fetching for individual range promises: ${error}`,
-              );
-            });
-
-        case 206:
-          const contentType = response.headers.get("Content-Type");
-          if (!contentType) {
-            throw new Error("Missing Content-Type in response");
-          }
-          if (contentType.includes("multipart/byteranges")) {
-            const boundary = contentType.split("boundary=")[1];
-            const text = await response.text();
-
-            const chunks = parseMultipartBody(text, boundary);
-
-            // the last element is null since the final boundary marker is followed by another delim.
-            if (chunks[chunks.length - 1].body === undefined) {
-              chunks.pop();
-            }
-
-            const enc = new TextEncoder();
-            return chunks.map((c) => {
-              const data = enc.encode(c.body).buffer;
-
-              const totalLengthStr = c.headers["content-range"]?.split("/")[1];
-              const totalLength = totalLengthStr
-                ? parseInt(totalLengthStr, 10)
-                : 0;
-
-              return { data, totalLength };
-            });
-          } else if (response.headers.has("Content-Range")) {
-            const abuf = await response.arrayBuffer();
-            const totalLength = Number(
-              response.headers.get("Content-Range")!.split("/")[1],
-            );
-            return [
-              {
-                data: abuf,
-                totalLength: totalLength,
-              },
-            ];
-          } else {
-            throw new Error(`Unexpected response format: ${contentType}`);
-          }
-        default:
-          throw new Error(
-            `Expected 206 or 200 response, got ${response.status}`,
-          );
-      }
-    });
+    return await IndexFile.forResolver<T>(
+      async (ranges) => await requestRanges(url, ranges),
+    );
   }
 
   static async forResolver<T = any>(
@@ -129,10 +44,14 @@ export interface VersionedIndexFile<T> {
   indexHeaders(): Promise<IndexHeader[]>;
 
   seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]>;
+
+  fetchMetaPages(): Promise<void>;
 }
 
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
   private _tree?: LinkedMetaPage;
+
+  private linkedMetaPages: LinkedMetaPage[] = [];
 
   constructor(private resolver: RangeResolver) {}
 
@@ -145,8 +64,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
       return this._tree;
     }
 
-    const pageFile = new PageFile(this.resolver);
-    const tree = ReadMultiBPTree(this.resolver, pageFile);
+    const tree = ReadMultiBPTree(this.resolver, 0);
 
     this._tree = tree;
     return tree;
@@ -182,17 +100,15 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
-    let mp = await this.tree();
+    if (this.linkedMetaPages.length === 0) {
+      await this.fetchMetaPages();
+    }
 
     let headerMps = [];
 
-    while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return headerMps;
-      }
-
-      const indexMeta = await readIndexMeta(await next.metadata());
+    for (let idx = 0; idx <= this.linkedMetaPages.length - 1; idx++) {
+      const mp = this.linkedMetaPages[idx];
+      const indexMeta = await readIndexMeta(await mp.metadata());
       if (indexMeta.fieldName === header) {
         if (fieldType === FieldType.Float64) {
           // if key is a number or bigint, we cast it as a float64 type
@@ -201,46 +117,54 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
             indexMeta.fieldType === FieldType.Int64 ||
             indexMeta.fieldType === FieldType.Uint64
           ) {
-            headerMps.push(next);
+            headerMps.push(mp);
           }
         } else {
           if (indexMeta.fieldType === fieldType) {
-            headerMps.push(next);
+            headerMps.push(mp);
           }
         }
       }
-
-      mp = next;
-    }
-
-    if (headerMps.length === 0) {
-      throw new Error(
-        `No LinkedMetaPage with ${header} and type ${fieldType} exists`,
-      );
     }
 
     return headerMps;
   }
 
-  async indexHeaders(): Promise<IndexHeader[]> {
-    let headers: IndexMeta[] = [];
+  async fetchMetaPages(): Promise<void> {
+    let currMp = await this.tree();
+    let offsets = await currMp.nextNOffsets();
 
-    let mp = await this.tree();
+    while (offsets.length > 0) {
+      let ranges = offsets.map((o) => ({
+        start: Number(o),
+        end: Number(o) + PAGE_SIZE_BYTES - 1,
+      }));
 
-    while (mp) {
-      const next = await mp.next();
-      if (next === null) {
-        return collectIndexMetas(headers);
+      let res = await this.resolver(ranges);
+      let idx = 0;
+      for (const { data } of res) {
+        this.linkedMetaPages.push(
+          new LinkedMetaPage(this.resolver, offsets[idx], data),
+        );
+        idx++;
       }
 
-      const nextBuffer = await next.metadata();
-      const indexMeta = await readIndexMeta(nextBuffer);
+      currMp = this.linkedMetaPages[this.linkedMetaPages.length - 1];
+      offsets = await currMp.nextNOffsets();
+    }
+  }
 
-      headers.push(indexMeta);
-
-      mp = next;
+  async indexHeaders(): Promise<IndexHeader[]> {
+    if (this.linkedMetaPages.length === 0) {
+      await this.fetchMetaPages();
     }
 
-    return collectIndexMetas(headers);
+    let indexMetas: IndexMeta[] = [];
+    for (const mp of this.linkedMetaPages) {
+      const im = await readIndexMeta(await mp.metadata());
+      indexMetas.push(im);
+    }
+
+    return collectIndexMetas(indexMetas);
   }
 }

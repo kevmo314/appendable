@@ -113,9 +113,30 @@ func generateBtreeIterator() {
 	b.WriteToDisk("btree_iterator.bin")
 }
 
+func generateFilledMetadata() {
+	b := buftest.NewSeekableBuffer()
+	p, err := btree.NewPageFile(b)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	tree, err := btree.NewMultiBPTree(p, 0)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if err := tree.Reset(); err != nil {
+		log.Fatalf("%v", err)
+	}
+	if err := tree.SetMetadata([]byte("hello")); err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	b.WriteToDisk("filled_metadata.bin")
+}
+
 func main() {
 
-	generateBasicBtree()
-	generateBtreeIterator()
+	generateFilledMetadata()
+	//generateBasicBtree()
+	//generateBtreeIterator()
 
 }
