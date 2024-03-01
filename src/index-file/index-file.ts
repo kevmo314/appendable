@@ -44,6 +44,8 @@ export interface VersionedIndexFile<T> {
   indexHeaders(): Promise<IndexHeader[]>;
 
   seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]>;
+
+  fetchMetaPages(): Promise<void>;
 }
 
 export class IndexFileV1<T> implements VersionedIndexFile<T> {

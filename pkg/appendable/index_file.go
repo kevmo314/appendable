@@ -193,7 +193,9 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.
 }
 
 func (i *IndexFile) UpdateOffsets() error {
+	// first pass to collect all offsets
 	mp := i.tree
+	var offsets []uint64
 
 	for {
 		next, err := mp.Next()
@@ -204,19 +206,43 @@ func (i *IndexFile) UpdateOffsets() error {
 		if err != nil {
 			return fmt.Errorf("failed to check if meta page exists: %w", err)
 		}
+
+		if !exists {
+			offsets = append(offsets, ^uint64(0))
+			break
+		}
+
+		offsets = append(offsets, next.MemoryPointer().Offset)
+
+		mp = next
+	}
+
+	mp = i.tree
+
+	for idx := 0; ; idx++ {
+		exists, err := mp.Exists()
+		if err != nil {
+			return fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+
 		if !exists {
 			break
 		}
 
-		offsets, err := mp.NextNOffsets()
-		if err != nil {
-			return err
+		upperBound := idx + btree.N
+		if upperBound > len(offsets) {
+			upperBound = len(offsets)
 		}
 
-		err = mp.SetNextNOffsets(offsets)
-		if err != nil {
-			return err
+		if err = mp.SetNextNOffsets(offsets[idx:upperBound]); err != nil {
+			return fmt.Errorf("failed to set next N offsets: %w", err)
 		}
+
+		next, err := mp.Next()
+		if err != nil {
+			return fmt.Errorf("failed to get next meta page: %w", err)
+		}
+
 		mp = next
 	}
 

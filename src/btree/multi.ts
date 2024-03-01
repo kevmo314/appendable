@@ -9,6 +9,9 @@ export class LinkedMetaPage {
   private resolver: RangeResolver;
   private offset: bigint;
   private metaPageData?: ArrayBuffer;
+  private metaPageDataPromise?: Promise<
+    { data: ArrayBuffer; totalLength: number }[]
+  >;
 
   constructor(resolver: RangeResolver, offset: bigint, data?: ArrayBuffer) {
     this.resolver = resolver;
@@ -49,19 +52,23 @@ export class LinkedMetaPage {
   }
 
   private async getMetaPage(): Promise<ArrayBuffer> {
-    if (!this.metaPageData) {
-      const res = await this.resolver([
+    if (this.metaPageData) {
+      return this.metaPageData;
+    }
+
+    if (!this.metaPageDataPromise) {
+      this.metaPageDataPromise = this.resolver([
         {
           start: Number(this.offset),
           end: Number(this.offset) + PAGE_SIZE_BYTES - 1,
         },
       ]);
-
-      const { data } = res[0];
-      return data;
     }
 
-    return this.metaPageData;
+    const res = await this.metaPageDataPromise;
+    const { data } = res[0];
+
+    return data;
   }
 
   async nextNOffsets(): Promise<bigint[]> {
@@ -72,7 +79,7 @@ export class LinkedMetaPage {
     for (let idx = 0; idx <= N - 1; idx++) {
       const nextOffset = view.getBigUint64(idx * 8, true);
 
-      if (nextOffset === maxUint64 || nextOffset === 0n) {
+      if (nextOffset === maxUint64) {
         return offsets;
       }
       offsets.push(nextOffset);

@@ -99,26 +99,15 @@ func (m *LinkedMetaPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
 	return m.SetMetadata(buf)
 }
 
-func (m *LinkedMetaPage) NextNOffsets() ([]uint64, error) {
-	offsets := make([]uint64, N)
-	currentOffset := m.offset
+func (m *LinkedMetaPage) NextNOffsets(offsets []uint64) ([]uint64, error) {
+	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
+		return nil, err
+	}
 
 	for i := 0; i < N; i++ {
-		if _, err := m.rws.Seek(int64(currentOffset)+12, io.SeekStart); err != nil {
+		if err := binary.Read(m.rws, binary.LittleEndian, &offsets[i]); err != nil {
 			return nil, err
 		}
-
-		var nextOffset uint64
-		if err := binary.Read(m.rws, binary.LittleEndian, &nextOffset); err != nil {
-			return nil, err
-		}
-
-		if nextOffset == ^uint64(0) {
-			break
-		}
-
-		offsets[i] = nextOffset
-		currentOffset = nextOffset
 	}
 
 	return offsets, nil
