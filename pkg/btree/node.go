@@ -84,7 +84,7 @@ func (n *BPTreeNode) NumPointers() int {
 func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		if !k.UseValue {
+		if k.DataPointer.Length > 0 {
 			size += 4 + 12 // length of key + length of pointer
 		} else {
 			size += 4 + len(k.Value)
@@ -113,7 +113,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 	ct := 4
 	for _, k := range n.Keys {
-		if !k.UseValue {
+		if k.DataPointer.Length > 0 {
 			binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
 			binary.LittleEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
 			binary.LittleEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
@@ -167,9 +167,9 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 
 	m := 4
-	for i, k := range n.Keys {
+	for i := range n.Keys {
 		l := binary.LittleEndian.Uint32(buf[m : m+4])
-		if !k.UseValue {
+		if l == ^uint32(0) {
 			// read the key out of the memory pointer stored at this position
 			n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m+4 : m+12])
 			n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+12 : m+16])
