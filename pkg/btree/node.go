@@ -30,7 +30,7 @@ type ReferencedValue struct {
 	Value       []byte
 
 	// a boolean value to determine whether or not to use the value directly or the memory pointer
-	UseValue bool
+	ElideValue bool
 }
 
 func (rv ReferencedValue) String() string {
@@ -84,8 +84,9 @@ func (n *BPTreeNode) NumPointers() int {
 func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		if k.DataPointer.Length > 0 {
-			size += 4 + 12 // length of key + length of pointer
+		size += 12
+		if k.ElideValue {
+			size += 4
 		} else {
 			size += 4 + len(k.Value)
 		}
@@ -113,24 +114,20 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 	ct := 4
 	for _, k := range n.Keys {
-		if k.DataPointer.Length > 0 {
-			if !k.UseValue {
-				binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
-			} else {
-				binary.LittleEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
-				copy(buf[ct+4:ct+4+len(k.Value)], k.Value)
-			}
-
-			binary.LittleEndian.PutUint64(buf[ct+4:ct+12], k.DataPointer.Offset)
-			binary.LittleEndian.PutUint32(buf[ct+12:ct+16], k.DataPointer.Length)
-			ct += 4 + 12
+		binary.LittleEndian.PutUint64(buf[ct:ct+8], k.DataPointer.Offset)
+		binary.LittleEndian.PutUint32(buf[ct+8:ct+12], k.DataPointer.Length)
+		ct += 12
+		if k.ElideValue {
+			binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
+			ct += 4
 		} else {
 			binary.LittleEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
-			m := copy(buf[ct+4:ct+4+len(k.Value)], k.Value)
+			ct += 4
+			m := copy(buf[ct:ct+len(k.Value)], k.Value)
 			if m != len(k.Value) {
 				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
 			}
-			ct += m + 4
+			ct += m
 		}
 	}
 	for _, p := range n.leafPointers {
@@ -173,24 +170,21 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 
 	m := 4
-	for i, k := range n.Keys {
+	for i := range n.Keys {
+		n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m : m+8])
+		n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+8 : m+12])
+		m += 12
+
 		l := binary.LittleEndian.Uint32(buf[m : m+4])
+		m += 4
 		if l == ^uint32(0) {
 			// read the key out of the memory pointer stored at this position
-			n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m+4 : m+12])
-			n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+12 : m+16])
+			n.Keys[i].ElideValue = true
 			dp := n.Keys[i].DataPointer
 			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
-			m += 4 + 12
 		} else {
-			n.Keys[i].Value = buf[m+4 : m+4+int(l)]
-			if !(k.DataPointer.Length > 0) {
-				n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m+4 : m+12])
-				n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+12 : m+16])
-				m += 12
-			}
-
-			m += 4 + int(l)
+			n.Keys[i].Value = buf[m : m+int(l)]
+			m += int(l)
 		}
 	}
 	for i := range n.leafPointers {
