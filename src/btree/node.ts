@@ -120,7 +120,7 @@ export class BPTreeNode {
       const dpLength = dataView.getUint32(8, true);
       m += 12;
 
-      const l = dataView.getUint32(m, true);
+      const l = dataView.getUint32(12, true);
       m += 4;
       if (l === ~0 >>> 0) {
         this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
@@ -133,11 +133,8 @@ export class BPTreeNode {
 
         dpIndexes.push(idx);
       } else {
-        console.log("looking at", m, l);
         // we are storing the values directly in the referenced value
         const value = buffer.slice(m, m + l);
-
-        console.log("setting value: ", value);
         this.keys[idx].setValue(value);
         m += l;
       }
@@ -146,7 +143,6 @@ export class BPTreeNode {
     if (dpRanges.length > 0) {
       console.log("wef");
       const res = await this.dataFileResolver(dpRanges);
-      console.log("wef");
       res.forEach((res, index) => {
         const dpIndex = dpIndexes[index];
         const { data } = res;
