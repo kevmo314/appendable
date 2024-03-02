@@ -110,21 +110,20 @@ export class BPTreeNode {
       throw new Error("empty node");
     }
 
-    let m = 4;
-
     let dpRanges = [];
     let dpIndexes: number[] = [];
 
+    let m = 4;
     for (let idx = 0; idx <= this.keys.length - 1; idx++) {
-      // this is the case when we store the pointer to the datafile
-      dataView = new DataView(buffer, m, 4);
-      const l = dataView.getUint32(0, true);
-      if (l === ~0 >>> 0) {
-        dataView = new DataView(buffer, m + 4);
-        const dpOffset = dataView.getBigUint64(0, true);
-        const dpLength = dataView.getUint32(8, true);
-        this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
+      dataView = new DataView(buffer, m);
+      const dpOffset = dataView.getBigUint64(0, true);
+      const dpLength = dataView.getUint32(8, true);
+      m += 12;
 
+      const l = dataView.getUint32(m, true);
+      m += 4;
+      if (l === ~0 >>> 0) {
+        this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
         const dp = this.keys[idx].dataPointer;
 
         dpRanges.push({
@@ -133,19 +132,21 @@ export class BPTreeNode {
         });
 
         dpIndexes.push(idx);
-
-        m += 4 + 12;
       } else {
+        console.log("looking at", m, l);
         // we are storing the values directly in the referenced value
-        const value = buffer.slice(m + 4, m + 4 + l);
+        const value = buffer.slice(m, m + l);
+
+        console.log("setting value: ", value);
         this.keys[idx].setValue(value);
-        m += 4 + l;
+        m += l;
       }
     }
 
     if (dpRanges.length > 0) {
+      console.log("wef");
       const res = await this.dataFileResolver(dpRanges);
-
+      console.log("wef");
       res.forEach((res, index) => {
         const dpIndex = dpIndexes[index];
         const { data } = res;

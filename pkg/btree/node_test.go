@@ -25,7 +25,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 		},
 		Keys: []ReferencedValue{
 			{Value: []byte{0}},
-			{Value: []byte{1}},
+			{Value: []byte{1, 2}},
 			{Value: []byte{3, 4, 5}},
 		},
 	}
