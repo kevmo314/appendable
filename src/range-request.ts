@@ -84,6 +84,11 @@ export async function requestRanges(
       } else {
         throw new Error(`Unexpected response format: ${contentType}`);
       }
+    case 416:
+      const requestedRange = response.headers.get("Range") || rangesHeader;
+      throw new Error(
+        `Resolver cannot serve the requested ranges: ${requestedRange}`,
+      );
     default:
       throw new Error(`Expected 206 or 200 response, got ${response.status}`);
   }
