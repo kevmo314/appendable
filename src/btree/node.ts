@@ -122,8 +122,9 @@ export class BPTreeNode {
 
       const l = dataView.getUint32(12, true);
       m += 4;
+
+      this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
       if (l === ~0 >>> 0) {
-        this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
         const dp = this.keys[idx].dataPointer;
 
         dpRanges.push({
