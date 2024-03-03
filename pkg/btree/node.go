@@ -140,7 +140,6 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		ct += 8
 	}
 	if ct != int(n.Size()) {
-		fmt.Printf("ct: %v, node size: %v", ct, int(n.Size()))
 		panic("size mismatch")
 	}
 	return buf, nil
