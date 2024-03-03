@@ -3,31 +3,31 @@ import { RangeResolver } from "./resolver";
 export function cache(resolver: RangeResolver): RangeResolver {
   const cache: [
     [number, number],
-    Promise<{ data: ArrayBuffer; totalLength: number }>,
+    Promise<{ data: ArrayBuffer; totalLength: number }[]>,
   ][] = [];
 
-  return async ({
+  return async ([{
     start,
     end,
-  }): Promise<{ data: ArrayBuffer; totalLength: number }> => {
+  }]): Promise<{ data: ArrayBuffer; totalLength: number }[]> => {
     // check if start-end is contained in any of the cached ranges
     const cached = cache.find(([[s, e]]) => s <= start && end <= e);
     if (cached) {
       return cached[1].then((cachedData) => {
-        const data = cachedData.data.slice(
+        const data = cachedData[0].data.slice(
           start - cached[0][0],
           end - cached[0][0],
         );
-        return {
+        return [{
           data,
-          totalLength: cachedData.totalLength,
-        };
+          totalLength: cachedData[0].totalLength,
+        }];
       });
     }
 
     // TODO: check if start-end overlaps with any of the cached ranges
 
-    const promise = resolver({ start, end });
+    const promise = resolver([{ start, end }]);
     cache.push([[start, end], promise]);
     return promise;
   };
