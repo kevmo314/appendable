@@ -546,6 +546,10 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
+		if rv1.ElideValue {
+			t.Errorf("should store directly, not elided")
+		}
+
 		if !bytes.Equal(rv1.Value, []byte("test1")) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
@@ -687,6 +691,157 @@ func TestJSONL(t *testing.T) {
 			if !bytes.Equal(k.Value, v2) {
 				t.Fatal("keys are not equal")
 			}
+		}
+	})
+
+	t.Run("check elide values", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":null}\n{\"test\":true}\n{\"test\":\"thedoglickedtheoleandeveryonelaughed\"}\n")
+		if err := i.Synchronize(r2); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// check that the index file now has the additional index
+		if len(collected) != 3 {
+			t.Errorf("got len(i.Indexes) = %d, want 3", len(collected))
+		}
+
+		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mp1 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+		}
+
+		if rv1.ElideValue {
+			t.Errorf("should not elide value")
+		}
+
+		if !bytes.Equal(rv1.Value, []byte("test1")) {
+			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
+		}
+
+		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
+			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
+		}
+
+		buf1, err := collected[0].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+		md1 := &appendable.IndexMeta{}
+		if err := md1.UnmarshalBinary(buf1); err != nil {
+			t.Fatal(err)
+		}
+		if md1.FieldType != appendable.FieldTypeString {
+			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
+		}
+
+		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mp2 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
+		}
+
+		if rv2.ElideValue {
+			t.Errorf("null should be stored directly in value")
+		}
+
+		if len(rv2.Value) != 0 {
+			t.Errorf("incorrect values, got %v, want %v", rv2.Value, "null")
+		}
+
+		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":null}")) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
+		}
+
+		buf2, err := collected[1].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+		md2 := &appendable.IndexMeta{}
+		if err := md2.UnmarshalBinary(buf2); err != nil {
+			t.Fatal(err)
+		}
+		if md2.FieldType != appendable.FieldTypeNull {
+			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeNull", md2.FieldType)
+		}
+
+		rv3, mp3, err := collected[2].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte{1}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mp3 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
+		}
+
+		if rv3.ElideValue {
+			t.Errorf("null should be stored directly in value")
+		}
+
+		if len(rv3.Value) != 1 {
+			t.Errorf("incorrect values, got %v, want %v", rv3.Value, "null")
+		}
+
+		buf3, err := collected[2].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		md3 := &appendable.IndexMeta{}
+		if err := md3.UnmarshalBinary(buf3); err != nil {
+			t.Fatal(err)
+		}
+		if md3.FieldType != appendable.FieldTypeBoolean {
+			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeBoolean", md3.FieldType)
+		}
+
+		rv4, mp4, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("thedoglickedtheoleandeveryonelaughed")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mp4 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
+		}
+
+		if !rv4.ElideValue {
+			t.Errorf("value should be elided")
+		}
+
+		if len(rv4.Value) != len("thedoglickedtheoleandeveryonelaughed") {
+			t.Errorf("incorrect values, got %v, want %v", rv4.Value, "null")
+		}
+
+		buf4, err := collected[0].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		md4 := &appendable.IndexMeta{}
+		if err := md4.UnmarshalBinary(buf4); err != nil {
+			t.Fatal(err)
+		}
+		if md4.FieldType != appendable.FieldTypeString {
+			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeString", md4.FieldType)
 		}
 	})
 }
