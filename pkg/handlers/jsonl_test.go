@@ -546,8 +546,8 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
-		if !rv1.ElideValue {
-			t.Errorf("expected to elide value, got false")
+		if rv1.ElideValue {
+			t.Errorf("should store directly, not elided")
 		}
 
 		if !bytes.Equal(rv1.Value, []byte("test1")) {

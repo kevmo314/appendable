@@ -136,7 +136,7 @@ export class BPTreeNode {
         // we are storing the values directly in the referenced value
         const value = buffer.slice(m, m + l);
         this.keys[idx].setValue(value);
-        m += l;
+        m += value.byteLength;
       }
     }
 
