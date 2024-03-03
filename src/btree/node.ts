@@ -141,7 +141,6 @@ export class BPTreeNode {
     }
 
     if (dpRanges.length > 0) {
-      console.log("wef");
       const res = await this.dataFileResolver(dpRanges);
       res.forEach((res, index) => {
         const dpIndex = dpIndexes[index];

@@ -183,7 +183,6 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			dp := n.Keys[i].DataPointer
 			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
 		} else {
-			fmt.Printf("%v %v", m, m+int(l))
 			n.Keys[i].Value = buf[m : m+int(l)]
 			m += int(l)
 		}

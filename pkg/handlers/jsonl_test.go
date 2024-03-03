@@ -702,7 +702,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":null}\n{\"test\":true}\n")
+		r2 := []byte("{\"test\":\"test1\"}\n{\"test\":null}\n{\"test\":true}\n{\"test\":\"thedoglickedtheoleandeveryonelaughed\"}\n")
 		if err := i.Synchronize(r2); err != nil {
 			t.Fatal(err)
 		}
@@ -722,7 +722,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 3", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte{1}})
+		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -730,8 +730,8 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
-		if !rv1.ElideValue {
-			t.Errorf("expected to elide value, got false")
+		if rv1.ElideValue {
+			t.Errorf("should not elide value")
 		}
 
 		if !bytes.Equal(rv1.Value, []byte("test1")) {
@@ -815,5 +815,33 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeBoolean", md3.FieldType)
 		}
 
+		rv4, mp4, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("thedoglickedtheoleandeveryonelaughed")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if mp4 == (btree.MemoryPointer{}) {
+			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
+		}
+
+		if !rv4.ElideValue {
+			t.Errorf("value should be elided")
+		}
+
+		if len(rv4.Value) != len("thedoglickedtheoleandeveryonelaughed") {
+			t.Errorf("incorrect values, got %v, want %v", rv4.Value, "null")
+		}
+
+		buf4, err := collected[0].Metadata()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		md4 := &appendable.IndexMeta{}
+		if err := md4.UnmarshalBinary(buf4); err != nil {
+			t.Fatal(err)
+		}
+		if md4.FieldType != appendable.FieldTypeString {
+			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeString", md4.FieldType)
+		}
 	})
 }
