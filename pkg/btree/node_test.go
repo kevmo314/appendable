@@ -45,7 +45,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(node1, node2) {
-		t.Fatalf("expected %#v, got %#v", node1, node2)
+		t.Fatalf("expected %#v\ngot %#v", node1, node2)
 	}
 }
 
