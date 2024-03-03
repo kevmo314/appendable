@@ -6,10 +6,9 @@ export function cache(resolver: RangeResolver): RangeResolver {
     Promise<{ data: ArrayBuffer; totalLength: number }[]>,
   ][] = [];
 
-  return async ([{
-    start,
-    end,
-  }]): Promise<{ data: ArrayBuffer; totalLength: number }[]> => {
+  return async ([{ start, end }]): Promise<
+    { data: ArrayBuffer; totalLength: number }[]
+  > => {
     // check if start-end is contained in any of the cached ranges
     const cached = cache.find(([[s, e]]) => s <= start && end <= e);
     if (cached) {
@@ -18,10 +17,12 @@ export function cache(resolver: RangeResolver): RangeResolver {
           start - cached[0][0],
           end - cached[0][0],
         );
-        return [{
-          data,
-          totalLength: cachedData[0].totalLength,
-        }];
+        return [
+          {
+            data,
+            totalLength: cachedData[0].totalLength,
+          },
+        ];
       });
     }
 
