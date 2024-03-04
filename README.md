@@ -225,6 +225,12 @@ In other words, besides producing an index file the `jsonl` file provided stays
 untouched which means updates to the index file can lag behind data changes and
 remain valid because the database doesn't need to shuffle the data around.
 
+Additionally, Appendable is built for serving statically, so it takes advantage
+of [multiple ranges](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Range#requesting_multiple_ranges)
+whenever possible. Compared to [hosting SQLite](https://phiresky.github.io/blog/2021/hosting-sqlite-databases-on-github-pages/)
+which does a great job at minimizing data usage, Appendable further lessens the
+request overhead with less data transfer and fewer round trips.
+
 ### My data is never append-only, what's the point of this?
 
 A lot of data isn't actually append-only but can often be restructured as if it

@@ -13,11 +13,12 @@ import {
 } from "./meta";
 import { FieldType } from "../db/database";
 import { requestRanges } from "../range-request";
+import { Config } from "..";
 
 export class IndexFile {
-  static async forUrl<T = any>(url: string) {
+  static async forUrl<T = any>(url: string, config: Config) {
     return await IndexFile.forResolver<T>(
-      async (ranges) => await requestRanges(url, ranges),
+      async (ranges) => await requestRanges(url, ranges, config),
     );
   }
 

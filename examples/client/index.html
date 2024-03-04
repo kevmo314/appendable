@@ -90,6 +90,7 @@
         Appendable.init(
           "green_tripdata_2023-01.jsonl",
           "green_tripdata_2023-01.index",
+          { useMultipartByteRanges: false },
         ).then(async (db) => {
           // populate fields
           db.fields().then((fields) => {

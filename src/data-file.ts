@@ -1,14 +1,15 @@
+import { Config } from ".";
 import { requestRanges } from "./range-request";
-import { LengthIntegrityError, RangeResolver } from "./resolver";
+import { RangeResolver } from "./resolver";
 
 export class DataFile {
   private originalResolver?: RangeResolver;
 
   private constructor(private resolver: RangeResolver) {}
 
-  static forUrl(url: string) {
+  static forUrl(url: string, config: Config) {
     return DataFile.forResolver(
-      async (ranges) => await requestRanges(url, ranges),
+      async (ranges) => await requestRanges(url, ranges, config),
     );
   }
 
