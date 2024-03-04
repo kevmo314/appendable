@@ -1,10 +1,44 @@
+import { Config } from ".";
 import parseMultipartBody from "./multipart";
 import { LengthIntegrityError } from "./resolver";
+
+async function resolveIndividualPromises(
+  url: string,
+  ranges: { start: number; end: number; expectedLength?: number }[],
+) {
+  // fallback to resolving ranges individually
+  const individualRangePromises = ranges.map(
+    async ({ start, end, expectedLength }) => {
+      const rangeHeader = `${start}-${end}`;
+      const res = await fetch(url, {
+        headers: { Range: `bytes=${rangeHeader}` },
+      });
+
+      const totalLength = Number(
+        res.headers.get("Content-Range")!.split("/")[1],
+      );
+      if (expectedLength && totalLength !== expectedLength) {
+        throw new LengthIntegrityError();
+      }
+      return {
+        data: await res.arrayBuffer(),
+        totalLength: totalLength,
+      };
+    },
+  );
+  return await Promise.all(individualRangePromises);
+}
 
 export async function requestRanges(
   url: string,
   ranges: { start: number; end: number; expectedLength?: number }[],
+  config: Config,
 ): Promise<{ data: ArrayBuffer; totalLength: number }[]> {
+  const { useMultipartByteRanges } = config;
+  if (useMultipartByteRanges === false) {
+    return await resolveIndividualPromises(url, ranges);
+  }
+
   const rangesHeader = ranges
     .map(({ start, end }) => `${start}-${end}`)
     .join(",");
@@ -18,28 +52,10 @@ export async function requestRanges(
 
   switch (response.status) {
     case 200:
-      // fallback to resolving ranges individually
-      const individualRangePromises = ranges.map(
-        async ({ start, end, expectedLength }) => {
-          const rangeHeader = `${start}-${end}`;
-          const res = await fetch(url, {
-            headers: { Range: `bytes=${rangeHeader}` },
-          });
-
-          const totalLength = Number(
-            res.headers.get("Content-Range")!.split("/")[1],
-          );
-          if (expectedLength && totalLength !== expectedLength) {
-            throw new LengthIntegrityError();
-          }
-          return {
-            data: await res.arrayBuffer(),
-            totalLength: totalLength,
-          };
-        },
+      console.warn(
+        `useMultipartByteRanges is enabled but the server indicated did not respond with a subset of bytes. Set useMultipartByteRanges: false in your Appendable config object.`,
       );
-      return await Promise.all(individualRangePromises);
-
+      return await resolveIndividualPromises(url, ranges);
     case 206:
       const contentType = response.headers.get("Content-Type");
       if (!contentType) {
