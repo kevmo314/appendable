@@ -6,7 +6,6 @@ async function resolveIndividualPromises(
   url: string,
   ranges: { start: number; end: number; expectedLength?: number }[],
 ) {
-  console.log("resolving ranges individually");
   // fallback to resolving ranges individually
   const individualRangePromises = ranges.map(
     async ({ start, end, expectedLength }) => {
@@ -36,10 +35,7 @@ export async function requestRanges(
   config: Config,
 ): Promise<{ data: ArrayBuffer; totalLength: number }[]> {
   const { useMultipartByteRanges } = config;
-  if (
-    useMultipartByteRanges === false ||
-    useMultipartByteRanges === undefined
-  ) {
+  if (useMultipartByteRanges === false) {
     return await resolveIndividualPromises(url, ranges);
   }
 
@@ -57,7 +53,7 @@ export async function requestRanges(
   switch (response.status) {
     case 200:
       console.warn(
-        `useMultipartByteRanges has not been set to false. The server can not handle multipart byte ranges.`,
+        `useMultipartByteRanges is enabled but the server indicated did not respond with a subset of bytes. Set useMultipartByteRanges: false in your Appendable config object.`,
       );
       return await resolveIndividualPromises(url, ranges);
     case 206:

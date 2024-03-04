@@ -10,8 +10,12 @@ export type Config = {
 export async function init(
   dataUrl: string | RangeResolver,
   indexUrl: string | RangeResolver,
-  config: Config,
+  config?: Config,
 ) {
+  if (!config) {
+    config = { useMultipartByteRanges: true };
+  }
+
   return Database.forDataFileAndIndexFile(
     typeof dataUrl === "string"
       ? DataFile.forUrl(dataUrl, config)
