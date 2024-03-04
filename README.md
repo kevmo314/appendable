@@ -1,4 +1,5 @@
 # Appendable
+
 [![discord](https://img.shields.io/badge/Join-Discord-%235865F2.svg)](https://discord.gg/q9PE76FxXw)
 
 Appendable is an append-only, schema-less, daemon-less database.
