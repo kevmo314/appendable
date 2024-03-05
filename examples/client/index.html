@@ -73,7 +73,7 @@
           <button id="jsonTab">json</button>
           <button id="jsTab">javascript</button>
           <div id="editor" style="height: 400px; width: 628px"></div>
-          <h2>Results</h2>
+          <h2>Results - <span id="metrics"></span></h2>
           <button id="execute">Execute</button>
           <button id="next">Fetch more</button>
           <pre id="results"></pre>
@@ -87,6 +87,21 @@
       <script src="appendable.min.js"></script>
       <script src="editor.js"></script>
       <script>
+        const fetchz = window.fetch;
+        let bytesReceived = 0;
+        let numRequests = 0;
+        window.fetch = async function (...args) {
+          const response = await fetchz(...args);
+
+          bytesReceived += parseInt(response.headers.get("content-length"));
+          numRequests++;
+
+          document.getElementById("metrics").innerHTML =
+            `${numRequests} requests, ${bytesReceived / 1000} kB received`;
+
+          return response;
+        };
+
         Appendable.init(
           "green_tripdata_2023-01.jsonl",
           "green_tripdata_2023-01.index",
