@@ -5,12 +5,10 @@ import { readBinaryFile } from "./test-util";
 
 describe("test index-file parsing", () => {
   let mockRangeResolver: RangeResolver;
-  let indexFileSize: number;
   let indexFile: Uint8Array;
 
   beforeAll(async () => {
     indexFile = await readBinaryFile("green_tripdata_2023-01.index");
-    indexFileSize = indexFile.byteLength;
   });
 
   beforeEach(() => {

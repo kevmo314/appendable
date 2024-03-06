@@ -1,4 +1,5 @@
 import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
+import { maxUint16 } from "../btree/multi";
 import { MemoryPointer } from "../btree/node";
 import { FieldType } from "../db/database";
 import { FileFormat } from "../index-file/meta";
@@ -56,6 +57,7 @@ describe("test btree", () => {
       mockDataFileResolver,
       FileFormat.CSV,
       FieldType.Float64,
+      maxUint16,
     );
   });
 

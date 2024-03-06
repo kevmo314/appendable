@@ -4,6 +4,7 @@ import { MemoryPointer } from "./node";
 export const N = 16;
 export const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
+export const maxUint16 = 65535;
 
 export class LinkedMetaPage {
   private resolver: RangeResolver;

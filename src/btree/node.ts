@@ -2,6 +2,7 @@ import { FieldType } from "../db/database";
 import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { ReferencedValue } from "./bptree";
+import { maxUint16 } from "./multi";
 
 export const pageSizeBytes = 4096;
 
@@ -71,7 +72,7 @@ export class BPTreeNode {
     return BigInt(size);
   }
 
-  async unmarshalBinary(buffer: ArrayBuffer) {
+  async unmarshalBinary(buffer: ArrayBuffer, fixedWidth: number) {
     let dataView = new DataView(buffer);
     let size = dataView.getUint32(0, true);
 
@@ -124,7 +125,7 @@ export class BPTreeNode {
       m += 4;
 
       this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
-      if (l === ~0 >>> 0) {
+      if (fixedWidth === maxUint16) {
         const dp = this.keys[idx].dataPointer;
 
         dpRanges.push({
@@ -135,7 +136,7 @@ export class BPTreeNode {
         dpIndexes.push(idx);
       } else {
         // we are storing the values directly in the referenced value
-        const value = buffer.slice(m, m + l);
+        const value = buffer.slice(m, m + fixedWidth);
         this.keys[idx].setValue(value);
         m += value.byteLength;
       }
@@ -215,6 +216,7 @@ export class BPTreeNode {
     dataFilePointer: RangeResolver,
     fileFormat: FileFormat,
     pageFieldType: FieldType,
+    pageFieldWidth: number,
   ): Promise<{ node: BPTreeNode; bytesRead: number }> {
     const res = await resolver([
       {
@@ -232,7 +234,7 @@ export class BPTreeNode {
       pageFieldType,
     );
 
-    await node.unmarshalBinary(bufferData);
+    await node.unmarshalBinary(bufferData, pageFieldWidth);
 
     return { node, bytesRead: pageSizeBytes };
   }
