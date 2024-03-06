@@ -21,8 +21,9 @@ const N = 16
  * math.MaxUint64.
  */
 type LinkedMetaPage struct {
-	rws    ReadWriteSeekPager
-	offset uint64
+	rws        ReadWriteSeekPager
+	FixedWidth uint16
+	offset     uint64
 }
 
 func (m *LinkedMetaPage) Root() (MemoryPointer, error) {
@@ -38,6 +39,10 @@ func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 		return err
 	}
 	return binary.Write(m.rws, binary.LittleEndian, mp)
+}
+
+func (m *LinkedMetaPage) GetWidth() uint16 {
+	return m.FixedWidth
 }
 
 // BPTree returns a B+ tree that uses this meta page as the root

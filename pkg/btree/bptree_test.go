@@ -26,6 +26,10 @@ func (m *testMetaPage) Root() (MemoryPointer, error) {
 	return m.root, nil
 }
 
+func (m *testMetaPage) GetWidth() uint16 {
+	return ^uint16(0)
+}
+
 func (m *testMetaPage) write() error {
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, m.root.Offset)

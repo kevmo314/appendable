@@ -13,6 +13,7 @@ import (
 type MetaPage interface {
 	Root() (MemoryPointer, error)
 	SetRoot(MemoryPointer) error
+	GetWidth() uint16
 }
 
 type BPTree struct {
@@ -155,7 +156,7 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 	if _, err := t.tree.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
-	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, FixedWidth: t.meta.GetWidth()}
 	if _, err := node.ReadFrom(t.tree); err != nil {
 		return nil, err
 	}
@@ -245,7 +246,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, FixedWidth: t.meta.GetWidth()}
 		node.Keys = []ReferencedValue{key}
 		node.leafPointers = []MemoryPointer{value}
 		buf, err := node.MarshalBinary()
@@ -291,7 +292,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			midKey := n.Keys[mid]
 
 			// n is the left node, m the right node
-			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, FixedWidth: t.meta.GetWidth()}
 			if n.Leaf() {
 				m.leafPointers = n.leafPointers[mid:]
 				m.Keys = n.Keys[mid:]
@@ -345,7 +346,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
-				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, FixedWidth: t.meta.GetWidth()}
 				p.Keys = []ReferencedValue{midKey}
 				p.internalPointers = []uint64{
 					uint64(noffset), uint64(moffset),

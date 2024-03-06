@@ -127,12 +127,9 @@ type IndexMeta struct {
 	FieldWidth uint16
 }
 
-func (m *IndexMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 2+2+len(m.FieldName)+2)
-	binary.LittleEndian.PutUint16(buf[0:], uint16(m.FieldType))
-
+func DetermineFieldWidth(t FieldType) uint16 {
 	var width uint16
-	switch m.FieldType {
+	switch t {
 	case FieldTypeFloat64, FieldTypeInt64:
 		width = 8
 	case FieldTypeBoolean:
@@ -143,7 +140,13 @@ func (m *IndexMeta) MarshalBinary() ([]byte, error) {
 		width = 0xFFFF
 	}
 
-	binary.LittleEndian.PutUint16(buf[2:], width)
+	return width
+}
+
+func (m *IndexMeta) MarshalBinary() ([]byte, error) {
+	buf := make([]byte, 2+2+len(m.FieldName)+2)
+	binary.LittleEndian.PutUint16(buf[0:], uint16(m.FieldType))
+	binary.LittleEndian.PutUint16(buf[2:], DetermineFieldWidth(m.FieldType))
 	binary.LittleEndian.PutUint16(buf[4:], uint16(len(m.FieldName)))
 	copy(buf[6:], m.FieldName)
 	return buf, nil

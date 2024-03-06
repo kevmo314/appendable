@@ -15,6 +15,10 @@ type testMetaPage struct {
 	root btree.MemoryPointer
 }
 
+func (m *testMetaPage) GetWidth() uint16 {
+	return ^uint16(0)
+}
+
 func (m *testMetaPage) SetRoot(mp btree.MemoryPointer) error {
 	m.root = mp
 	return m.write()
