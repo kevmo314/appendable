@@ -131,6 +131,8 @@
 
           // then execute the query
           document.getElementById("execute").onclick = async () => {
+            numRequests = 0;
+            bytesReceived = 0;
             document.getElementById("results").innerHTML = "";
             document.getElementById("execute").disabled = true;
 
