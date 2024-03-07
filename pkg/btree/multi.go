@@ -64,8 +64,8 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 		return nil, err
 	}
 	// the first four bytes represents the length
-	length := binary.LittleEndian.Uint32(buf[:4])
-	return buf[4 : 4+length], nil
+	length := binary.LittleEndian.Uint16(buf[:2])
+	return buf[2 : 2+length], nil
 }
 
 func (m *LinkedMetaPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
@@ -83,8 +83,13 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 	if _, err := m.rws.Seek(int64(m.offset)+(8*N+16), io.SeekStart); err != nil {
 		return err
 	}
-	buf := append(make([]byte, 4), data...)
-	binary.LittleEndian.PutUint32(buf, uint32(len(data)))
+
+	buf := append(make([]byte, 2), data...)
+
+	if len(data) > 65535 {
+		return fmt.Errorf("metadata is too large for a uint16")
+	}
+	binary.LittleEndian.PutUint16(buf, uint16(len(data)))
 	if _, err := m.rws.Write(buf); err != nil {
 		return err
 	}
