@@ -1,6 +1,5 @@
-import type { Component } from 'solid-js';
-import { init }  from "../src/appendable/appendable.min.js";
-
+import type { Component } from "solid-js";
+import { init } from "../src/appendable/appendable.min.js";
 
 const App: Component = () => {
   return (
