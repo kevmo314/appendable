@@ -318,15 +318,11 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				n.Keys = n.Keys[:mid]
 			}
 
-			nbuf, err := n.MarshalBinary()
-			if err != nil {
-				return err
-			}
 			noffset := tr.ptr.Offset
 			if _, err := t.tree.Seek(int64(noffset), io.SeekStart); err != nil {
 				return err
 			}
-			if _, err := t.tree.Write(nbuf); err != nil {
+			if _, err := n.WriteTo(t.tree); err != nil {
 				return err
 			}
 
@@ -367,14 +363,10 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			}
 		} else {
 			// write this node to disk and update the parent
-			buf, err := tr.node.MarshalBinary()
-			if err != nil {
-				return err
-			}
 			if _, err := t.tree.Seek(int64(tr.ptr.Offset), io.SeekStart); err != nil {
 				return err
 			}
-			if _, err := t.tree.Write(buf); err != nil {
+			if _, err := tr.node.WriteTo(t.tree); err != nil {
 				return err
 			}
 			// no new nodes were produced, so we can return here
