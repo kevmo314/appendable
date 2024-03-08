@@ -1,4 +1,4 @@
-import { Component, onMount } from "solid-js";
+import { Component } from "solid-js";
 
 const Header: Component<{ username: string | null }> = ({ username }) => {
   const headerContent = [
@@ -13,7 +13,7 @@ const Header: Component<{ username: string | null }> = ({ username }) => {
   ];
 
   return (
-    <header class="w-full items-center h-10 flex justify-between px-8">
+    <header class="w-full items-center h-10 flex justify-between px-1 md:px-8">
       <div class="flex space-x-8">
         {headerContent.map(({ title, link }) => {
           return (

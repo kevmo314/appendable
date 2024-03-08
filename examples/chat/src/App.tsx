@@ -3,7 +3,7 @@ import { init } from "../src/appendable/appendable.min.js";
 import Header from "./header.jsx";
 import Channel from "./chat/channel.jsx";
 import Textbar from "./chat/textbar.jsx";
-import { createResource, createSignal, onMount } from "solid-js";
+import { createResource, createSignal } from "solid-js";
 import UserModal, { getCookie } from "./user.js";
 
 export function generateUniqueId(): number {
@@ -25,22 +25,17 @@ const App: Component = () => {
     return [];
   }
 
-  const [user, setUser] = createSignal<string | null>(null);
+  const [user, setUser] = createSignal<string | null>(getCookie("user"));
   const [messages, { refetch }] = createResource(fetchMessageData);
 
-  onMount(() => {
-    const userString = getCookie("user");
-    if (userString) {
-      setUser(userString);
-    }
-  });
-
   return (
-    <main class="h-screen flex flex-col">
-      <Header username={user()} />
-      {!user() && <UserModal setUser={setUser} />}
-      <Channel messages={messages} />
-      <Textbar />
+    <main class="flex justify-center w-full md:p-4 h-screen">
+      <div class="w-[80em] flex flex-col bg-white shadow-lg rounded-md">
+        <Header username={user()} />
+        {!user() && <UserModal setUser={setUser} />}
+        <Channel messages={messages} />
+        <Textbar username={user()} />
+      </div>
     </main>
   );
 };

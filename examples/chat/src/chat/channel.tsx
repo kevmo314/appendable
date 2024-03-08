@@ -11,7 +11,7 @@ const Channel: Component<ChannelProps> = ({ messages }) => {
   }
 
   return (
-    <div class="flex-1">
+    <div class="flex-1 overflow-y-scroll">
       {messages.loading && <p>Loading...</p>}
       {messages.error && <p>Error loading messages</p>}
       {messages()?.map((message) => {

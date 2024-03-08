@@ -1,18 +1,17 @@
 import { Component, createSignal } from "solid-js";
 import { Message, generateUniqueId } from "../App";
 
-const Textbar: Component = () => {
+const Textbar: Component<{ username: string | null }> = ({ username }) => {
   function sendMessage() {
     if (messageContent().length > 0) {
-      console.log("send message", messageContent());
-
       let message: Message = {
-        userId: 0,
+        username: username!!,
         messageId: generateUniqueId(),
         timestamp: Date.now(),
         content: messageContent(),
       };
 
+      console.log("send message", message);
       // where we would WRITE an append
       // Appendable.append(indexFileName: string, message: Message)
 
@@ -23,8 +22,8 @@ const Textbar: Component = () => {
   const [messageContent, setMessageContent] = createSignal("");
 
   return (
-    <div class="h-12 flex w-full px-2 py-1">
-      <div class="w-full bg-gray-100 rounded-md flex px-2">
+    <div class="h-14 flex w-full text-lg px-2 py-1">
+      <div class="w-full bg-gray-100 rounded-md flex p-2">
         <input
           class="flex-1 outline-none bg-gray-100"
           value={messageContent()}
@@ -39,7 +38,7 @@ const Textbar: Component = () => {
           }}
         />
 
-        <button class="pl-2" onClick={sendMessage}>
+        <button class="pl-2 font-semibold" onClick={sendMessage}>
           Send
         </button>
       </div>
