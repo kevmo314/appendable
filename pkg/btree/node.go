@@ -197,14 +197,3 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 	return nil
 }
-
-func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
-	buf := make([]byte, pageSizeBytes)
-	if _, err := r.Read(buf); err != nil && err != io.EOF {
-		return 0, err
-	}
-	if err := n.UnmarshalBinary(buf); err != nil {
-		return 0, err
-	}
-	return pageSizeBytes, nil
-}

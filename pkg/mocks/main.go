@@ -8,10 +8,11 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 type testMetaPage struct {
-	pf   *btree.PageFile
+	pf   *pagefile.PageFile
 	root btree.MemoryPointer
 }
 
@@ -36,7 +37,7 @@ func (m *testMetaPage) write() error {
 	return nil
 }
 
-func newTestMetaPage(pf *btree.PageFile) (*testMetaPage, error) {
+func newTestMetaPage(pf *pagefile.PageFile) (*testMetaPage, error) {
 	meta := &testMetaPage{pf: pf}
 	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	if err != nil {
@@ -51,7 +52,7 @@ func newTestMetaPage(pf *btree.PageFile) (*testMetaPage, error) {
 
 func generateBasicBtree() {
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -89,7 +90,7 @@ func (s *StubDataParser) Parse(value []byte) []byte {
 func generateBtreeIterator() {
 
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -115,7 +116,7 @@ func generateBtreeIterator() {
 
 func generateFilledMetadata() {
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}

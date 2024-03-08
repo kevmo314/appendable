@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 const CurrentVersion = 1
@@ -21,12 +22,12 @@ type IndexFile struct {
 	tree        *btree.LinkedMetaPage
 	dataHandler DataHandler
 
-	pf                *btree.PageFile
+	pf                *pagefile.PageFile
 	BenchmarkCallback func(int)
 }
 
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
-	pf, err := btree.NewPageFile(f)
+	pf, err := pagefile.NewPageFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}

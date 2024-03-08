@@ -10,10 +10,11 @@ import (
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 type testMetaPage struct {
-	pf   *PageFile
+	pf   *pagefile.PageFile
 	root MemoryPointer
 }
 
@@ -38,7 +39,7 @@ func (m *testMetaPage) write() error {
 	return nil
 }
 
-func newTestMetaPage(t *testing.T, pf *PageFile) *testMetaPage {
+func newTestMetaPage(t *testing.T, pf *pagefile.PageFile) *testMetaPage {
 	meta := &testMetaPage{pf: pf}
 	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	if err != nil {
@@ -54,7 +55,7 @@ func newTestMetaPage(t *testing.T, pf *PageFile) *testMetaPage {
 func TestBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,7 +72,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert creates a root", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +94,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("insert into root", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +129,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("split root", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -191,7 +192,7 @@ func TestBPTree(t *testing.T) {
 
 	t.Run("split intermediate", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -216,7 +217,7 @@ func TestBPTree(t *testing.T) {
 
 func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	b := buftest.NewSeekableBuffer()
-	p, err := NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -254,7 +255,7 @@ func (s *StubDataParser) Parse(value []byte) []byte {
 func TestBPTree_RandomTests(t *testing.T) {
 	t.Run("random insertion test", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -290,7 +291,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 
 	t.Run("identical insertion test", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -327,7 +328,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 
 func TestBPTree_Iteration(t *testing.T) {
 	b := buftest.NewSeekableBuffer()
-	p, err := NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,7 +402,7 @@ func TestBPTree_Iteration(t *testing.T) {
 
 func TestBPTree_Iteration_SinglePage(t *testing.T) {
 	b := buftest.NewSeekableBuffer()
-	p, err := NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -474,7 +475,7 @@ func TestBPTree_Iteration_SinglePage(t *testing.T) {
 
 func TestBPTree_Iteration_FirstLast(t *testing.T) {
 	b := buftest.NewSeekableBuffer()
-	p, err := NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		t.Fatal(err)
 	}
