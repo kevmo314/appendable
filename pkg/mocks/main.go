@@ -61,7 +61,7 @@ func generateBasicBtree() {
 		log.Fatalf("%v", err)
 	}
 
-	tree := btree.NewBPTree(p, mp)
+	tree := &btree.BPTree{PageFile: p, MetaPage: mp}
 	if err := tree.Insert(btree.ReferencedValue{Value: []byte("hello")}, btree.MemoryPointer{Offset: 1, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -99,7 +99,7 @@ func generateBtreeIterator() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	tree := btree.NewBPTreeWithData(p, mp, make([]byte, 16384*4+8), &StubDataParser{})
+	tree := &btree.BPTree{PageFile: p, MetaPage: mp, Data: make([]byte, 16384*4+8), DataParser: &StubDataParser{}}
 	for i := 0; i < 16384*4; i++ {
 		if err := tree.Insert(btree.ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
