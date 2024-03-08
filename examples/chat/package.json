@@ -19,6 +19,7 @@
     "vite-plugin-solid": "^2.8.2"
   },
   "dependencies": {
-    "solid-js": "^1.8.11"
+    "solid-js": "^1.8.11",
+    "unique-names-generator": "^4.7.1"
   }
 }
