@@ -58,7 +58,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 		// find a key that doesn't exist
 		k, _, err := tree.Find(ReferencedValue{Value: []byte("hello")})
 		if err != nil {
@@ -75,7 +75,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +97,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1}); err != nil {
 			t.Fatal(err)
 		}
@@ -133,7 +133,7 @@ func TestBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		mp := newTestMetaPage(t, p)
-		tree := NewBPTree(p, mp)
+		tree := &BPTree{PageFile: p, MetaPage: mp}
 		if err := tree.Insert(ReferencedValue{Value: []byte("hello")}, MemoryPointer{Offset: 1, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
@@ -195,7 +195,7 @@ func TestBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 		if err := tree.Insert(ReferencedValue{Value: []byte{0x05}}, MemoryPointer{Offset: 5}); err != nil {
 			t.Fatal(err)
 		}
@@ -220,7 +220,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree := NewBPTree(p, newTestMetaPage(t, p))
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, uint64(i))
@@ -258,7 +258,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTree(p, newTestMetaPage(t, p))
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 		r := rand.New(rand.NewSource(12345))
 		for i := 0; i < 65536; i++ {
 			buf := make([]byte, 8)
@@ -294,7 +294,7 @@ func TestBPTree_RandomTests(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree := NewBPTreeWithData(p, newTestMetaPage(t, p), make([]byte, 65536*4+8), &StubDataParser{})
+		tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Data: make([]byte, 65536*4+8), DataParser: &StubDataParser{}}
 		for i := 0; i < 65536*4; i++ {
 			if err := tree.Insert(ReferencedValue{
 				Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -333,7 +333,7 @@ func TestBPTree_Iteration(t *testing.T) {
 	}
 
 	metaPage := newTestMetaPage(t, p)
-	tree := NewBPTreeWithData(p, metaPage, make([]byte, 16384*4+8), &StubDataParser{})
+	tree := &BPTree{PageFile: p, MetaPage: metaPage, Data: make([]byte, 16384*4+8), DataParser: &StubDataParser{}}
 	for i := 0; i < 16384*4; i++ {
 		if err := tree.Insert(ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -406,7 +406,7 @@ func TestBPTree_Iteration_SinglePage(t *testing.T) {
 		t.Fatal(err)
 	}
 	metaPage := newTestMetaPage(t, p)
-	tree := NewBPTreeWithData(p, metaPage, make([]byte, 64+8), &StubDataParser{})
+	tree := &BPTree{PageFile: p, MetaPage: metaPage, Data: make([]byte, 64+8), DataParser: &StubDataParser{}}
 	for i := 0; i < 64; i++ {
 		if err := tree.Insert(ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -478,7 +478,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree := NewBPTree(p, newTestMetaPage(t, p))
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p)}
 	start := 10.0
 	increments := []float64{0.01, 0.05, 0.3}
 	currentIncrementIndex := 0

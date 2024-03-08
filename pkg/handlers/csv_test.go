@@ -100,7 +100,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, CSVHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -117,7 +117,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
 
-		rv2, mp2, err := collected[0].BPTree(r2, CSVHandler{}).Find(btree.ReferencedValue{Value: []byte("test2")})
+		rv2, mp2, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test2")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,7 +169,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, CSVHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,7 +199,7 @@ func TestCSV(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		rv2, mp2, err := collected[1].BPTree(r2, CSVHandler{}).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -299,7 +299,7 @@ func TestCSV(t *testing.T) {
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(1234))
 
-		iter, err := collected[0].BPTree(r2, JSONLHandler{}).Iter(btree.ReferencedValue{Value: v2})
+		iter, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Iter(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -87,7 +87,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		rv2, mp2, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -180,7 +180,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -237,7 +237,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -267,7 +267,7 @@ func TestJSONL(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -538,7 +538,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -570,7 +570,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{})
+		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -676,7 +676,7 @@ func TestJSONL(t *testing.T) {
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(1234))
 
-		iter, err := collected[0].BPTree(r2, JSONLHandler{}).Iter(btree.ReferencedValue{Value: v2})
+		iter, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Iter(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -722,7 +722,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 3", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -754,7 +754,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{})
+		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -786,7 +786,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeNull", md2.FieldType)
 		}
 
-		rv3, mp3, err := collected[2].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte{1}})
+		rv3, mp3, err := collected[2].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte{1}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -815,7 +815,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[1].FieldType = %#v, want FieldTypeBoolean", md3.FieldType)
 		}
 
-		rv4, mp4, err := collected[0].BPTree(r2, JSONLHandler{}).Find(btree.ReferencedValue{Value: []byte("thedoglickedtheoleandeveryonelaughed")})
+		rv4, mp4, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte("thedoglickedtheoleandeveryonelaughed")})
 		if err != nil {
 			t.Fatal(err)
 		}
