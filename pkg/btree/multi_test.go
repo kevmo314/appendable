@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 func TestMultiBPTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +30,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("reset tree", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -55,7 +56,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("insert a second page", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -97,7 +98,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("duplicate next pointer", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,7 +124,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("starts with empty metadata", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -146,7 +147,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("storing metadata works", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -172,7 +173,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("setting metadata too large fails", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,7 +191,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("collect pages", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -231,7 +232,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("singular list", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +255,7 @@ func TestMultiBPTree(t *testing.T) {
 
 	t.Run("empty list", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
-		p, err := NewPageFile(b)
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}

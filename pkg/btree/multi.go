@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 const N = 16
@@ -21,7 +23,7 @@ const N = 16
  * math.MaxUint64.
  */
 type LinkedMetaPage struct {
-	rws    ReadWriteSeekPager
+	rws    pagefile.ReadWriteSeekPager
 	offset uint64
 }
 
@@ -238,7 +240,7 @@ func (m *LinkedMetaPage) String() string {
 	return fmt.Sprintf("LinkedMetaPage{offset: %x,\tnext: %x,\troot: %x}", m.offset, nm.offset, root.Offset)
 }
 
-func NewMultiBPTree(t ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
+func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err

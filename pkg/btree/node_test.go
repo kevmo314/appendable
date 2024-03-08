@@ -36,7 +36,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	}
 
 	node2 := &BPTreeNode{}
-	if _, err := node2.ReadFrom(buf); err != nil {
+	if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,7 +66,7 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 	}
 
 	node2 := &BPTreeNode{}
-	if _, err := node2.ReadFrom(buf); err != nil {
+	if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
 		t.Fatal(err)
 	}
 

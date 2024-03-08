@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"slices"
+
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -16,7 +18,7 @@ type MetaPage interface {
 }
 
 type BPTree struct {
-	PageFile ReadWriteSeekPager
+	PageFile pagefile.ReadWriteSeekPager
 	MetaPage MetaPage
 
 	Data       []byte
@@ -148,7 +150,11 @@ func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
 		return nil, err
 	}
 	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
-	if _, err := node.ReadFrom(t.PageFile); err != nil {
+	buf := make([]byte, t.PageFile.PageSize())
+	if _, err := t.PageFile.Read(buf); err != nil {
+		return nil, err
+	}
+	if err := node.UnmarshalBinary(buf); err != nil {
 		return nil, err
 	}
 	return node, nil

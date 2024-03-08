@@ -1,4 +1,4 @@
-package btree
+package pagefile
 
 import (
 	"encoding/binary"
