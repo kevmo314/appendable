@@ -160,15 +160,9 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 			case string:
 				valueBytes := []byte(value)
 
-				elideValue := false
-				if len(valueBytes) > 32 {
-					elideValue = true
-				}
-
-				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
+				if err := page.BPTree(r, j, appendable.DetermineType(appendable.FieldTypeString)).Insert(btree.ReferencedValue{
 					DataPointer: mp,
 					Value:       valueBytes,
-					ElideValue:  elideValue,
 				}, data); err != nil {
 					return fmt.Errorf("failed to insert into b+tree: %w", err)
 				}
@@ -184,7 +178,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				case float64:
 					binary.BigEndian.PutUint64(buf, math.Float64bits(value))
 				}
-				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
+				if err := page.BPTree(r, j, appendable.DetermineType(appendable.FieldTypeFloat64)).Insert(btree.ReferencedValue{
 					DataPointer: mp,
 					Value:       buf,
 				},
@@ -193,15 +187,18 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				}
 
 			case bool:
+
+				w := appendable.DetermineType(appendable.FieldTypeBoolean)
+
 				if value {
-					if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
+					if err := page.BPTree(r, j, w).Insert(btree.ReferencedValue{
 						DataPointer: mp,
 						Value:       []byte{1},
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
 				} else {
-					if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
+					if err := page.BPTree(r, j, w).Insert(btree.ReferencedValue{
 						DataPointer: mp,
 						Value:       []byte{0},
 					}, data); err != nil {
@@ -247,7 +244,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 			case nil:
 				// nil values are a bit of a degenerate case, we are essentially using the btree
 				// as a set. we store the value as an empty byte slice.
-				if err := page.BPTree(r, j).Insert(btree.ReferencedValue{
+				if err := page.BPTree(r, j, appendable.DetermineType(appendable.FieldTypeNull)).Insert(btree.ReferencedValue{
 					Value:       []byte{},
 					DataPointer: mp,
 				}, data); err != nil {

@@ -61,7 +61,7 @@ func generateBasicBtree() {
 		log.Fatalf("%v", err)
 	}
 
-	tree := btree.NewBPTree(p, mp)
+	tree := btree.NewBPTree(p, mp, uint16(0))
 	if err := tree.Insert(btree.ReferencedValue{Value: []byte("hello")}, btree.MemoryPointer{Offset: 1, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}

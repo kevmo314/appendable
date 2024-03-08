@@ -146,3 +146,18 @@ func (m *IndexMeta) UnmarshalBinary(buf []byte) error {
 	m.FieldName = string(buf[4 : 4+nameLength])
 	return nil
 }
+
+func DetermineType(ft FieldType) uint16 {
+	shift := 1 // we'll dedicate 0 to be variable width, everything else is the fixed width + shift
+	width := uint16(0)
+	switch ft {
+	case FieldTypeBoolean:
+		width = uint16(shift + 1)
+	case FieldTypeNull:
+		width = uint16(shift + 0)
+	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
+		width = uint16(shift + 8)
+	}
+
+	return width
+}
