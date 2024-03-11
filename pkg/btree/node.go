@@ -28,9 +28,6 @@ type ReferencedValue struct {
 	// to disambiguate between keys that compare as equal.
 	DataPointer MemoryPointer
 	Value       []byte
-
-	// a boolean value to determine whether or not to use the value directly or the memory pointer
-	ElideValue bool
 }
 
 func (rv ReferencedValue) String() string {
@@ -64,6 +61,9 @@ type BPTreeNode struct {
 	leafPointers     []MemoryPointer
 	internalPointers []uint64
 	Keys             []ReferencedValue
+
+	// the expected width for the BPtree's type
+	Width uint16
 }
 
 func (n *BPTreeNode) Leaf() bool {
@@ -85,10 +85,8 @@ func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
 		size += 12
-		if k.ElideValue {
-			size += 4
-		} else {
-			size += 4 + len(k.Value)
+		if n.Width != uint16(0) {
+			size += len(k.Value)
 		}
 	}
 	for range n.leafPointers {
@@ -117,12 +115,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		binary.LittleEndian.PutUint64(buf[ct:ct+8], k.DataPointer.Offset)
 		binary.LittleEndian.PutUint32(buf[ct+8:ct+12], k.DataPointer.Length)
 		ct += 12
-		if k.ElideValue {
-			binary.LittleEndian.PutUint32(buf[ct:ct+4], ^uint32(0))
-			ct += 4
-		} else {
-			binary.LittleEndian.PutUint32(buf[ct:ct+4], uint32(len(k.Value)))
-			ct += 4
+		if n.Width != uint16(0) {
 			m := copy(buf[ct:ct+len(k.Value)], k.Value)
 			if m != len(k.Value) {
 				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
@@ -174,16 +167,13 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+8 : m+12])
 		m += 12
 
-		l := binary.LittleEndian.Uint32(buf[m : m+4])
-		m += 4
-		if l == ^uint32(0) {
+		if n.Width == uint16(0) {
 			// read the key out of the memory pointer stored at this position
-			n.Keys[i].ElideValue = true
 			dp := n.Keys[i].DataPointer
 			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
 		} else {
-			n.Keys[i].Value = buf[m : m+int(l)]
-			m += int(l)
+			n.Keys[i].Value = buf[m : m+int(n.Width-1)]
+			m += int(n.Width - 1)
 		}
 	}
 	for i := range n.leafPointers {
@@ -196,15 +186,4 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		m += 8
 	}
 	return nil
-}
-
-func (n *BPTreeNode) ReadFrom(r io.Reader) (int64, error) {
-	buf := make([]byte, pageSizeBytes)
-	if _, err := r.Read(buf); err != nil && err != io.EOF {
-		return 0, err
-	}
-	if err := n.UnmarshalBinary(buf); err != nil {
-		return 0, err
-	}
-	return pageSizeBytes, nil
 }

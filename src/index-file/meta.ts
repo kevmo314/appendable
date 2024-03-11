@@ -37,6 +37,7 @@ export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
 export type IndexMeta = {
   fieldName: string;
   fieldType: number;
+  width: number;
 };
 
 export type IndexHeader = {
@@ -45,24 +46,26 @@ export type IndexHeader = {
 };
 
 export async function readIndexMeta(buffer: ArrayBuffer): Promise<IndexMeta> {
-  if (buffer.byteLength < 4) {
+  if (buffer.byteLength < 6) {
     throw new Error(`invalid metadata size ${buffer.byteLength}`);
   }
 
   const dataView = new DataView(buffer);
   const fieldType = dataView.getUint16(0, true);
-  const nameLength = dataView.getUint16(2, true);
+  const width = dataView.getUint16(2, true);
+  const nameLength = dataView.getUint16(4, true);
 
-  if (buffer.byteLength < 4 + nameLength) {
+  if (buffer.byteLength < 6 + nameLength) {
     throw new Error(`invalid metadata size ${buffer.byteLength}`);
   }
 
-  const fieldNameBuffer = buffer.slice(4, 4 + nameLength);
+  const fieldNameBuffer = buffer.slice(6, 6 + nameLength);
   const fieldName = new TextDecoder("utf-8").decode(fieldNameBuffer);
 
   return {
     fieldName,
     fieldType,
+    width,
   };
 }
 

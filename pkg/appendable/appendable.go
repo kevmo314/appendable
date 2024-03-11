@@ -124,13 +124,15 @@ func (m *FileMeta) UnmarshalBinary(buf []byte) error {
 type IndexMeta struct {
 	FieldName string
 	FieldType FieldType
+	Width     uint16
 }
 
 func (m *IndexMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 2+len(m.FieldName)+2)
+	buf := make([]byte, 2+len(m.FieldName)+2+2)
 	binary.LittleEndian.PutUint16(buf[0:], uint16(m.FieldType))
-	binary.LittleEndian.PutUint16(buf[2:], uint16(len(m.FieldName)))
-	copy(buf[4:], m.FieldName)
+	binary.LittleEndian.PutUint16(buf[2:], m.Width)
+	binary.LittleEndian.PutUint16(buf[4:], uint16(len(m.FieldName)))
+	copy(buf[6:], m.FieldName)
 	return buf, nil
 }
 
@@ -139,10 +141,26 @@ func (m *IndexMeta) UnmarshalBinary(buf []byte) error {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
 	m.FieldType = FieldType(binary.LittleEndian.Uint16(buf[0:]))
-	nameLength := binary.LittleEndian.Uint16(buf[2:])
+	m.Width = binary.LittleEndian.Uint16(buf[2:])
+	nameLength := binary.LittleEndian.Uint16(buf[4:])
 	if len(buf) < 4+int(nameLength) {
 		return fmt.Errorf("invalid metadata size: %d", len(buf))
 	}
-	m.FieldName = string(buf[4 : 4+nameLength])
+	m.FieldName = string(buf[6 : 6+nameLength])
 	return nil
+}
+
+func DetermineType(ft FieldType) uint16 {
+	shift := 1 // we'll dedicate 0 to be variable width, everything else is the fixed width + shift
+	width := uint16(0)
+	switch ft {
+	case FieldTypeBoolean:
+		width = uint16(shift + 1)
+	case FieldTypeNull:
+		width = uint16(shift + 0)
+	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
+		width = uint16(shift + 8)
+	}
+
+	return width
 }

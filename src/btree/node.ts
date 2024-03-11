@@ -71,7 +71,7 @@ export class BPTreeNode {
     return BigInt(size);
   }
 
-  async unmarshalBinary(buffer: ArrayBuffer) {
+  async unmarshalBinary(buffer: ArrayBuffer, pageFieldWidth: number) {
     let dataView = new DataView(buffer);
     let size = dataView.getUint32(0, true);
 
@@ -120,11 +120,8 @@ export class BPTreeNode {
       const dpLength = dataView.getUint32(8, true);
       m += 12;
 
-      const l = dataView.getUint32(12, true);
-      m += 4;
-
       this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
-      if (l === ~0 >>> 0) {
+      if (pageFieldWidth === 0) {
         const dp = this.keys[idx].dataPointer;
 
         dpRanges.push({
@@ -135,7 +132,7 @@ export class BPTreeNode {
         dpIndexes.push(idx);
       } else {
         // we are storing the values directly in the referenced value
-        const value = buffer.slice(m, m + l);
+        const value = buffer.slice(m, m + pageFieldWidth - 1);
         this.keys[idx].setValue(value);
         m += value.byteLength;
       }
@@ -215,6 +212,7 @@ export class BPTreeNode {
     dataFilePointer: RangeResolver,
     fileFormat: FileFormat,
     pageFieldType: FieldType,
+    pageFieldWidth: number,
   ): Promise<{ node: BPTreeNode; bytesRead: number }> {
     const res = await resolver([
       {
@@ -232,7 +230,7 @@ export class BPTreeNode {
       pageFieldType,
     );
 
-    await node.unmarshalBinary(bufferData);
+    await node.unmarshalBinary(bufferData, pageFieldWidth);
 
     return { node, bytesRead: pageSizeBytes };
   }

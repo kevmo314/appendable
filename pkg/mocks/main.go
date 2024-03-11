@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 
+	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 type testMetaPage struct {
-	pf   *btree.PageFile
+	pf   *pagefile.PageFile
 	root btree.MemoryPointer
 }
 
@@ -36,7 +39,7 @@ func (m *testMetaPage) write() error {
 	return nil
 }
 
-func newTestMetaPage(pf *btree.PageFile) (*testMetaPage, error) {
+func newTestMetaPage(pf *pagefile.PageFile) (*testMetaPage, error) {
 	meta := &testMetaPage{pf: pf}
 	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	if err != nil {
@@ -51,7 +54,7 @@ func newTestMetaPage(pf *btree.PageFile) (*testMetaPage, error) {
 
 func generateBasicBtree() {
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -61,7 +64,7 @@ func generateBasicBtree() {
 		log.Fatalf("%v", err)
 	}
 
-	tree := btree.NewBPTree(p, mp)
+	tree := &btree.BPTree{PageFile: p, MetaPage: mp, Width: uint16(6)}
 	if err := tree.Insert(btree.ReferencedValue{Value: []byte("hello")}, btree.MemoryPointer{Offset: 1, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -89,7 +92,7 @@ func (s *StubDataParser) Parse(value []byte) []byte {
 func generateBtreeIterator() {
 
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -99,7 +102,7 @@ func generateBtreeIterator() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	tree := btree.NewBPTreeWithData(p, mp, make([]byte, 16384*4+8), &StubDataParser{})
+	tree := &btree.BPTree{PageFile: p, MetaPage: mp, Data: make([]byte, 16384*4+8), DataParser: &StubDataParser{}, Width: uint16(0)}
 	for i := 0; i < 16384*4; i++ {
 		if err := tree.Insert(btree.ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
@@ -115,7 +118,7 @@ func generateBtreeIterator() {
 
 func generateFilledMetadata() {
 	b := buftest.NewSeekableBuffer()
-	p, err := btree.NewPageFile(b)
+	p, err := pagefile.NewPageFile(b)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -133,10 +136,51 @@ func generateFilledMetadata() {
 	b.WriteToDisk("filled_metadata.bin")
 }
 
+func writeByteToFile(data []byte, filename string) error {
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func generateFileMeta() {
+	fm := appendable.FileMeta{}
+	fm.Format = 1
+	fm.Version = 1
+	fm.ReadOffset = 4096
+
+	b, err := fm.MarshalBinary()
+	if err != nil {
+		log.Fatalf("failed to write file meta to disk")
+	}
+
+	if err := writeByteToFile(b, "filemeta.bin"); err != nil {
+		log.Fatalf("failed to write bytes to disk")
+	}
+}
+
+func generateIndexMeta() {
+	im := appendable.IndexMeta{}
+	im.FieldName = "howdydo"
+	im.FieldType = appendable.FieldTypeBoolean
+	im.Width = appendable.DetermineType(appendable.FieldTypeBoolean)
+
+	b, err := im.MarshalBinary()
+	if err != nil {
+		log.Fatal("failed to write index meta to disk")
+	}
+
+	if err := writeByteToFile(b, "indexmeta.bin"); err != nil {
+		log.Fatalf("failed to write bytes to disk")
+	}
+}
+
 func main() {
 
-	generateFilledMetadata()
-	//generateBasicBtree()
+	// generateFilledMetadata()
+	// generateBasicBtree()
 	//generateBtreeIterator()
+	// generateFileMeta()
+	generateIndexMeta()
 
 }

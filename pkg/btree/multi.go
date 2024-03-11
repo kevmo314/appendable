@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 const N = 16
@@ -21,7 +23,7 @@ const N = 16
  * math.MaxUint64.
  */
 type LinkedMetaPage struct {
-	rws    ReadWriteSeekPager
+	rws    pagefile.ReadWriteSeekPager
 	offset uint64
 }
 
@@ -46,12 +48,9 @@ func (m *LinkedMetaPage) SetRoot(mp MemoryPointer) error {
 //
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
-func (m *LinkedMetaPage) BPTree(data []byte, parser DataParser) *BPTree {
-	t := NewBPTree(m.rws, m)
-	if data != nil {
-		t.Data = data
-		t.DataParser = parser
-	}
+func (m *LinkedMetaPage) BPTree(t *BPTree) *BPTree {
+	t.PageFile = m.rws
+	t.MetaPage = m
 	return t
 }
 
@@ -246,7 +245,7 @@ func (m *LinkedMetaPage) String() string {
 	return fmt.Sprintf("LinkedMetaPage{offset: %x,\tnext: %x,\troot: %x}", m.offset, nm.offset, root.Offset)
 }
 
-func NewMultiBPTree(t ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
+func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err

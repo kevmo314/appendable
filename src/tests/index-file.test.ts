@@ -1,48 +1,27 @@
-import { IndexFileV1 } from "../index-file/index-file";
-import { FileFormat } from "../index-file/meta";
-import { RangeResolver } from "../resolver";
+import { FieldType } from "../db/database";
+import { FileFormat, readFileMeta, readIndexMeta } from "../index-file/meta";
 import { readBinaryFile } from "./test-util";
 
 describe("test index-file parsing", () => {
-  let mockRangeResolver: RangeResolver;
-  let indexFileSize: number;
-  let indexFile: Uint8Array;
+  let fileMetaBuffer: Uint8Array;
+  let indexMetaBuffer: Uint8Array;
 
   beforeAll(async () => {
-    indexFile = await readBinaryFile("green_tripdata_2023-01.index");
-    indexFileSize = indexFile.byteLength;
-  });
-
-  beforeEach(() => {
-    mockRangeResolver = async ([{ start, end }]) => {
-      const slicedPart = indexFile.slice(start, end + 1);
-
-      const arrayBuffer = slicedPart.buffer.slice(
-        slicedPart.byteOffset,
-        slicedPart.byteOffset + slicedPart.byteLength,
-      );
-
-      return [
-        {
-          data: arrayBuffer,
-          totalLength: arrayBuffer.byteLength,
-        },
-      ];
-    };
+    fileMetaBuffer = await readBinaryFile("filemeta.bin");
+    indexMetaBuffer = await readBinaryFile("indexmeta.bin");
   });
 
   it("should read the file meta", async () => {
-    const indexFile = new IndexFileV1(mockRangeResolver);
-    const fileMeta = await indexFile.metadata();
-
-    expect(fileMeta.format).toEqual(FileFormat.JSONL);
+    const fileMeta = await readFileMeta(fileMetaBuffer.buffer);
+    expect(fileMeta.format).toEqual(FileFormat.CSV);
     expect(fileMeta.version).toEqual(1);
+    expect(fileMeta.readOffset).toEqual(4096n);
   });
 
-  it("should traverse the entire index file and retrieve the index headers", async () => {
-    const indexFile = new IndexFileV1(mockRangeResolver);
-    const indexMetas = await indexFile.indexHeaders();
-
-    expect(indexMetas.length).toEqual(20);
+  it("should read the index meta", async () => {
+    const indexMeta = await readIndexMeta(indexMetaBuffer.buffer);
+    expect(indexMeta.width).toEqual(2);
+    expect(indexMeta.fieldName).toEqual("howdydo");
+    expect(indexMeta.fieldType).toEqual(FieldType.Boolean);
   });
 });

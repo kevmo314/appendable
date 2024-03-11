@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"slices"
+
+	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -16,23 +18,17 @@ type MetaPage interface {
 }
 
 type BPTree struct {
-	tree ReadWriteSeekPager
-	meta MetaPage
+	PageFile pagefile.ReadWriteSeekPager
+	MetaPage MetaPage
 
 	Data       []byte
 	DataParser DataParser
-}
 
-func NewBPTree(tree ReadWriteSeekPager, meta MetaPage) *BPTree {
-	return &BPTree{tree: tree, meta: meta}
-}
-
-func NewBPTreeWithData(tree ReadWriteSeekPager, meta MetaPage, data []byte, parser DataParser) *BPTree {
-	return &BPTree{tree: tree, meta: meta, Data: data, DataParser: parser}
+	Width uint16
 }
 
 func (t *BPTree) root() (*BPTreeNode, MemoryPointer, error) {
-	mp, err := t.meta.Root()
+	mp, err := t.MetaPage.Root()
 	if err != nil || mp.Length == 0 {
 		return nil, mp, nil
 	}
@@ -152,11 +148,15 @@ func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, MemoryPointer, erro
 }
 
 func (t *BPTree) readNode(ptr MemoryPointer) (*BPTreeNode, error) {
-	if _, err := t.tree.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
+	if _, err := t.PageFile.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
-	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
-	if _, err := node.ReadFrom(t.tree); err != nil {
+	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
+	buf := make([]byte, t.PageFile.PageSize())
+	if _, err := t.PageFile.Read(buf); err != nil {
+		return nil, err
+	}
+	if err := node.UnmarshalBinary(buf); err != nil {
 		return nil, err
 	}
 	return node, nil
@@ -245,18 +245,18 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 		node.Keys = []ReferencedValue{key}
 		node.leafPointers = []MemoryPointer{value}
 		buf, err := node.MarshalBinary()
 		if err != nil {
 			return err
 		}
-		offset, err := t.tree.NewPage(buf)
+		offset, err := t.PageFile.NewPage(buf)
 		if err != nil {
 			return err
 		}
-		return t.meta.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
+		return t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
 
 	path, err := t.traverse(key, root, rootOffset)
@@ -284,14 +284,14 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	for i := 0; i < len(path); i++ {
 		tr := path[i]
 		n := tr.node
-		if int(n.Size()) > t.tree.PageSize() {
+		if int(n.Size()) > t.PageFile.PageSize() {
 			// split the node
 			// mid is the key that will be inserted into the parent
 			mid := len(n.Keys) / 2
 			midKey := n.Keys[mid]
 
 			// n is the left node, m the right node
-			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 			if n.Leaf() {
 				m.leafPointers = n.leafPointers[mid:]
 				m.Keys = n.Keys[mid:]
@@ -304,7 +304,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			if err != nil {
 				return err
 			}
-			moffset, err := t.tree.NewPage(mbuf)
+			moffset, err := t.PageFile.NewPage(mbuf)
 			if err != nil {
 				return err
 			}
@@ -318,10 +318,10 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			}
 
 			noffset := tr.ptr.Offset
-			if _, err := t.tree.Seek(int64(noffset), io.SeekStart); err != nil {
+			if _, err := t.PageFile.Seek(int64(noffset), io.SeekStart); err != nil {
 				return err
 			}
-			if _, err := n.WriteTo(t.tree); err != nil {
+			if _, err := n.WriteTo(t.PageFile); err != nil {
 				return err
 			}
 
@@ -341,7 +341,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
-				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser}
+				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 				p.Keys = []ReferencedValue{midKey}
 				p.internalPointers = []uint64{
 					uint64(noffset), uint64(moffset),
@@ -351,21 +351,21 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				if err != nil {
 					return err
 				}
-				poffset, err := t.tree.NewPage(pbuf)
+				poffset, err := t.PageFile.NewPage(pbuf)
 				if err != nil {
 					return err
 				}
-				if err := t.meta.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
+				if err := t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
 					return err
 				}
 				return nil
 			}
 		} else {
 			// write this node to disk and update the parent
-			if _, err := t.tree.Seek(int64(tr.ptr.Offset), io.SeekStart); err != nil {
+			if _, err := t.PageFile.Seek(int64(tr.ptr.Offset), io.SeekStart); err != nil {
 				return err
 			}
-			if _, err := tr.node.WriteTo(t.tree); err != nil {
+			if _, err := tr.node.WriteTo(t.PageFile); err != nil {
 				return err
 			}
 			// no new nodes were produced, so we can return here
