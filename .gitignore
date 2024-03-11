@@ -12,6 +12,5 @@ examples/client/appendable.min.js
 examples/client/appendable.min.js.map
 
 # But include these files in src/tests/mock_binaries
-!src/tests/mock_binaries/*.index
 !src/tests/mock_binaries/*.jsonl
 !src/tests/mock_binaries/*.cs

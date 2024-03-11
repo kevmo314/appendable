@@ -34,3 +34,34 @@ func TestIndexFile(t *testing.T) {
 		}
 	})
 }
+
+func TestWidthAllocation(t *testing.T) {
+
+	type Truth struct {
+		Type  FieldType
+		Width uint16
+	}
+
+	t.Run("should correctly allocate the fixed width or else for a given type", func(t *testing.T) {
+
+		ws := [8]Truth{
+			{FieldTypeArray, 0},
+			{FieldTypeBoolean, 2},
+			{FieldTypeNull, 1},
+			{FieldTypeFloat64, 9},
+			{FieldTypeInt64, 9},
+			{FieldTypeObject, 0},
+			{FieldTypeString, 0},
+			{FieldTypeUint64, 9},
+		}
+
+		for _, w := range ws {
+			expected := w.Width
+			input := DetermineType(w.Type)
+
+			if expected != input {
+				t.Errorf("For type: %v, expected: %v, got: %v", w.Type, expected, input)
+			}
+		}
+	})
+}
