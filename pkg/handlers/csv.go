@@ -13,6 +13,7 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
 type CSVHandler struct {
@@ -64,7 +65,7 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 
 		if err := c.handleCSVLine(f, df, dec, headers, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
-			Length: uint32(i),
+			Length: encoding.EncodeFloatingInt16(i),
 		}); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
@@ -169,7 +170,7 @@ func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.R
 		name := strings.Join(append(path, fieldName), ".")
 
 		fieldOffset := data.Offset + cumulativeLength
-		fieldLength := uint32(len(fieldValue))
+		fieldLength := encoding.EncodeFloatingInt16(len(fieldValue))
 
 		_, fieldType := InferCSVField(fieldValue)
 		page, err := f.FindOrCreateIndex(name, fieldType)

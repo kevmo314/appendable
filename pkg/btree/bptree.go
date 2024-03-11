@@ -6,6 +6,7 @@ import (
 	"io"
 	"slices"
 
+	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
@@ -256,7 +257,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		if err != nil {
 			return err
 		}
-		return t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
+		return t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(offset), Length: encoding.EncodeFloatingInt16(len(buf))})
 	}
 
 	path, err := t.traverse(key, root, rootOffset)
@@ -355,7 +356,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				if err != nil {
 					return err
 				}
-				if err := t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
+				if err := t.MetaPage.SetRoot(MemoryPointer{Offset: uint64(poffset), Length: encoding.EncodeFloatingInt16(len(pbuf))}); err != nil {
 					return err
 				}
 				return nil

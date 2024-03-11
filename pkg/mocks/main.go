@@ -181,6 +181,5 @@ func main() {
 	// generateBasicBtree()
 	//generateBtreeIterator()
 	// generateFileMeta()
-	generateIndexMeta()
-
+	// generateIndexMeta()
 }

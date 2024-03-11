@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
@@ -226,7 +227,7 @@ func TestBPTree_SequentialInsertionTest(t *testing.T) {
 	for i := 0; i < 256; i++ {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, uint64(i))
-		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: encoding.EncodeFloatingInt16(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -489,7 +490,7 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, math.Float64bits(i))
 
-		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i * 100), Length: uint32(len(buf))}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i * 100), Length: encoding.EncodeFloatingInt16(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
 

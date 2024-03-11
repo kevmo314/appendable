@@ -5,12 +5,14 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
 // MemoryPointer is a uint64 offset and uint32 length
 type MemoryPointer struct {
 	Offset uint64
-	Length uint32
+	Length encoding.FloatingInt16
 }
 
 func (mp MemoryPointer) String() string {
@@ -113,7 +115,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	ct := 4
 	for _, k := range n.Keys {
 		binary.LittleEndian.PutUint64(buf[ct:ct+8], k.DataPointer.Offset)
-		binary.LittleEndian.PutUint32(buf[ct+8:ct+12], k.DataPointer.Length)
+		binary.LittleEndian.PutUint16(buf[ct+8:ct+10], uint16(k.DataPointer.Length))
 		ct += 12
 		if n.Width != uint16(0) {
 			m := copy(buf[ct:ct+len(k.Value)], k.Value)
@@ -125,7 +127,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 	for _, p := range n.leafPointers {
 		binary.LittleEndian.PutUint64(buf[ct:ct+8], p.Offset)
-		binary.LittleEndian.PutUint32(buf[ct+8:ct+12], p.Length)
+		binary.LittleEndian.PutUint16(buf[ct+8:ct+10], uint16(p.Length))
 		ct += 12
 	}
 	for _, p := range n.internalPointers {
@@ -164,7 +166,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	m := 4
 	for i := range n.Keys {
 		n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m : m+8])
-		n.Keys[i].DataPointer.Length = binary.LittleEndian.Uint32(buf[m+8 : m+12])
+		n.Keys[i].DataPointer.Length = encoding.FloatingInt16(binary.LittleEndian.Uint16(buf[m+8 : m+10]))
 		m += 12
 
 		if n.Width == uint16(0) {
@@ -178,7 +180,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 	for i := range n.leafPointers {
 		n.leafPointers[i].Offset = binary.LittleEndian.Uint64(buf[m : m+8])
-		n.leafPointers[i].Length = binary.LittleEndian.Uint32(buf[m+8 : m+12])
+		n.leafPointers[i].Length = encoding.FloatingInt16(binary.LittleEndian.Uint16(buf[m+8 : m+10]))
 		m += 12
 	}
 	for i := range n.internalPointers {

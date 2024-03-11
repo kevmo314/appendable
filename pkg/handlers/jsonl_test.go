@@ -9,6 +9,7 @@ import (
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
 func TestJSONL(t *testing.T) {
@@ -99,7 +100,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
+		if mp1.Offset != 0 || mp1.Length != encoding.EncodeFloatingInt16(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
@@ -115,7 +116,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test3"))
 		}
 
-		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":\"test3\"}")) {
+		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != encoding.EncodeFloatingInt16(len("{\"test\":\"test3\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":\"test3\"}"))
 		}
 	})
@@ -164,7 +165,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
+		if mp1.Offset != 0 || mp1.Length != encoding.EncodeFloatingInt16(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
@@ -192,7 +193,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test3"))
 		}
 
-		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test2\":\"test3\"}")) {
+		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != encoding.EncodeFloatingInt16(len("{\"test2\":\"test3\"}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test2\":\"test3\"}"))
 		}
 
@@ -249,7 +250,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
+		if mp1.Offset != 0 || mp1.Length != encoding.EncodeFloatingInt16(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
@@ -279,7 +280,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, v2)
 		}
 
-		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":123}")) {
+		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != encoding.EncodeFloatingInt16(len("{\"test\":123}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(123)= %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":123}"))
 		}
 
@@ -550,7 +551,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != 0 || mp1.Length != uint32(len("{\"test\":\"test1\"}")) {
+		if mp1.Offset != 0 || mp1.Length != encoding.EncodeFloatingInt16(len("{\"test\":\"test1\"}")) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
@@ -578,7 +579,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv2.Value, "null")
 		}
 
-		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != uint32(len("{\"test\":null}")) {
+		if mp2.Offset != uint64(len("{\"test\":\"test1\"}\n")) || mp2.Length != encoding.EncodeFloatingInt16(len("{\"test\":null}")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
 		}
 

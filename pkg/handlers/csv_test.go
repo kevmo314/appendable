@@ -11,6 +11,7 @@ import (
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
 func TestCSV(t *testing.T) {
@@ -113,7 +114,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != uint64(len("test\n")) || mp1.Length != uint32(len("test1")) {
+		if mp1.Offset != uint64(len("test\n")) || encoding.DecodeFloatingInt16(mp1.Length) != len("test1") {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
 
@@ -129,7 +130,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv2.Value, []byte("test2"))
 		}
 
-		if mp2.Offset != uint64(len("test\ntest1\n")) || mp2.Length != uint32(len("test2")) {
+		if mp2.Offset != uint64(len("test\ntest1\n")) || encoding.DecodeFloatingInt16(mp2.Length) != len("test2") {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test2\") = %+v, want {%d, %d}", mp2, len("test\ntest1\n"), len("test2"))
 		}
 	})
@@ -181,7 +182,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte("test1"))
 		}
 
-		if mp1.Offset != uint64(len("test\n")) || mp1.Length != uint32(len("test1")) {
+		if mp1.Offset != uint64(len("test\n")) || encoding.DecodeFloatingInt16(mp1.Length) != len("test1") {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
 
@@ -210,7 +211,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("incorrect values, got %v, want %v", rv1.Value, v2)
 		}
 
-		if mp2.Offset != uint64(len("test\ntest1\n")) || mp2.Length != uint32(len("123")) {
+		if mp2.Offset != uint64(len("test\ntest1\n")) || encoding.DecodeFloatingInt16(mp2.Length) != (len("123")) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("test\ntest1\n"), len("123"))
 		}
 

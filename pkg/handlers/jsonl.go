@@ -11,6 +11,7 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/encoding"
 )
 
 type JSONLHandler struct {
@@ -43,7 +44,7 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 
 		if err := j.handleJSONLObject(f, df, dec, []string{}, btree.MemoryPointer{
 			Offset: metadata.ReadOffset,
-			Length: uint32(i),
+			Length: encoding.EncodeFloatingInt16(i),
 		}); err != nil {
 			return fmt.Errorf("failed to handle object: %w", err)
 		}
@@ -153,7 +154,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			mp := btree.MemoryPointer{
 				Offset: data.Offset + uint64(fieldOffset),
-				Length: uint32(dec.InputOffset() - fieldOffset),
+				Length: encoding.EncodeFloatingInt16(int(dec.InputOffset() - fieldOffset)),
 			}
 
 			switch value := value.(type) {
