@@ -163,7 +163,6 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     let indexMetas: IndexMeta[] = [];
     for (const mp of this.linkedMetaPages) {
       const im = await readIndexMeta(await mp.metadata());
-      console.log(im.width);
       indexMetas.push(im);
     }
 
