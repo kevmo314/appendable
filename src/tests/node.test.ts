@@ -130,11 +130,12 @@ describe("node functionality", () => {
     };
 
     const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
-      { offset: 0n, length: 1 },
+      { offset: 0n, length: 3 },
       mockRangeResolver,
       mockDataResolver,
-      FileFormat.JSONL,
+      FileFormat.CSV,
       FieldType.String,
+      4,
     );
 
     expect(leafNode.internalPointers.length).toEqual(0);
@@ -149,9 +150,12 @@ describe("node functionality", () => {
 
       if (idx === 0) {
         data[0] = 0;
+        data[1] = 1;
+        data[2] = 2;
       } else if (idx === 1) {
         data[0] = 1;
         data[1] = 2;
+        data[2] = 3;
       } else if (idx === 2) {
         data[0] = 3;
         data[1] = 4;
@@ -159,16 +163,16 @@ describe("node functionality", () => {
       }
 
       expect(rv.value).toEqual(data.buffer);
-      expect(rv.value.byteLength).toEqual(idx + 1);
+      expect(rv.value.byteLength).toEqual(3);
 
       const lp = leafNode.leafPointers[idx];
-      expect(lp.length).toEqual(idx + 1);
+      expect(lp.length).toEqual(3);
       if (idx === 0) {
         expect(lp.offset).toEqual(0n);
       } else if (idx === 1) {
-        expect(lp.offset).toEqual(1n);
+        expect(lp.offset).toEqual(3n);
       } else if (idx === 2) {
-        expect(lp.offset).toEqual(2n);
+        expect(lp.offset).toEqual(6n);
       }
     }
   });
@@ -193,6 +197,7 @@ describe("node functionality", () => {
       mockDataResolver,
       FileFormat.CSV,
       FieldType.String,
+      3,
     );
 
     expect(internalNode.internalPointers.length).toEqual(4);
@@ -220,17 +225,17 @@ describe("node functionality", () => {
 
       if (idx === 0) {
         data[0] = 0;
+        data[1] = 1;
       } else if (idx === 1) {
         data[0] = 1;
         data[1] = 2;
       } else if (idx === 2) {
         data[0] = 3;
         data[1] = 4;
-        data[2] = 5;
       }
 
       expect(rv.value).toEqual(data.buffer);
-      expect(rv.value.byteLength).toEqual(idx + 1);
+      expect(rv.value.byteLength).toEqual(2);
     }
   });
 });

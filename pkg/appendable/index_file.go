@@ -186,6 +186,7 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.
 	metadata := &IndexMeta{}
 	metadata.FieldName = name
 	metadata.FieldType = fieldType
+	metadata.Width = DetermineType(fieldType)
 	buf, err := metadata.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal metadata: %w", err)

@@ -19,6 +19,7 @@ export class BPTree {
   private readonly dataFileResolver: RangeResolver;
   private fileFormat: FileFormat;
   private pageFieldType: FieldType;
+  private pageFieldWidth: number;
 
   constructor(
     tree: RangeResolver,
@@ -26,12 +27,14 @@ export class BPTree {
     dataFileResolver: RangeResolver,
     fileFormat: FileFormat,
     pageFieldType: FieldType,
+    pageFieldWidth: number,
   ) {
     this.tree = tree;
     this.meta = meta;
     this.dataFileResolver = dataFileResolver;
     this.fileFormat = fileFormat;
     this.pageFieldType = pageFieldType;
+    this.pageFieldWidth = pageFieldWidth;
   }
 
   async root(): Promise<RootResponse> {
@@ -66,6 +69,7 @@ export class BPTree {
         this.dataFileResolver,
         this.fileFormat,
         this.pageFieldType,
+        this.pageFieldWidth,
       );
 
       if (!bytesRead) {

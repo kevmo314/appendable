@@ -55,7 +55,8 @@ describe("test btree", () => {
       page,
       mockDataFileResolver,
       FileFormat.CSV,
-      FieldType.Float64,
+      FieldType.String,
+      6,
     );
   });
 
