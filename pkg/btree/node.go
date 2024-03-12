@@ -85,12 +85,19 @@ func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
 		size += 8
+
+		lengthBytes := len(binary.AppendUvarint([]byte{}, uint64(k.DataPointer.Length)))
+		size += lengthBytes
+
 		if n.Width != uint16(0) {
 			size += len(k.Value)
 		}
 	}
-	for range n.LeafPointers {
+	for _, n := range n.LeafPointers {
 		size += 8
+
+		lengthBytes := len(binary.AppendUvarint([]byte{}, uint64(n.Length)))
+		size += lengthBytes
 	}
 	for range n.InternalPointers {
 		size += 8
@@ -183,7 +190,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 
 		val, ln := binary.Uvarint(buf[m+8:])
 		n.LeafPointers[i].Length = uint32(val)
-		m += 10 + ln
+		m += 8 + ln
 	}
 	for i := range n.InternalPointers {
 		n.InternalPointers[i] = binary.LittleEndian.Uint64(buf[m : m+8])
