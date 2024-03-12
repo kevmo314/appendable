@@ -5,6 +5,12 @@ import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
 
+export function decodeFloatingInt16(x: number) {
+  const exponent = x >> 11;
+  const mantissa = x & 0x7ff;
+  return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
+}
+
 export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {
   public keys: ReferencedValue[];
@@ -117,10 +123,13 @@ export class BPTreeNode {
     for (let idx = 0; idx <= this.keys.length - 1; idx++) {
       dataView = new DataView(buffer, m);
       const dpOffset = dataView.getBigUint64(0, true);
-      const dpLength = dataView.getUint32(8, true);
-      m += 12;
+      const dpLength = dataView.getUint16(8, true);
+      m += 10;
 
-      this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
+      this.keys[idx].setDataPointer({
+        offset: dpOffset,
+        length: decodeFloatingInt16(dpLength),
+      });
       if (pageFieldWidth === 0) {
         const dp = this.keys[idx].dataPointer;
 
@@ -152,9 +161,9 @@ export class BPTreeNode {
     for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
       dataView = new DataView(buffer, m);
       this.leafPointers[idx].offset = dataView.getBigUint64(0, true);
-      this.leafPointers[idx].length = dataView.getUint32(8, true);
+      this.leafPointers[idx].length = dataView.getUint16(8, true);
 
-      m += 12;
+      m += 10;
     }
 
     for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {

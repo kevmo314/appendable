@@ -86,13 +86,13 @@ func (n *BPTreeNode) NumPointers() int {
 func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		size += 12
+		size += 10
 		if n.Width != uint16(0) {
 			size += len(k.Value)
 		}
 	}
 	for range n.LeafPointers {
-		size += 12
+		size += 10
 	}
 	for range n.InternalPointers {
 		size += 8
@@ -128,7 +128,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	for _, p := range n.LeafPointers {
 		binary.LittleEndian.PutUint64(buf[ct:ct+8], p.Offset)
 		binary.LittleEndian.PutUint16(buf[ct+8:ct+10], uint16(p.Length))
-		ct += 12
+		ct += 10
 	}
 	for _, p := range n.InternalPointers {
 		binary.LittleEndian.PutUint64(buf[ct:ct+8], p)
@@ -172,16 +172,18 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		if n.Width == uint16(0) {
 			// read the key out of the memory pointer stored at this position
 			dp := n.Keys[i].DataPointer
-			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
+
+			flength := encoding.DecodeFloatingInt16(dp.Length)
+			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(flength)]) // resolving the data-file
 		} else {
 			n.Keys[i].Value = buf[m : m+int(n.Width-1)]
 			m += int(n.Width - 1)
 		}
 	}
-  
-	for i := range n.leafPointers {
-		n.leafPointers[i].Offset = binary.LittleEndian.Uint64(buf[m : m+8])
-		n.leafPointers[i].Length = encoding.FloatingInt16(binary.LittleEndian.Uint16(buf[m+8 : m+10]))
+
+	for i := range n.LeafPointers {
+		n.LeafPointers[i].Offset = binary.LittleEndian.Uint64(buf[m : m+8])
+		n.LeafPointers[i].Length = encoding.FloatingInt16(binary.LittleEndian.Uint16(buf[m+8 : m+10]))
 		m += 10
 	}
 	for i := range n.InternalPointers {
