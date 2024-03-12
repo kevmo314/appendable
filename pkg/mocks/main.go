@@ -231,7 +231,7 @@ func generateIndexMeta() {
 func main() {
 
 	// generateFilledMetadata()
-	// generateBasicBtree()
+	generateBasicBtree()
 	//generateBtreeIterator()
 	// generateFileMeta()
 	// generateIndexMeta()
