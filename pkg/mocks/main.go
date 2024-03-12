@@ -1,17 +1,71 @@
 package main
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
+
+func writeBufferToFile(buf *bytes.Buffer, filename string) error {
+	if err := os.WriteFile(filename, buf.Bytes(), 0644); err != nil {
+		return err
+	}
+	return nil
+}
+
+func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
+	// Create a test BPTreeNode
+	node1 := &btree.BPTreeNode{
+		LeafPointers: []btree.MemoryPointer{
+			{Offset: 0, Length: 3},
+			{Offset: 3, Length: 3},
+			{Offset: 6, Length: 3},
+		},
+		Keys: []btree.ReferencedValue{
+			{Value: []byte{0, 1, 2}},
+			{Value: []byte{1, 2, 3}},
+			{Value: []byte{3, 4, 5}},
+		},
+		Width: uint16(4),
+	}
+
+	buf := &bytes.Buffer{}
+	if _, err := node1.WriteTo(buf); err != nil {
+		t.Fatal(err)
+	}
+
+	writeBufferToFile(buf, "leafnode.bin")
+}
+
+func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
+	// Create a test BPTreeNode
+	node1 := &btree.BPTreeNode{
+		InternalPointers: []uint64{0, 1, 2, 3},
+		Keys: []btree.ReferencedValue{
+			{Value: []byte{0, 1}},
+			{Value: []byte{1, 2}},
+			{Value: []byte{3, 4}},
+		},
+		Width: uint16(3),
+	}
+
+	buf := &bytes.Buffer{}
+	if _, err := node1.WriteTo(buf); err != nil {
+		t.Fatal(err)
+	}
+
+	writeBufferToFile(buf, "internalnode.bin")
+
+}
 
 type testMetaPage struct {
 	pf   *pagefile.PageFile
@@ -181,6 +235,6 @@ func main() {
 	// generateBasicBtree()
 	//generateBtreeIterator()
 	// generateFileMeta()
-	generateIndexMeta()
+	// generateIndexMeta()
 
 }
