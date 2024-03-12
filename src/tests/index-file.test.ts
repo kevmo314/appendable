@@ -1,4 +1,5 @@
 import { FieldType } from "../db/database";
+import { decodeFloatingInt16 } from "../index-file/index-file";
 import { FileFormat, readFileMeta, readIndexMeta } from "../index-file/meta";
 import { readBinaryFile } from "./test-util";
 

@@ -1,15 +1,10 @@
 import { FieldType } from "../db/database";
+import { decodeFloatingInt16 } from "../index-file/index-file";
 import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
-
-export function decodeFloatingInt16(x: number) {
-  const exponent = x >> 11;
-  const mantissa = x & 0x7ff;
-  return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
-}
 
 export type MemoryPointer = { offset: bigint; length: number };
 export class BPTreeNode {

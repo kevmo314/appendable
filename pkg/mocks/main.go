@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
@@ -22,7 +21,7 @@ func writeBufferToFile(buf *bytes.Buffer, filename string) error {
 	return nil
 }
 
-func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
+func generateBPLeafNode() {
 	// Create a test BPTreeNode
 	node1 := &btree.BPTreeNode{
 		LeafPointers: []btree.MemoryPointer{
@@ -40,13 +39,13 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	if _, err := node1.WriteTo(buf); err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	writeBufferToFile(buf, "leafnode.bin")
 }
 
-func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
+func generateBPInternalNode() {
 	// Create a test BPTreeNode
 	node1 := &btree.BPTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
@@ -60,7 +59,7 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 
 	buf := &bytes.Buffer{}
 	if _, err := node1.WriteTo(buf); err != nil {
-		t.Fatal(err)
+		log.Fatal(err)
 	}
 
 	writeBufferToFile(buf, "internalnode.bin")
@@ -236,4 +235,7 @@ func main() {
 	//generateBtreeIterator()
 	// generateFileMeta()
 	// generateIndexMeta()
+
+	generateBPLeafNode()
+	generateBPInternalNode()
 }

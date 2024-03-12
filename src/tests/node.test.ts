@@ -1,6 +1,7 @@
 import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
 import { BPTreeNode } from "../btree/node";
 import { FieldType } from "../db/database";
+import { decodeFloatingInt16 } from "../index-file/index-file";
 import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
 import { readBinaryFile } from "./test-util";
@@ -166,7 +167,7 @@ describe("node functionality", () => {
       expect(rv.value.byteLength).toEqual(3);
 
       const lp = leafNode.leafPointers[idx];
-      expect(lp.length).toEqual(3);
+      expect(decodeFloatingInt16(lp.length)).toEqual(3);
       if (idx === 0) {
         expect(lp.offset).toEqual(0n);
       } else if (idx === 1) {

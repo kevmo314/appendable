@@ -15,6 +15,12 @@ import { FieldType } from "../db/database";
 import { requestRanges } from "../range-request";
 import { Config } from "..";
 
+export function decodeFloatingInt16(x: number) {
+  const exponent = x >> 11;
+  const mantissa = x & 0x7ff;
+  return (1 << exponent) * mantissa + (1 << (exponent + 11)) - (1 << 11);
+}
+
 export class IndexFile {
   static async forUrl<T = any>(url: string, config: Config) {
     return await IndexFile.forResolver<T>(
