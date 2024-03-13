@@ -84,23 +84,23 @@ func (n *BPTreeNode) NumPointers() int {
 func (n *BPTreeNode) Size() int64 {
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		size += 8
 
-		lengthBytes := len(binary.AppendUvarint([]byte{}, uint64(k.DataPointer.Length)))
-		size += lengthBytes
+		o := len(binary.AppendUvarint([]byte{}, k.DataPointer.Offset))
+		l := len(binary.AppendUvarint([]byte{}, uint64(k.DataPointer.Length)))
+		size += o + l
 
 		if n.Width != uint16(0) {
 			size += len(k.Value)
 		}
 	}
 	for _, n := range n.LeafPointers {
-		size += 8
-
-		lengthBytes := len(binary.AppendUvarint([]byte{}, uint64(n.Length)))
-		size += lengthBytes
+		o := len(binary.AppendUvarint([]byte{}, uint64(n.Offset)))
+		l := len(binary.AppendUvarint([]byte{}, uint64(n.Length)))
+		size += o + l
 	}
-	for range n.InternalPointers {
-		size += 8
+	for _, n := range n.InternalPointers {
+		o := len(binary.AppendUvarint([]byte{}, n))
+		size += o
 	}
 	return int64(size)
 }
@@ -120,9 +120,9 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 	ct := 4
 	for _, k := range n.Keys {
-		binary.LittleEndian.PutUint64(buf[ct:ct+8], k.DataPointer.Offset)
-		ln := binary.PutUvarint(buf[ct+8:], uint64(k.DataPointer.Length))
-		ct += 8 + ln
+		on := binary.PutUvarint(buf[ct:], k.DataPointer.Offset)
+		ln := binary.PutUvarint(buf[ct+on:], uint64(k.DataPointer.Length))
+		ct += on + ln
 		if n.Width != uint16(0) {
 			m := copy(buf[ct:ct+len(k.Value)], k.Value)
 			if m != len(k.Value) {
@@ -132,13 +132,14 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		}
 	}
 	for _, p := range n.LeafPointers {
-		binary.LittleEndian.PutUint64(buf[ct:ct+8], p.Offset)
-		ln := binary.PutUvarint(buf[ct+8:], uint64(p.Length))
-		ct += 8 + ln
+		on := binary.PutUvarint(buf[ct:], p.Offset)
+		ln := binary.PutUvarint(buf[ct+on:], uint64(p.Length))
+
+		ct += on + ln
 	}
 	for _, p := range n.InternalPointers {
-		binary.LittleEndian.PutUint64(buf[ct:ct+8], p)
-		ct += 8
+		on := binary.PutUvarint(buf[ct:], p)
+		ct += on
 	}
 	if ct != int(n.Size()) {
 		panic("size mismatch")
@@ -171,11 +172,13 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 
 	m := 4
 	for i := range n.Keys {
-		n.Keys[i].DataPointer.Offset = binary.LittleEndian.Uint64(buf[m : m+8])
+		o, on := binary.Uvarint(buf[m:])
+		l, ln := binary.Uvarint(buf[m+on:])
 
-		val, ln := binary.Uvarint(buf[m+8:])
-		n.Keys[i].DataPointer.Length = uint32(val)
-		m += 8 + ln
+		n.Keys[i].DataPointer.Offset = o
+		n.Keys[i].DataPointer.Length = uint32(l)
+
+		m += on + ln
 
 		if n.Width == uint16(0) {
 			// read the key out of the memory pointer stored at this position
@@ -187,15 +190,18 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		}
 	}
 	for i := range n.LeafPointers {
-		n.LeafPointers[i].Offset = binary.LittleEndian.Uint64(buf[m : m+8])
 
-		val, ln := binary.Uvarint(buf[m+8:])
-		n.LeafPointers[i].Length = uint32(val)
-		m += 8 + ln
+		o, on := binary.Uvarint(buf[m:])
+		l, ln := binary.Uvarint(buf[m+on:])
+
+		n.LeafPointers[i].Offset = o
+		n.LeafPointers[i].Length = uint32(l)
+		m += on + ln
 	}
 	for i := range n.InternalPointers {
-		n.InternalPointers[i] = binary.LittleEndian.Uint64(buf[m : m+8])
-		m += 8
+		o, on := binary.Uvarint(buf[m:])
+		n.InternalPointers[i] = o
+		m += on
 	}
 	return nil
 }
