@@ -107,15 +107,16 @@ func (n *BPTreeNode) Size() int64 {
 
 func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	size := int32(len(n.Keys))
+
+	if size == 0 {
+		panic("writing empty node")
+	}
 	buf := make([]byte, n.Size())
 	// set the first bit to 1 if it's a leaf
 	if n.Leaf() {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(-size))
 	} else {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(size))
-	}
-	if size == 0 {
-		panic("writing empty node")
 	}
 	ct := 4
 	for _, k := range n.Keys {
