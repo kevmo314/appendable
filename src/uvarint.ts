@@ -23,7 +23,7 @@ export function decodeUvarint(buf: ArrayBuffer): UvarintResponse {
 				return { value: 0, bytesRead: -(idx + 1) };
 			}
 
-			let value = (b & 0x7f) << s
+			let value = x | (b << s);
 			return { value, bytesRead: idx + 1 };
 		}
 
