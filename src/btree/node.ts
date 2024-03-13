@@ -1,6 +1,7 @@
 import { FieldType } from "../db/database";
 import { FileFormat } from "../index-file/meta";
 import { RangeResolver } from "../resolver";
+import { decodeUvarint } from "../uvarint";
 import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
@@ -11,8 +12,8 @@ export class BPTreeNode {
   public leafPointers: MemoryPointer[];
   public internalPointers: bigint[];
   private readonly dataFileResolver: RangeResolver;
-  private fileFormat: FileFormat;
-  private pageFieldType: FieldType;
+  private readonly fileFormat: FileFormat;
+  private readonly pageFieldType: FieldType;
 
   constructor(
     keys: ReferencedValue[],
@@ -79,6 +80,10 @@ export class BPTreeNode {
       size = size - 4294967296;
     }
 
+    if (size === 0) {
+      throw new Error("empty node");
+    }
+
     const leaf = size < 0;
 
     if (leaf) {
@@ -106,10 +111,6 @@ export class BPTreeNode {
         );
     }
 
-    if (size === 0) {
-      throw new Error("empty node");
-    }
-
     let dpRanges = [];
     let dpIndexes: number[] = [];
 
@@ -117,8 +118,8 @@ export class BPTreeNode {
     for (let idx = 0; idx <= this.keys.length - 1; idx++) {
       dataView = new DataView(buffer, m);
       const dpOffset = dataView.getBigUint64(0, true);
-      const dpLength = dataView.getUint32(8, true);
-      m += 12;
+      const { value: dpLength, bytesRead } = decodeUvarint(buffer.slice(m + 8));
+      m += 8 + bytesRead;
 
       this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
       if (pageFieldWidth === 0) {
@@ -152,9 +153,10 @@ export class BPTreeNode {
     for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
       dataView = new DataView(buffer, m);
       this.leafPointers[idx].offset = dataView.getBigUint64(0, true);
-      this.leafPointers[idx].length = dataView.getUint32(8, true);
 
-      m += 12;
+      const { value: lpLength, bytesRead } = decodeUvarint(buffer.slice(m + 8));
+      this.leafPointers[idx].length = lpLength;
+      m += 8 + bytesRead;
     }
 
     for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {

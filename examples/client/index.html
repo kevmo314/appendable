@@ -141,7 +141,6 @@
             try {
               if (window.activeEditor === "json") {
                 const queryJson = JSON.parse(editorContent);
-                const fields = await db.fields();
                 const query = await db.query(queryJson);
                 await bindQuery(query);
               } else if (window.activeEditor === "javascript") {
