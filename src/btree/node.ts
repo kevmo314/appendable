@@ -111,7 +111,6 @@ export class BPTreeNode {
         );
     }
 
-   
     let dpRanges = [];
     let dpIndexes: number[] = [];
 

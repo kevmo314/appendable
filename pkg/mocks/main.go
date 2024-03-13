@@ -257,8 +257,6 @@ func generateUVariantTestCases() {
 	}
 }
 
-
-
 func main() {
 	generateUVariantTestCases()
 	// generateFilledMetadata()
