@@ -2,6 +2,7 @@ package btree
 
 import (
 	"bytes"
+	"encoding/binary"
 	"reflect"
 	"testing"
 )
@@ -101,5 +102,15 @@ func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 				t.Fatalf("expected %d == %d", i, j)
 			}
 		}
+	}
+}
+
+func TestSizeVariant(t *testing.T) {
+
+	x := len(binary.AppendUvarint([]byte{}, uint64(123)))
+	y := SizeVariant(uint64(123))
+
+	if x != y {
+		t.Fatalf("expected x == y, got %v == %v", x, y)
 	}
 }
