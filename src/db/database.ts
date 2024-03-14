@@ -237,6 +237,7 @@ export class Database<T extends Schema> {
         const iter = bptree.iter(valueRef);
 
         while (await iter.next()) {
+          console.log("there is next")
           const currentKey = iter.getKey();
 
           if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 0) {
