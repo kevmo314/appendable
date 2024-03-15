@@ -36,4 +36,4 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "18"
-      - run: npx prettier --check . 2> $GITHUB_STEP_SUMMARY
+      - run: npx prettier --check "**/*.{js,jsx,ts,tsx,css,scss,md,json}"  2> $GITHUB_STEP_SUMMARY
