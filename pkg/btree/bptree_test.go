@@ -569,6 +569,35 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 	})
 }
 
+func TestBPTree_IncorrectWidth(t *testing.T) {
+
+	t.Run("float tree", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		floatTree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9)}
+
+		if err := floatTree.Insert(ReferencedValue{Value: []byte{1}, DataPointer: MemoryPointer{Offset: uint64(0)}}, MemoryPointer{Offset: uint64(0), Length: uint32(39)}); err == nil {
+			t.Fatalf("should error %v", err)
+		}
+	})
+
+	t.Run("nil tree", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nilTree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(1)}
+
+		if err := nilTree.Insert(ReferencedValue{Value: []byte{1}, DataPointer: MemoryPointer{Offset: uint64(0)}}, MemoryPointer{Offset: uint64(0), Length: uint32(39)}); err == nil {
+			t.Fatalf("should error %v", err)
+		}
+	})
+}
+
 func TestBPTree_Iteration_Overcount(t *testing.T) {
 	b := buftest.NewSeekableBuffer()
 	p, err := pagefile.NewPageFile(b)
@@ -588,7 +617,7 @@ func TestBPTree_Iteration_Overcount(t *testing.T) {
 		}
 	}
 
-	t.Run("finds exactly 10 occurences of 23", func(t *testing.T) {
+	t.Run("finds exactly 10 occurrences of 23", func(t *testing.T) {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
 

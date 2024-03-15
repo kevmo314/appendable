@@ -239,6 +239,13 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr MemoryPoint
 }
 
 func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
+
+	if t.Width != uint16(0) {
+		if uint16(len(key.Value)) != t.Width-1 {
+			return fmt.Errorf("key to insert does not match with bptree width. Expected width: %v, got: %v", t.Width, len(key.Value))
+		}
+	}
+
 	root, rootOffset, err := t.root()
 	if err != nil {
 		return fmt.Errorf("read root node: %w", err)
@@ -268,7 +275,8 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 	n := path[0].node
 	j, found := slices.BinarySearchFunc(n.Keys, key, CompareReferencedValues)
 	if found {
-		return fmt.Errorf("key already exists")
+
+		return fmt.Errorf("key already exists. Data pointer: %v", key.DataPointer)
 	}
 	if j == len(n.Keys) {
 		n.Keys = append(n.Keys, key)
