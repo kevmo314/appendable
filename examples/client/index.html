@@ -190,16 +190,10 @@
           document.getElementById("execute").disabled = false;
           while (result) {
             document.getElementById("next").disabled = false;
-
-            try {
               await new Promise(
                       (resolve) => (document.getElementById("next").onclick = resolve),
               );
               result = await appendResult();
-            } catch (e) {
-                console.log("error:", e)
-                result = false;
-            }
           }
         }
       </script>
