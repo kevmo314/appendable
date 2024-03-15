@@ -172,26 +172,34 @@
           async function appendResult() {
             const result = await query.next();
             if (result.done) {
-              return;
+              return false;
             }
 
             const resultDiv = document.createElement("div");
             resultDiv.classList.add("result-item");
             resultDiv.textContent = JSON.stringify(result.value);
             resultsElement.appendChild(resultDiv);
+
+            return true;
           }
 
+          let result;
           for (let i = 0; i < 10; i++) {
-            await appendResult();
+            result = await appendResult();
           }
           document.getElementById("execute").disabled = false;
-          while (true) {
+          while (result) {
             document.getElementById("next").disabled = false;
-            await new Promise(
-              (resolve) => (document.getElementById("next").onclick = resolve),
-            );
-            document.getElementById("next").disabled = true;
-            await appendResult();
+
+            try {
+              await new Promise(
+                      (resolve) => (document.getElementById("next").onclick = resolve),
+              );
+              result = await appendResult();
+            } catch (e) {
+                console.log("error:", e)
+                result = false;
+            }
           }
         }
       </script>
