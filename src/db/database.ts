@@ -151,24 +151,20 @@ export class Database<T extends Schema> {
       if (operation === ">") {
         if (ord === "ASC") {
           const valueRef = new ReferencedValue(
-            { offset: 0n, length: 0 },
+            { offset: maxUint64, length: 0 },
             valueBuf,
           );
           const iter = bptree.iter(valueRef);
 
           while (await iter.next()) {
-            const currentKey = iter.getKey();
+            const mp = iter.getPointer();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) < 0) {
-              const mp = iter.getPointer();
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
 
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
-            }
+            yield handleSelect(data, query.select);
           }
         } else {
           const lastKey = await bptree.last();
@@ -177,15 +173,17 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) < 0) {
-              const mp = iter.getPointer();
-
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-              yield handleSelect(data, query.select);
+            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0) {
+              break;
             }
+
+            const mp = iter.getPointer();
+
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
+            yield handleSelect(data, query.select);
           }
         }
       } else if (operation === ">=") {
@@ -197,18 +195,14 @@ export class Database<T extends Schema> {
           const iter = bptree.iter(valueRef);
 
           while (await iter.next()) {
-            const currentKey = iter.getKey();
+            const mp = iter.getPointer();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) <= 0) {
-              const mp = iter.getPointer();
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
 
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
-            }
+            yield handleSelect(data, query.select);
           }
         } else {
           const lastKey = await bptree.last();
@@ -217,16 +211,18 @@ export class Database<T extends Schema> {
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) <= 0) {
-              const mp = iter.getPointer();
-
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
+            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0) {
+              break;
             }
+
+            const mp = iter.getPointer();
+
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
+
+            yield handleSelect(data, query.select);
           }
         }
       } else if (operation === "==") {
@@ -239,7 +235,47 @@ export class Database<T extends Schema> {
         while (await iter.next()) {
           const currentKey = iter.getKey();
 
-          if (ReferencedValue.compareBytes(valueBuf, currentKey.value) === 0) {
+          if (ReferencedValue.compareBytes(currentKey.value, valueBuf) !== 0) {
+            break;
+          }
+
+          const mp = iter.getPointer();
+
+          const data = await this.dataFile.get(
+            Number(mp.offset),
+            Number(mp.offset) + mp.length - 1,
+          );
+
+          yield handleSelect(data, query.select);
+        }
+      } else if (operation === "<=") {
+        if (ord === "DESC") {
+          const valueRef = new ReferencedValue(
+            { offset: maxUint64, length: 0 },
+            valueBuf,
+          );
+          const iter = bptree.iter(valueRef);
+          while (await iter.prev()) {
+            const mp = iter.getPointer();
+
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
+
+            yield handleSelect(data, query.select);
+          }
+        } else {
+          const firstKey = await bptree.first();
+          const iter = bptree.iter(firstKey);
+
+          while (await iter.next()) {
+            const currentKey = iter.getKey();
+
+            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) > 0) {
+              break;
+            }
+
             const mp = iter.getPointer();
 
             const data = await this.dataFile.get(
@@ -250,68 +286,24 @@ export class Database<T extends Schema> {
             yield handleSelect(data, query.select);
           }
         }
-      } else if (operation === "<=") {
-        if (ord === "DESC") {
-          const valueRef = new ReferencedValue(
-            { offset: maxUint64, length: 0 },
-            valueBuf,
-          );
-          const iter = bptree.iter(valueRef);
-          while (await iter.prev()) {
-            const currentKey = iter.getKey();
-
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) >= 0) {
-              const mp = iter.getPointer();
-
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
-            }
-          }
-        } else {
-          const firstKey = await bptree.first();
-          const iter = bptree.iter(firstKey);
-
-          while (await iter.next()) {
-            const currentKey = iter.getKey();
-
-            if (ReferencedValue.compareBytes(valueBuf, currentKey.value) >= 0) {
-              const mp = iter.getPointer();
-
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
-            }
-          }
-        }
       } else if (operation === "<") {
         if (ord === "DESC") {
           const valueRef = new ReferencedValue(
-            { offset: maxUint64, length: 0 },
+            { offset: 0n, length: 0 },
             valueBuf,
           );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
             const currentKey = iter.getKey();
 
-            if (
-              ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1
-            ) {
-              const mp = iter.getPointer();
+            const mp = iter.getPointer();
 
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
 
-              yield handleSelect(data, query.select);
-            }
+            yield handleSelect(data, query.select);
           }
         } else {
           const firstKey = await bptree.first();
@@ -320,18 +312,18 @@ export class Database<T extends Schema> {
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            if (
-              ReferencedValue.compareBytes(valueBuf, currentKey.value) === 1
-            ) {
-              const mp = iter.getPointer();
-
-              const data = await this.dataFile.get(
-                Number(mp.offset),
-                Number(mp.offset) + mp.length - 1,
-              );
-
-              yield handleSelect(data, query.select);
+            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) >= 0) {
+              break;
             }
+
+            const mp = iter.getPointer();
+
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
+
+            yield handleSelect(data, query.select);
           }
         }
       }
