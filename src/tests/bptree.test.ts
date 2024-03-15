@@ -74,3 +74,68 @@ describe("test btree", () => {
     }
   });
 });
+
+describe("test btree iterator count", () => {
+  let mockRangeResolver: RangeResolver;
+  let mockDataFileResolver: RangeResolver;
+  let bptree: BPTree;
+
+  beforeEach(() => {
+    mockDataFileResolver = async ([{ start, end }]) => {
+      return [
+        {
+          data: new ArrayBuffer(0),
+          totalLength: 0,
+        },
+      ];
+    };
+
+    mockRangeResolver = async ([{ start, end }]) => {
+      const indexFile = await readBinaryFile("bptree_1023.bin");
+      console.log(indexFile.byteLength);
+      const slicedPart = indexFile.slice(start, end + 1);
+
+      const arrayBuffer = slicedPart.buffer.slice(
+        slicedPart.byteOffset,
+        slicedPart.byteOffset + slicedPart.byteLength,
+      );
+
+      return [
+        {
+          data: arrayBuffer,
+          totalLength: arrayBuffer.byteLength,
+        },
+      ];
+    };
+
+    const page = new testMetaPage({ offset: 8192n, length: 88 });
+    bptree = new BPTree(
+      mockRangeResolver,
+      page,
+      mockDataFileResolver,
+      FileFormat.CSV,
+      FieldType.String,
+      9,
+    );
+  });
+
+  it("should count the value 23 10 times", async () => {
+    const valueBuf = new ArrayBuffer(8);
+    new DataView(valueBuf).setFloat64(0, Number(23));
+
+    const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf);
+
+    const iter = bptree.iter(valueRef);
+
+    let count = 0;
+
+    while (await iter.next()) {
+      const currKey = iter.getKey();
+      if (ReferencedValue.compareBytes(valueBuf, currKey.value) === 0) {
+        count++;
+      }
+    }
+
+    expect(count).toEqual(10);
+  });
+});

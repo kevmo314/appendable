@@ -568,3 +568,87 @@ func TestBPTree_Iteration_FirstLast(t *testing.T) {
 
 	})
 }
+
+func TestBPTree_IncorrectWidth(t *testing.T) {
+
+	t.Run("float tree", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		floatTree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9)}
+
+		if err := floatTree.Insert(ReferencedValue{Value: []byte{1}, DataPointer: MemoryPointer{Offset: uint64(0)}}, MemoryPointer{Offset: uint64(0), Length: uint32(39)}); err == nil {
+			t.Fatalf("should error %v", err)
+		}
+	})
+
+	t.Run("nil tree", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nilTree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(1)}
+
+		if err := nilTree.Insert(ReferencedValue{Value: []byte{1}, DataPointer: MemoryPointer{Offset: uint64(0)}}, MemoryPointer{Offset: uint64(0), Length: uint32(39)}); err == nil {
+			t.Fatalf("should error %v", err)
+		}
+	})
+}
+
+func TestBPTree_Iteration_Overcount(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := pagefile.NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9)}
+	count := 10
+
+	for i := 0; i < count; i++ {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
+
+		if err := tree.Insert(ReferencedValue{Value: buf, DataPointer: MemoryPointer{Offset: uint64(i)}}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("finds exactly 10 occurrences of 23", func(t *testing.T) {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
+
+		valueRef := ReferencedValue{
+			Value: buf,
+		}
+
+		iter, err := tree.Iter(valueRef)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		i := 0
+		for ; iter.Next(); i++ {
+			k := iter.Key()
+			reader := bytes.NewReader(k.Value)
+			var c float64
+			err := binary.Read(reader, binary.BigEndian, &c)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if c != float64(23) {
+				t.Errorf("expected c == 23, got: %v", c)
+			}
+		}
+
+		if i != 10 {
+			t.Errorf("should've iterated 10 times, got %v", i)
+		}
+
+	})
+
+}
