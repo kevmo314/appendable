@@ -108,9 +108,10 @@ func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 func TestSizeVariant(t *testing.T) {
 
 	x := len(binary.AppendUvarint([]byte{}, uint64(123)))
-	y := SizeVariant(uint64(123))
+	y := SizeUvarint(uint64(123))
 
 	if x != y {
 		t.Fatalf("expected x == y, got %v == %v", x, y)
 	}
+
 }

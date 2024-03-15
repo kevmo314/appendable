@@ -82,8 +82,12 @@ func (n *BPTreeNode) NumPointers() int {
 	return len(n.InternalPointers) + len(n.LeafPointers)
 }
 
-func SizeVariant(v uint64) int {
-	return int(9*uint32(bits.Len64(v))+64) / 64
+func SizeUvarint(v uint64) int {
+	if v == 0 {
+		return 1
+	} else {
+		return (64 - bits.LeadingZeros64(v) + 6) / 7
+	}
 }
 
 func (n *BPTreeNode) Size() int64 {
@@ -92,7 +96,7 @@ func (n *BPTreeNode) Size() int64 {
 	for _, k := range n.Keys {
 		size += 8
 
-		lb := SizeVariant(uint64(k.DataPointer.Length))
+		lb := SizeUvarint(uint64(k.DataPointer.Length))
 		size += lb
 
 		if n.Width != uint16(0) {
@@ -102,7 +106,7 @@ func (n *BPTreeNode) Size() int64 {
 	for _, n := range n.LeafPointers {
 		size += 8
 
-		lb := SizeVariant(uint64(n.Length))
+		lb := SizeUvarint(uint64(n.Length))
 		size += lb
 	}
 	for range n.InternalPointers {
