@@ -583,7 +583,7 @@ func TestBPTree_Iteration_Overcount(t *testing.T) {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
 
-		if err := tree.Insert(ReferencedValue{Value: buf}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+		if err := tree.Insert(ReferencedValue{Value: buf, DataPointer: MemoryPointer{Offset: uint64(i)}}, MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
 	}
