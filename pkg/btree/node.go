@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math/bits"
 )
 
 // MemoryPointer is a uint64 offset and uint32 length
@@ -81,21 +82,25 @@ func (n *BPTreeNode) NumPointers() int {
 	return len(n.InternalPointers) + len(n.LeafPointers)
 }
 
+func SizeVariant(v uint64) int {
+	return int(9*uint32(bits.Len64(v))+64) / 64
+}
+
 func (n *BPTreeNode) Size() int64 {
+
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-
-		o := len(binary.AppendUvarint([]byte{}, k.DataPointer.Offset))
-		l := len(binary.AppendUvarint([]byte{}, uint64(k.DataPointer.Length)))
-		size += o + l
+    o := SizeVariant(uint64(k.DataPointer.Offset))
+		l := SizeVariant(uint64(k.DataPointer.Length))
+		size += l + o
 
 		if n.Width != uint16(0) {
 			size += len(k.Value)
 		}
 	}
 	for _, n := range n.LeafPointers {
-		o := len(binary.AppendUvarint([]byte{}, uint64(n.Offset)))
-		l := len(binary.AppendUvarint([]byte{}, uint64(n.Length)))
+    o := SizeVariant(uint64(n.Offset))
+		l := SizeVariant(uint64(n.Length))
 		size += o + l
 	}
 	for _, n := range n.InternalPointers {
