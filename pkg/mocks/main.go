@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"io"
-	"log"
-	"os"
-
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"io"
+	"log"
+	"math"
+	"os"
 )
 
 func writeBufferToFile(buf *bytes.Buffer, filename string) error {
@@ -169,6 +169,33 @@ func generateBtreeIterator() {
 	b.WriteToDisk("btree_iterator.bin")
 }
 
+func generate1023Btree() {
+	b := buftest.NewSeekableBuffer()
+	p, err := pagefile.NewPageFile(b)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	mp, err := newTestMetaPage(p)
+
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	tree := &btree.BPTree{PageFile: p, MetaPage: mp, Width: uint16(9)}
+	count := 10
+
+	for i := 0; i < count; i++ {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
+
+		if err := tree.Insert(btree.ReferencedValue{Value: buf, DataPointer: btree.MemoryPointer{Offset: uint64(i)}}, btree.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	b.WriteToDisk("bptree_1023.bin")
+}
+
 func generateFilledMetadata() {
 	b := buftest.NewSeekableBuffer()
 	p, err := pagefile.NewPageFile(b)
@@ -258,7 +285,7 @@ func generateUVariantTestCases() {
 }
 
 func main() {
-	generateUVariantTestCases()
+	//generateUVariantTestCases()
 	// generateFilledMetadata()
 	// generateBasicBtree()
 	// generateInternalNode()
@@ -267,4 +294,5 @@ func main() {
 	// generateFileMeta()
 	// generateIndexMeta()
 
+	generate1023Btree()
 }
