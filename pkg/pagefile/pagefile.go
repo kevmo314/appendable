@@ -11,6 +11,8 @@ type ReadWriteSeekPager interface {
 
 	Page(int) (int64, error)
 	NewPage([]byte) (int64, error)
+	NewMeta(buf []byte) (int64, error)
+
 	FreePage(int64) error
 
 	PageSize() int

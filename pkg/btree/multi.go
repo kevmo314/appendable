@@ -152,7 +152,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if curr.offset != ^uint64(0) {
 		return nil, errors.New("next pointer already exists")
 	}
-	offset, err := m.rws.NewPage(nil)
+	offset, err := m.rws.NewMeta(nil)
 	if err != nil {
 		return nil, err
 	}
