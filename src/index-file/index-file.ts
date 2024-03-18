@@ -49,6 +49,7 @@ export interface VersionedIndexFile<T> {
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
   private _tree?: PageFile;
 
+  private fileMeta: LinkedMetaPage | null = null;
   private linkedMetaPages: LinkedMetaPage[] = [];
 
   constructor(private resolver: RangeResolver) {}
@@ -69,10 +70,11 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async metadata(): Promise<FileMeta> {
-    const tree = await this.tree();
+    if (this.fileMeta === null) {
+      await this.fetchMetaPages();
+    }
 
-    const fileMeta = await tree.splitPage();
-    const buffer = await fileMeta[0].metadata();
+    const buffer = await this.fileMeta!.metadata();
 
     // unmarshall binary for FileMeta
     if (buffer.byteLength < 10) {
@@ -141,7 +143,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
       mps = [...mps, ...currMps];
     }
 
-    console.log(`mps: ${mps.length}, ${mps.slice(1)}`);
+    this.fileMeta = mps[0];
     this.linkedMetaPages = mps.slice(1);
   }
 
