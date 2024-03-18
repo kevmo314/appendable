@@ -1,8 +1,4 @@
-import {
-  LinkedMetaPage,
-  PAGE_SIZE_BYTES,
-  ReadMultiBPTree,
-} from "../btree/multi";
+import { LinkedMetaPage } from "../btree/multi";
 import { RangeResolver } from "../resolver";
 import {
   FileFormat,
@@ -14,6 +10,7 @@ import {
 import { FieldType } from "../db/database";
 import { requestRanges } from "../range-request";
 import { Config } from "..";
+import { PageFile, ReadMultiBPTree } from "../../pkg/btree/pagefile";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string, config: Config) {
@@ -38,7 +35,7 @@ export type FileMeta = {
 export interface VersionedIndexFile<T> {
   getResolver(): RangeResolver;
 
-  tree(): Promise<LinkedMetaPage>;
+  tree(): Promise<PageFile>;
 
   metadata(): Promise<FileMeta>;
 
@@ -50,7 +47,7 @@ export interface VersionedIndexFile<T> {
 }
 
 export class IndexFileV1<T> implements VersionedIndexFile<T> {
-  private _tree?: LinkedMetaPage;
+  private _tree?: PageFile;
 
   private linkedMetaPages: LinkedMetaPage[] = [];
 
@@ -60,7 +57,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     return this.resolver;
   }
 
-  async tree(): Promise<LinkedMetaPage> {
+  async tree(): Promise<PageFile> {
     if (this._tree) {
       return this._tree;
     }
@@ -74,7 +71,8 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   async metadata(): Promise<FileMeta> {
     const tree = await this.tree();
 
-    const buffer = await tree.metadata();
+    const fileMeta = await tree.splitPage();
+    const buffer = await fileMeta[0].metadata();
 
     // unmarshall binary for FileMeta
     if (buffer.byteLength < 10) {
@@ -132,27 +130,19 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async fetchMetaPages(): Promise<void> {
-    let currMp = await this.tree();
-    let offsets = await currMp.nextNOffsets();
+    let currPage = await this.tree();
+    let mps = await currPage.splitPage();
+    let offsets = await currPage.nextNOffsets();
+    let lastoffset = offsets[offsets.length - 1];
 
-    while (offsets.length > 0) {
-      let ranges = offsets.map((o) => ({
-        start: Number(o),
-        end: Number(o) + PAGE_SIZE_BYTES - 1,
-      }));
-
-      let res = await this.resolver(ranges);
-      let idx = 0;
-      for (const { data } of res) {
-        this.linkedMetaPages.push(
-          new LinkedMetaPage(this.resolver, offsets[idx], data),
-        );
-        idx++;
-      }
-
-      currMp = this.linkedMetaPages[this.linkedMetaPages.length - 1];
-      offsets = await currMp.nextNOffsets();
+    const nextPage = new PageFile(this.resolver, lastoffset);
+    if (nextPage) {
+      const currMps = await nextPage.splitPage();
+      mps = [...mps, ...currMps];
     }
+
+    console.log(`mps: ${mps.length}, ${mps.slice(1)}`);
+    this.linkedMetaPages = mps.slice(1);
   }
 
   async indexHeaders(): Promise<IndexHeader[]> {

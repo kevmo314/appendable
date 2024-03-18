@@ -1,7 +1,6 @@
-import { LengthIntegrityError, RangeResolver } from "../resolver";
-import { N, PAGE_SIZE_BYTES, ReadMultiBPTree } from "../btree/multi";
+import { RangeResolver } from "../resolver";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
-const maxUint64 = 2n ** 64n - 1n;
+import { ReadMultiBPTree } from "../../pkg/btree/pagefile";
 
 describe("test metadata", () => {
   let mockMetadata: Uint8Array;
@@ -23,7 +22,8 @@ describe("test metadata", () => {
     };
 
     const tree = ReadMultiBPTree(mockRangeResolver, 0);
-    const metadata = await tree.metadata();
+    const ms = await tree.splitPage();
+    const metadata = await ms[0].metadata();
 
     expect("hello").toEqual(arrayBufferToString(metadata));
   });

@@ -1,5 +1,5 @@
 import { RangeResolver } from "../../src/resolver";
-import { LinkedMetaPage } from "../../src/btree/multi";
+import { LinkedMetaPage, maxUint64, N } from "../../src/btree/multi";
 
 const META_SIZE_BYTES = 256;
 export const PAGE_SIZE_BYTES = 4096;
@@ -37,6 +37,23 @@ export class PageFile {
     return data;
   }
 
+  async nextNOffsets(): Promise<bigint[]> {
+    const pageData = await this.getPage();
+    const view = new DataView(pageData, 12);
+    let offsets: bigint[] = [];
+
+    for (let idx = 0; idx <= N - 1; idx++) {
+      const nextOffset = view.getBigUint64(idx * 8, true);
+
+      if (nextOffset === maxUint64) {
+        return offsets;
+      }
+      offsets.push(nextOffset);
+    }
+
+    return offsets;
+  }
+
   async splitPage(): Promise<LinkedMetaPage[]> {
     const pageData = await this.getPage();
 
@@ -46,11 +63,23 @@ export class PageFile {
       slotIdx <= PAGE_SIZE_BYTES / META_SIZE_BYTES - 1;
       slotIdx++
     ) {
-      const slotOffset = this.offset + BigInt(slotIdx * META_SIZE_BYTES);
+      const slotOffset = BigInt(slotIdx * META_SIZE_BYTES);
 
-      mps.push(
-        new LinkedMetaPage(pageData.slice(Number(slotOffset), META_SIZE_BYTES)),
+      const slotData = pageData.slice(
+        Number(slotOffset),
+        Number(slotOffset) + META_SIZE_BYTES,
       );
+
+      const slotDataView = new Uint8Array(slotData);
+
+      const isFilledWithZeros = slotDataView.every((byte) => byte === 0);
+      if (isFilledWithZeros) {
+        return mps;
+      }
+
+      const mp = new LinkedMetaPage(slotData);
+
+      mps.push(mp);
     }
 
     return mps;
