@@ -13,8 +13,8 @@ import (
 const N = 16
 
 /**
- * LinkedMetaPage is a linked list of meta pages. Each page contains
- * a pointer to the root of the B+ tree, a pointer to the next meta page,
+ * LinkedMetaPage is a resides in a Page where each Page contains at most 16 LinkedMetaPages.
+ * Each meta page contains a pointer to the root of the B+ tree, a pointer to the next N meta pages,
  * and the remainder of the page is allocated as free space for metadata.
  *
  * A page exists if and only if the offset is not math.MaxUint64 and the

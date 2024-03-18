@@ -14,15 +14,20 @@ type ReadWriteSeekPager interface {
 	FreePage(int64) error
 
 	PageSize() int
+
+	MetaSize() int
 }
 
 type PageFile struct {
 	io.ReadWriteSeeker
 	pageSize int
+	metaSize int
 
 	// local cache of free pages to avoid reading from disk too often.
 	freePageIndexes             [512]int64
 	freePageHead, freePageCount int
+
+	freeMetaIndexes [][]bool
 
 	lastPage int64
 }
@@ -31,6 +36,7 @@ var _ ReadWriteSeekPager = &PageFile{}
 
 // const maxFreePageIndices = 512
 const pageSizeBytes = 4096 // 4kB by default.
+const metaSizeBytes = 256
 
 func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	// check if the rws is empty. if it is, allocate one page for the free page indexes
@@ -46,6 +52,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	pf := &PageFile{
 		ReadWriteSeeker: rws,
 		pageSize:        pageSizeBytes,
+		metaSize:        metaSizeBytes,
 	}
 	if err == io.EOF {
 		// allocate one page for the free page indexes
@@ -73,6 +80,13 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 		return nil, errors.New("file size is not a multiple of the page size")
 	}
 	pf.lastPage = n / int64(pf.pageSize)
+
+	metaSlotsPerPage := pf.pageSize / pf.metaSize
+	pf.freeMetaIndexes = make([][]bool, pf.lastPage)
+	for i := range pf.freeMetaIndexes {
+		pf.freeMetaIndexes[i] = make([]bool, metaSlotsPerPage)
+	}
+
 	return pf, nil
 }
 
@@ -118,6 +132,34 @@ func (pf *PageFile) FreePageIndex() (int64, error) {
 	return offset, nil
 }
 
+func (pf *PageFile) NewMeta(buf []byte) (int64, error) {
+	if buf != nil && len(buf) > pf.metaSize {
+		return 0, errors.New("buffer is too large")
+	}
+
+	// return the first available page's meta index offset
+	for pageIndex, metaIndexUsed := range pf.freeMetaIndexes {
+		for metaIndex, used := range metaIndexUsed {
+			if !used {
+				pf.freeMetaIndexes[pageIndex][metaIndex] = true
+				offset := int64(pageIndex)*int64(pf.pageSize) + int64(metaIndex)*int64(pf.metaSize)
+				return offset, nil
+			}
+		}
+	}
+
+	newPageOffset, err := pf.NewPage(nil)
+	if err != nil {
+		return 0, err
+	}
+
+	pageIndex := int(newPageOffset / int64(pf.pageSize))
+	pf.freeMetaIndexes = append(pf.freeMetaIndexes, make([]bool, pf.pageSize/pf.metaSize))
+	pf.freeMetaIndexes[pageIndex][0] = true
+
+	return int64(pageIndex) * int64(pf.pageSize), nil
+}
+
 func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 	if buf != nil && len(buf) > pf.pageSize {
 		return 0, errors.New("buffer is too large")
@@ -140,6 +182,13 @@ func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 		}
 		offset = n
 		pf.lastPage++
+
+		pageIndex := offset / int64(pf.pageSize)
+		metaSlotsPerPage := pf.pageSize / pf.metaSize
+		if int(pageIndex) >= len(pf.freeMetaIndexes) {
+			pf.freeMetaIndexes = append(pf.freeMetaIndexes, make([]bool, metaSlotsPerPage))
+		}
+
 	}
 
 	// if the offset is not a multiple of the page size, we need to pad the file
@@ -190,6 +239,10 @@ func (pf *PageFile) FreePage(offset int64) error {
 
 func (pf *PageFile) PageSize() int {
 	return pf.pageSize
+}
+
+func (pf *PageFile) MetaSize() int {
+	return pf.metaSize
 }
 
 func (pf *PageFile) PageCount() int64 {
