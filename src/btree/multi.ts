@@ -40,10 +40,11 @@ export class LinkedMetaPage {
 
     const lengthView = new DataView(pageData, 8 * N + 16);
 
-    // read the first four because that represents length
-    const metadataLength = lengthView.getUint32(0, true);
-    const start = 8 * N + 20;
+    // read the first two because that represents length
+    const metadataLength = lengthView.getUint16(0, true);
+    const start = 8 * N + 18;
 
+    console.log(start, start + metadataLength);
     return pageData.slice(start, start + metadataLength);
   }
 
