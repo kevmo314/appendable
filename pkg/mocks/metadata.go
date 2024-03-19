@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/kevmo314/appendable/pkg/appendable"
-	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"log"
 	"os"
@@ -15,7 +15,7 @@ func generateFilledMetadata() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	tree, err := btree.NewMultiBPTree(p, 0)
+	tree, err := metapage.NewMultiBPTree(p, 0)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
