@@ -10,7 +10,7 @@ import {
 import { FieldType } from "../db/database";
 import { requestRanges } from "../range-request";
 import { Config } from "..";
-import { PageFile, ReadMultiBPTree } from "../../pkg/btree/pagefile";
+import { PageFile, ReadMultiBPTree } from "../btree/pagefile";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string, config: Config) {

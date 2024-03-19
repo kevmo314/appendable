@@ -1,6 +1,6 @@
 import { RangeResolver } from "../resolver";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
-import { ReadMultiBPTree } from "../../pkg/btree/pagefile";
+import { ReadMultiBPTree } from "../btree/pagefile";
 
 describe("test metadata", () => {
   let mockMetadata: Uint8Array;

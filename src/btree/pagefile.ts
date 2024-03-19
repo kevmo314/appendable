@@ -1,5 +1,5 @@
-import { RangeResolver } from "../../src/resolver";
-import { LinkedMetaPage, maxUint64, N } from "../../src/btree/multi";
+import { RangeResolver } from "../resolver";
+import { LinkedMetaPage, maxUint64, N } from "./multi";
 
 const META_SIZE_BYTES = 256;
 export const PAGE_SIZE_BYTES = 4096;
