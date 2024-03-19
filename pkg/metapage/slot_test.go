@@ -1,4 +1,4 @@
-package btree
+package metapage
 
 import (
 	"reflect"
@@ -203,7 +203,7 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Create a linked list of LinkedMetaPages
+		// Create a linked list of LinkedMetaSlots
 		page1, err := tree.AddNext()
 		if err != nil {
 			t.Fatal(err)
@@ -224,7 +224,7 @@ func TestMultiBPTree(t *testing.T) {
 		}
 
 		// Verify the collected pages
-		expectedPages := []*LinkedMetaPage{page1, page2, page3}
+		expectedPages := []*LinkedMetaSlot{page1, page2, page3}
 		if !reflect.DeepEqual(collectedPages, expectedPages) {
 			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
 		}
@@ -247,7 +247,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectedPages := []*LinkedMetaPage{tree}
+		expectedPages := []*LinkedMetaSlot{tree}
 		if !reflect.DeepEqual(collectedPages, expectedPages) {
 			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
 		}
