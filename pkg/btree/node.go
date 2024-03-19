@@ -90,7 +90,7 @@ func (n *BPTreeNode) Size() int64 {
 
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-    o := SizeVariant(uint64(k.DataPointer.Offset))
+		o := SizeVariant(uint64(k.DataPointer.Offset))
 		l := SizeVariant(uint64(k.DataPointer.Length))
 		size += l + o
 
@@ -99,7 +99,7 @@ func (n *BPTreeNode) Size() int64 {
 		}
 	}
 	for _, n := range n.LeafPointers {
-    o := SizeVariant(uint64(n.Offset))
+		o := SizeVariant(uint64(n.Offset))
 		l := SizeVariant(uint64(n.Length))
 		size += o + l
 	}
