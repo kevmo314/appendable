@@ -2,6 +2,7 @@ package appendable
 
 import (
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/metapage"
 	"io"
 	"time"
 
@@ -19,7 +20,7 @@ type DataHandler interface {
 
 // IndexFile is a representation of the entire index file.
 type IndexFile struct {
-	tree        *btree.LinkedMetaPage
+	tree        *metapage.LinkedMetaSlot
 	dataHandler DataHandler
 
 	pf                *pagefile.PageFile
@@ -31,7 +32,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
-	tree, err := btree.NewMultiBPTree(pf, 0)
+	tree, err := metapage.NewMultiBPTree(pf, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}
@@ -97,7 +98,7 @@ func (i *IndexFile) SetMetadata(metadata *FileMeta) error {
 	return i.tree.SetMetadata(buf)
 }
 
-func (i *IndexFile) Indexes() (*btree.LinkedMetaPage, error) {
+func (i *IndexFile) Indexes() (*metapage.LinkedMetaSlot, error) {
 	return i.tree.Next()
 }
 
@@ -150,7 +151,7 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 	return fieldNames, nil
 }
 
-func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*btree.LinkedMetaPage, error) {
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaSlot, error) {
 	mp := i.tree
 	for {
 		// this is done in an odd order to avoid needing to keep track of the previous page
@@ -231,7 +232,7 @@ func (i *IndexFile) UpdateOffsets() error {
 			break
 		}
 
-		upperBound := idx + btree.N
+		upperBound := idx + metapage.N
 		if upperBound > len(offsets) {
 			upperBound = len(offsets)
 		}
