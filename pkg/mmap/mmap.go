@@ -161,3 +161,11 @@ func (m *MemoryMappedFile) WriteAt(b []byte, off int64) (int, error) {
 	n := copy(m.bytes[off:], b)
 	return n, nil
 }
+
+// DMA provides a way to directly access a slice of the memory-mapped file.
+func (m *MemoryMappedFile) DMA(off, size int64) []byte {
+	if size == -1 {
+		return m.bytes[off:]
+	}
+	return m.bytes[off : off+size]
+}

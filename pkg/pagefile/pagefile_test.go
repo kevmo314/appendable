@@ -14,7 +14,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset, err := pf.NewPage(nil)
+		offset, err := pf.NewPage()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +29,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage(nil)
+		offset1, err := pf.NewPage()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +44,7 @@ func TestPageFile(t *testing.T) {
 		if n != pageSizeBytes {
 			t.Fatalf("expected offset %d, got %d", pageSizeBytes, n)
 		}
-		offset2, err := pf.NewPage(nil)
+		offset2, err := pf.NewPage()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +67,7 @@ func TestPageFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		data := []byte("hello")
-		offset1, err := pf.NewPage(data)
+		offset1, err := pf.NewPage()
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -10,7 +10,7 @@ type ReadWriteSeekPager interface {
 	io.ReadWriteSeeker
 
 	Page(int) (int64, error)
-	NewPage([]byte) (int64, error)
+	NewPage() (int64, error)
 	FreePage(int64) error
 
 	PageSize() int
@@ -118,52 +118,18 @@ func (pf *PageFile) FreePageIndex() (int64, error) {
 	return offset, nil
 }
 
-func (pf *PageFile) NewPage(buf []byte) (int64, error) {
-	if buf != nil && len(buf) > pf.pageSize {
-		return 0, errors.New("buffer is too large")
-	}
-
+func (pf *PageFile) NewPage() (int64, error) {
 	// if there are free pages, return the first one
 	offset, err := pf.FreePageIndex()
 	if err != nil {
 		return 0, err
 	}
-	if offset != -1 {
-		// seek to the free page
-		if _, err := pf.ReadWriteSeeker.Seek(offset, io.SeekStart); err != nil {
-			return 0, err
-		}
-	} else {
-		n, err := pf.ReadWriteSeeker.Seek(0, io.SeekEnd)
-		if err != nil {
-			return 0, err
-		}
-		offset = n
+	if offset == -1 {
+		// allocate a new page
 		pf.lastPage++
+		return pf.lastPage * int64(pf.pageSize), nil
 	}
-
-	// if the offset is not a multiple of the page size, we need to pad the file
-	// with zeros to the next page boundary.
-	var pad int64
-	if pf.pageSize > 0 && offset%int64(pf.pageSize) != 0 {
-		// Calculate the number of bytes to pad
-		pad = int64(pf.pageSize) - (offset % int64(pf.pageSize))
-		// Write the padding
-		if _, err := pf.Write(make([]byte, pad)); err != nil {
-			return 0, err
-		}
-	}
-	page := make([]byte, pf.pageSize)
-	if buf != nil {
-		copy(page, buf)
-	}
-	if _, err := pf.ReadWriteSeeker.Write(page); err != nil {
-		return 0, err
-	}
-	if _, err := pf.ReadWriteSeeker.Seek(offset, io.SeekStart); err != nil {
-		return 0, err
-	}
-	return offset + pad, nil
+	return offset, nil
 }
 
 func (pf *PageFile) FreePage(offset int64) error {
