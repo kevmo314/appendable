@@ -1,7 +1,7 @@
 import { BPTreeNode, MemoryPointer } from "./node";
-import { RangeResolver } from "../resolver";
+import { RangeResolver } from "../resolver/resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
-import { FileFormat } from "../index-file/meta";
+import { FileFormat } from "../file/meta";
 import { FieldType } from "../db/database";
 
 export interface MetaPage {

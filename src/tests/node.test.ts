@@ -1,8 +1,8 @@
 import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
 import { BPTreeNode } from "../btree/node";
 import { FieldType } from "../db/database";
-import { FileFormat } from "../index-file/meta";
-import { RangeResolver } from "../resolver";
+import { FileFormat } from "../file/meta";
+import { RangeResolver } from "../resolver/resolver";
 import { readBinaryFile } from "./test-util";
 
 const PAGE_SIZE_BYTES = 4096;

@@ -1,7 +1,7 @@
-import { DataFile } from "./data-file";
+import { DataFile } from "./file/data-file";
 import { Database, FieldType, fieldTypeToString } from "./db/database";
-import { IndexFile } from "./index-file/index-file";
-import { RangeResolver } from "./resolver";
+import { IndexFile } from "./file/index-file";
+import { RangeResolver } from "./resolver/resolver";
 
 export type Config = {
   useMultipartByteRanges?: boolean;

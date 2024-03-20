@@ -1,8 +1,8 @@
 import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
 import { MemoryPointer } from "../btree/node";
 import { FieldType } from "../db/database";
-import { FileFormat } from "../index-file/meta";
-import { RangeResolver } from "../resolver";
+import { FileFormat } from "../file/meta";
+import { RangeResolver } from "../resolver/resolver";
 import { readBinaryFile } from "./test-util";
 
 class testMetaPage implements MetaPage {
@@ -92,7 +92,6 @@ describe("test btree iterator count", () => {
 
     mockRangeResolver = async ([{ start, end }]) => {
       const indexFile = await readBinaryFile("bptree_1023.bin");
-      console.log(indexFile.byteLength);
       const slicedPart = indexFile.slice(start, end + 1);
 
       const arrayBuffer = slicedPart.buffer.slice(

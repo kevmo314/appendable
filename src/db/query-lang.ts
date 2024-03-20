@@ -1,4 +1,28 @@
-import { FieldType, OrderBy, Schema } from "./database";
+import { FieldType } from "./database";
+
+export type Schema = {
+  [key: string]: {};
+};
+
+export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
+  operation: "<" | "<=" | "==" | ">=" | ">";
+  key: keyof T;
+  value: T[K];
+};
+
+export type OrderBy<T extends Schema> = {
+  key: keyof T;
+  direction: "ASC" | "DESC";
+};
+
+export type SelectField<T extends Schema> = keyof T;
+
+export type Query<T extends Schema> = {
+  where?: WhereNode<T>[];
+  orderBy?: OrderBy<T>[];
+  select?: SelectField<T>[];
+  limit?: number;
+};
 
 type QueryWhere = {
   valueBuf: ArrayBuffer;

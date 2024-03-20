@@ -1,5 +1,5 @@
-import { Database, OrderBy, Query, Schema, WhereNode } from "./database";
-
+import { Database } from "./database";
+import { OrderBy, Query, Schema, WhereNode } from "./query-lang";
 /**
  * A class for building and executing database queries in a flexible API style.
  * Allows chaining methods for 'where', 'orderBy', 'select', and 'limit' clauses.

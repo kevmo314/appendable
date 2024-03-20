@@ -1,7 +1,7 @@
 import { FieldType } from "../db/database";
-import { FileFormat } from "../index-file/meta";
-import { RangeResolver } from "../resolver";
-import { decodeUvarint } from "../uvarint";
+import { FileFormat } from "../file/meta";
+import { RangeResolver } from "../resolver/resolver";
+import { decodeUvarint } from "../util/uvarint";
 import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
