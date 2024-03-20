@@ -57,7 +57,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 			offset := int64(binary.LittleEndian.Uint64(buf[i*8 : (i+1)*8]))
 			if offset != 0 {
 				pf.freePageIndexes[pf.freePageHead] = offset
-				pf.freePageHead = (pf.freePageHead+1)&len(pf.freePageIndexes) - 1
+				pf.freePageHead = (pf.freePageHead + 1) & (len(pf.freePageIndexes) - 1)
 				pf.freePageCount++
 			} else {
 				break
