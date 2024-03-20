@@ -82,7 +82,10 @@ func main() {
 		} else if len(lmps) > 0 && offset == lmps[0] {
 			// this is a linked meta page
 			lmps = lmps[1:]
-			metaPage, err := metapage.NewMultiBPTree(pf, int(i))
+
+			ms := metapage.New(pf)
+
+			metaPage, err := metapage.NewMultiBPTree(pf, ms, int(i))
 			if err != nil {
 				panic(err)
 			}

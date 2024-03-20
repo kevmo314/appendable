@@ -15,7 +15,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+
+		ms := New(p)
+
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -34,7 +37,10 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+
+		ms := New(p)
+
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +66,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -72,14 +79,14 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		if next1.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next1)
+			t.Fatalf("expected length 24, got %v", next1)
 		}
 		next2, err := next1.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
 		if next2.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next2)
+			t.Fatalf("expected length 24, got %v", next2)
 		}
 
 		if next1.MemoryPointer().Offset == next2.MemoryPointer().Offset {
@@ -102,7 +109,9 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -114,7 +123,7 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		if next1.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next1)
+			t.Fatalf("expected length 24, got %v", next1)
 		}
 		_, err = tree.AddNext()
 		if err == nil {
@@ -128,7 +137,9 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -151,7 +162,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +189,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,7 +208,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +250,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -259,8 +274,8 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		tree, err := NewMultiBPTree(p, 0)
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -13,12 +13,16 @@ type ReadWriteSeekPager interface {
 	NewPage([]byte) (int64, error)
 	FreePage(int64) error
 
+	LastPage() int64
+
 	PageSize() int
+	SlotSize() int
 }
 
 type PageFile struct {
 	io.ReadWriteSeeker
 	pageSize int
+	slotSize int
 
 	// local cache of free pages to avoid reading from disk too often.
 	freePageIndexes             [512]int64
@@ -31,6 +35,7 @@ var _ ReadWriteSeekPager = &PageFile{}
 
 // const maxFreePageIndices = 512
 const pageSizeBytes = 4096 // 4kB by default.
+const slotSizeBytes = 256
 
 func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	// check if the rws is empty. if it is, allocate one page for the free page indexes
@@ -46,6 +51,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	pf := &PageFile{
 		ReadWriteSeeker: rws,
 		pageSize:        pageSizeBytes,
+		slotSize:        slotSizeBytes,
 	}
 	if err == io.EOF {
 		// allocate one page for the free page indexes
@@ -74,6 +80,10 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	}
 	pf.lastPage = n / int64(pf.pageSize)
 	return pf, nil
+}
+
+func (pf *PageFile) LastPage() int64 {
+	return pf.lastPage
 }
 
 func (pf *PageFile) Page(i int) (int64, error) {
@@ -190,6 +200,10 @@ func (pf *PageFile) FreePage(offset int64) error {
 
 func (pf *PageFile) PageSize() int {
 	return pf.pageSize
+}
+
+func (pf *PageFile) SlotSize() int {
+	return pf.slotSize
 }
 
 func (pf *PageFile) PageCount() int64 {
