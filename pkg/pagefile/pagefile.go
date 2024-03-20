@@ -57,7 +57,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 			offset := int64(binary.LittleEndian.Uint64(buf[i*8 : (i+1)*8]))
 			if offset != 0 {
 				pf.freePageIndexes[pf.freePageHead] = offset
-				pf.freePageHead = (pf.freePageHead + 1) % len(pf.freePageIndexes)
+				pf.freePageHead = (pf.freePageHead+1)&len(pf.freePageIndexes) - 1
 				pf.freePageCount++
 			} else {
 				break
@@ -69,7 +69,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if n%int64(pf.pageSize) != 0 {
+	if n&(int64(pf.pageSize)-1) != 0 {
 		return nil, errors.New("file size is not a multiple of the page size")
 	}
 	pf.lastPage = n / int64(pf.pageSize)
@@ -86,7 +86,7 @@ func (pf *PageFile) Page(i int) (int64, error) {
 
 func (pf *PageFile) writeFreePageIndices() error {
 	buf := make([]byte, len(pf.freePageIndexes)*8)
-	tail := (pf.freePageHead - pf.freePageCount + len(pf.freePageIndexes)) % len(pf.freePageIndexes)
+	tail := (pf.freePageHead - pf.freePageCount + len(pf.freePageIndexes)) & (len(pf.freePageIndexes) - 1)
 	for i := 0; i < pf.freePageCount; i++ {
 		offset := pf.freePageIndexes[tail+i]
 		binary.LittleEndian.PutUint64(buf[i*8:(i+1)*8], uint64(offset))
@@ -106,7 +106,7 @@ func (pf *PageFile) FreePageIndex() (int64, error) {
 		return -1, nil
 	}
 	// pop from the tail
-	tail := (pf.freePageHead - pf.freePageCount + len(pf.freePageIndexes)) % len(pf.freePageIndexes)
+	tail := (pf.freePageHead - pf.freePageCount + len(pf.freePageIndexes)) & (len(pf.freePageIndexes) - 1)
 	offset := pf.freePageIndexes[tail]
 	pf.freePageIndexes[tail] = 0
 	pf.freePageCount--
@@ -145,9 +145,9 @@ func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 	// if the offset is not a multiple of the page size, we need to pad the file
 	// with zeros to the next page boundary.
 	var pad int64
-	if pf.pageSize > 0 && offset%int64(pf.pageSize) != 0 {
+	if pf.pageSize > 0 && offset&(int64(pf.pageSize)-1) != 0 {
 		// Calculate the number of bytes to pad
-		pad = int64(pf.pageSize) - (offset % int64(pf.pageSize))
+		pad = int64(pf.pageSize) - (offset & (int64(pf.pageSize) - 1))
 		// Write the padding
 		if _, err := pf.Write(make([]byte, pad)); err != nil {
 			return 0, err
@@ -167,7 +167,7 @@ func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 }
 
 func (pf *PageFile) FreePage(offset int64) error {
-	if offset%int64(pf.pageSize) != 0 {
+	if offset&(int64(pf.pageSize)-1) != 0 {
 		return errors.New("offset is not a multiple of the page size")
 	}
 	if pf.freePageCount == len(pf.freePageIndexes) {
@@ -182,7 +182,7 @@ func (pf *PageFile) FreePage(offset int64) error {
 
 	// push to the head
 	pf.freePageIndexes[pf.freePageHead] = offset
-	pf.freePageHead = (pf.freePageHead + 1) % len(pf.freePageIndexes)
+	pf.freePageHead = (pf.freePageHead + 1) & (len(pf.freePageIndexes) - 1)
 	pf.freePageCount++
 
 	return pf.writeFreePageIndices()
