@@ -1,7 +1,7 @@
-import { Database, Query } from "../db/database";
+import { Database } from "../db/database";
 import { QueryBuilder } from "../db/query-builder";
 import { validateQuery } from "../db/query-validation";
-import { IndexHeader } from "../index-file/meta";
+import { IndexHeader } from "../file/meta";
 
 describe("test validate queries", () => {
   interface MockSchema {

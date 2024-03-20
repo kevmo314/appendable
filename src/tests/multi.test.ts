@@ -1,4 +1,4 @@
-import { LengthIntegrityError, RangeResolver } from "../resolver";
+import { LengthIntegrityError, RangeResolver } from "../resolver/resolver";
 import { N, PAGE_SIZE_BYTES, ReadMultiBPTree } from "../btree/multi";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
 const maxUint64 = 2n ** 64n - 1n;

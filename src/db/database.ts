@@ -1,35 +1,17 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
 import { maxUint64 } from "../btree/multi";
-import { DataFile } from "../data-file";
-import { VersionedIndexFile } from "../index-file/index-file";
-import { IndexHeader, readIndexMeta } from "../index-file/meta";
+import { DataFile } from "../file/data-file";
+import { VersionedIndexFile } from "../file/index-file";
+import { IndexHeader, readIndexMeta } from "../file/meta";
 import { QueryBuilder } from "./query-builder";
-import { handleSelect, processWhere } from "./query-logic";
 import { validateQuery } from "./query-validation";
-
-export type Schema = {
-  [key: string]: {};
-};
-
-export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
-  operation: "<" | "<=" | "==" | ">=" | ">";
-  key: keyof T;
-  value: T[K];
-};
-
-export type OrderBy<T extends Schema> = {
-  key: keyof T;
-  direction: "ASC" | "DESC";
-};
-
-export type SelectField<T extends Schema> = keyof T;
-
-export type Query<T extends Schema> = {
-  where?: WhereNode<T>[];
-  orderBy?: OrderBy<T>[];
-  select?: SelectField<T>[];
-  limit?: number;
-};
+import {
+  Query,
+  Schema,
+  WhereNode,
+  handleSelect,
+  processWhere,
+} from "./query-lang";
 
 export enum FieldType {
   String = 0,

@@ -1,4 +1,4 @@
-import { RangeResolver } from "../resolver";
+import { RangeResolver } from "../resolver/resolver";
 import { MemoryPointer } from "./node";
 
 export const N = 16;

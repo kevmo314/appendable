@@ -1,5 +1,5 @@
 import { FieldType } from "../db/database";
-import { handleSelect, processWhere } from "../db/query-logic";
+import { handleSelect, processWhere } from "../db/query-lang";
 
 describe("query logic test", () => {
   it("should process the given key", () => {

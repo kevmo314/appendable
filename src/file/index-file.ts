@@ -3,7 +3,7 @@ import {
   PAGE_SIZE_BYTES,
   ReadMultiBPTree,
 } from "../btree/multi";
-import { RangeResolver } from "../resolver";
+import { RangeResolver } from "../resolver/resolver";
 import {
   FileFormat,
   IndexHeader,
@@ -12,7 +12,7 @@ import {
   readIndexMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
-import { requestRanges } from "../range-request";
+import { requestRanges } from "../resolver/range-request";
 import { Config } from "..";
 
 export class IndexFile {
