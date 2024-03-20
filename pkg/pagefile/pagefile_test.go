@@ -229,3 +229,53 @@ func TestPageFile(t *testing.T) {
 		}
 	})
 }
+
+func BenchmarkPageFile(b *testing.B) {
+
+	b.Run("Benchmark new page file", func(b *testing.B) {
+		buf := buftest.NewSeekableBuffer()
+
+		for i := 0; i < b.N; i++ {
+			_, _ = NewPageFile(buf)
+		}
+	})
+
+	b.Run("Benchmark writeFreePageIndices", func(b *testing.B) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+
+		if err != nil {
+			b.Fatalf("failed to create page file")
+		}
+
+		for i := 0; i < b.N; i++ {
+			_ = pf.writeFreePageIndices()
+		}
+	})
+
+	b.Run("Benchmark free page index", func(b *testing.B) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+
+		if err != nil {
+			b.Fatalf("failed to create page file")
+		}
+
+		for i := 0; i < b.N; i++ {
+			_, _ = pf.FreePageIndex()
+		}
+	})
+
+	b.Run("Benchmark new page", func(b *testing.B) {
+		buf := buftest.NewSeekableBuffer()
+		pf, err := NewPageFile(buf)
+
+		if err != nil {
+			b.Fatalf("failed to create page file")
+		}
+
+		for i := 0; i < b.N; i++ {
+			_, _ = pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+		}
+	})
+}
