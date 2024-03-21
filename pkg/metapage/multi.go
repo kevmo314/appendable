@@ -128,12 +128,11 @@ func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
 	}
 
 	// find next available page offset
-	for pageIndex, metaIndexUsed := range m.freeSlotIndexes {
-		for slotIndex, used := range metaIndexUsed {
+	for pageIndex, slots := range m.freeSlotIndexes {
+		for slotIndex, used := range slots {
 			if !used {
 				m.freeSlotIndexes[pageIndex][slotIndex] = true
-				offset := int64(pageIndex*m.rws.PageSize()) + int64(slotIndex*m.rws.SlotSize())
-				fmt.Printf("page index: %v, slot index: %v, offset: %v\n", pageIndex, slotIndex, offset)
+				offset := int64(pageIndex*m.rws.PageSize() + slotIndex*m.rws.SlotSize())
 				return offset, nil
 			}
 		}
@@ -144,31 +143,32 @@ func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
 		return 0, err
 	}
 
-	pageIndex := newPageOffset / int64(m.rws.PageSize())
-	metaSlotsPerPage := m.rws.PageSize() / m.rws.SlotSize()
-	metaSlotsRow := make([]bool, metaSlotsPerPage)
-	metaSlotsRow[0] = true
-	m.freeSlotIndexes = append(m.freeSlotIndexes, metaSlotsRow)
+	pageIndex := int(newPageOffset / int64(m.rws.PageSize()))
+	if pageIndex >= len(m.freeSlotIndexes) {
+		for len(m.freeSlotIndexes) <= pageIndex {
+			m.freeSlotIndexes = append(m.freeSlotIndexes, make([]bool, m.rws.PageSize()/m.rws.SlotSize()))
+		}
+	}
 
-	return pageIndex * int64(m.rws.PageSize()), nil
+	m.freeSlotIndexes[pageIndex][0] = true
+	return newPageOffset, nil
 
 }
 
 func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
-	curr, err := m.Next(offset)
+	exists, err := m.Next(offset)
 	if err != nil {
 		return nil, err
 	}
-	if curr.offset != ^uint64(0) {
+	if exists.offset != ^uint64(0) {
 		return nil, errors.New("next pointer already exists")
 	}
 
-	nextOffset, err := m.rws.NewPage(nil)
+	nextOffset, err := m.NextSlot(nil)
 	if err != nil {
 		return nil, err
 	}
 	next := &LinkedMetaSlot{offset: uint64(nextOffset), pager: m}
-	fmt.Printf("next offset: %v\n", nextOffset)
 	if err := next.Reset(); err != nil {
 		return nil, err
 	}
