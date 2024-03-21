@@ -3,7 +3,7 @@ package btree
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/kevmo314/appendable/pkg/common"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"reflect"
 	"testing"
 )
@@ -11,7 +11,7 @@ import (
 func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 	// Create a test BPTreeNode
 	node1 := &BPTreeNode{
-		LeafPointers: []common.MemoryPointer{
+		LeafPointers: []pointer.MemoryPointer{
 			{Offset: 0, Length: 3},
 			{Offset: 3, Length: 3},
 			{Offset: 6, Length: 3},
@@ -81,13 +81,13 @@ func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 		},
 		{
 			Value:       []byte{1},
-			DataPointer: common.MemoryPointer{Offset: 0},
+			DataPointer: pointer.MemoryPointer{Offset: 0},
 		}, {
 			Value:       []byte{1},
-			DataPointer: common.MemoryPointer{Offset: 1},
+			DataPointer: pointer.MemoryPointer{Offset: 1},
 		}, {
 			Value:       []byte{1},
-			DataPointer: common.MemoryPointer{Offset: 1, Length: 1},
+			DataPointer: pointer.MemoryPointer{Offset: 1, Length: 1},
 		},
 	}
 	for i := 0; i < len(rv); i++ {

@@ -4,8 +4,8 @@ import (
 	"encoding"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/btree"
-	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
 const N = 16
@@ -25,11 +25,11 @@ type LinkedMetaSlot struct {
 	offset uint64
 }
 
-func (m *LinkedMetaSlot) Root() (common.MemoryPointer, error) {
+func (m *LinkedMetaSlot) Root() (pointer.MemoryPointer, error) {
 	return m.pager.Root(m.offset)
 }
 
-func (m *LinkedMetaSlot) SetRoot(mp common.MemoryPointer) error {
+func (m *LinkedMetaSlot) SetRoot(mp pointer.MemoryPointer) error {
 	return m.pager.SetRoot(m.offset, mp)
 }
 
@@ -85,8 +85,8 @@ func (m *LinkedMetaSlot) AddNext() (*LinkedMetaSlot, error) {
 	return m.pager.AddNext(m.offset)
 }
 
-func (m *LinkedMetaSlot) MemoryPointer() common.MemoryPointer {
-	return common.MemoryPointer{Offset: m.offset, Length: 24}
+func (m *LinkedMetaSlot) MemoryPointer() pointer.MemoryPointer {
+	return pointer.MemoryPointer{Offset: m.offset, Length: 24}
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {

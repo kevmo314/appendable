@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"log/slog"
 	"math"
 	"os"
@@ -195,7 +195,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaSlot, jr, cr []byte) (bool, s
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if mp1 == (common.MemoryPointer{}) {
+				if mp1 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
@@ -204,7 +204,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaSlot, jr, cr []byte) (bool, s
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if mp2 == (common.MemoryPointer{}) {
+				if mp2 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
@@ -224,7 +224,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaSlot, jr, cr []byte) (bool, s
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if mp1 == (common.MemoryPointer{}) {
+				if mp1 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
@@ -233,7 +233,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaSlot, jr, cr []byte) (bool, s
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
 				}
-				if mp2 == (common.MemoryPointer{}) {
+				if mp2 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 

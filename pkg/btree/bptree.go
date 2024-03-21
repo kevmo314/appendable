@@ -3,8 +3,8 @@ package btree
 import (
 	"bytes"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 	"slices"
 )
@@ -13,8 +13,8 @@ import (
 // This allows the caller to control the memory location of the meta
 // pointer
 type MetaPage interface {
-	Root() (common.MemoryPointer, error)
-	SetRoot(common.MemoryPointer) error
+	Root() (pointer.MemoryPointer, error)
+	SetRoot(pointer.MemoryPointer) error
 }
 
 type BPTree struct {
@@ -27,7 +27,7 @@ type BPTree struct {
 	Width uint16
 }
 
-func (t *BPTree) root() (*BPTreeNode, common.MemoryPointer, error) {
+func (t *BPTree) root() (*BPTreeNode, pointer.MemoryPointer, error) {
 	mp, err := t.MetaPage.Root()
 	if err != nil || mp.Length == 0 {
 		return nil, mp, nil
@@ -43,7 +43,7 @@ type TraversalRecord struct {
 	node  *BPTreeNode
 	index int
 	// the offset is useful so we know which page to free when we split
-	ptr common.MemoryPointer
+	ptr pointer.MemoryPointer
 }
 
 type TraversalIterator struct {
@@ -57,7 +57,7 @@ func (p *TraversalIterator) Key() ReferencedValue {
 	return p.records[0].node.Keys[p.records[0].index]
 }
 
-func (p *TraversalIterator) Pointer() common.MemoryPointer {
+func (p *TraversalIterator) Pointer() pointer.MemoryPointer {
 	return p.records[0].node.Pointer(p.records[0].index)
 }
 
@@ -136,18 +136,18 @@ func (t *BPTree) Iter(key ReferencedValue) (*TraversalIterator, error) {
 	return &TraversalIterator{tree: t, key: key}, nil
 }
 
-func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, common.MemoryPointer, error) {
+func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, pointer.MemoryPointer, error) {
 	p, err := t.Iter(key)
 	if err != nil {
-		return ReferencedValue{}, common.MemoryPointer{}, err
+		return ReferencedValue{}, pointer.MemoryPointer{}, err
 	}
 	if !p.Next() {
-		return ReferencedValue{}, common.MemoryPointer{}, p.Err()
+		return ReferencedValue{}, pointer.MemoryPointer{}, p.Err()
 	}
 	return p.Key(), p.Pointer(), nil
 }
 
-func (t *BPTree) readNode(ptr common.MemoryPointer) (*BPTreeNode, error) {
+func (t *BPTree) readNode(ptr pointer.MemoryPointer) (*BPTreeNode, error) {
 	if _, err := t.PageFile.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (t *BPTree) last() (ReferencedValue, error) {
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
-func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr common.MemoryPointer) ([]TraversalRecord, error) {
+func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr pointer.MemoryPointer) ([]TraversalRecord, error) {
 	// binary search node.Keys to find the first key greater than key
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
@@ -238,7 +238,7 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr common.Memo
 	return append(path, TraversalRecord{node: node, index: index, ptr: ptr}), nil
 }
 
-func (t *BPTree) Insert(key ReferencedValue, value common.MemoryPointer) error {
+func (t *BPTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
 
 	if t.Width != uint16(0) {
 		if uint16(len(key.Value)) != t.Width-1 {
@@ -254,7 +254,7 @@ func (t *BPTree) Insert(key ReferencedValue, value common.MemoryPointer) error {
 		// special case, create the root as the first node
 		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 		node.Keys = []ReferencedValue{key}
-		node.LeafPointers = []common.MemoryPointer{value}
+		node.LeafPointers = []pointer.MemoryPointer{value}
 		buf, err := node.MarshalBinary()
 		if err != nil {
 			return err
@@ -263,7 +263,7 @@ func (t *BPTree) Insert(key ReferencedValue, value common.MemoryPointer) error {
 		if err != nil {
 			return err
 		}
-		return t.MetaPage.SetRoot(common.MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
+		return t.MetaPage.SetRoot(pointer.MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
 
 	path, err := t.traverse(key, root, rootOffset)
@@ -363,7 +363,7 @@ func (t *BPTree) Insert(key ReferencedValue, value common.MemoryPointer) error {
 				if err != nil {
 					return err
 				}
-				if err := t.MetaPage.SetRoot(common.MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
+				if err := t.MetaPage.SetRoot(pointer.MemoryPointer{Offset: uint64(poffset), Length: uint32(len(pbuf))}); err != nil {
 					return err
 				}
 				return nil
@@ -385,7 +385,7 @@ func (t *BPTree) Insert(key ReferencedValue, value common.MemoryPointer) error {
 
 type Entry struct {
 	Key   []byte
-	Value common.MemoryPointer
+	Value pointer.MemoryPointer
 }
 
 // BulkInsert allows for the initial bulk loading of the tree. It is more efficient

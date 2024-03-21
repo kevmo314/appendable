@@ -3,22 +3,22 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
 
 type testMetaPage struct {
 	pf   *pagefile.PageFile
-	root common.MemoryPointer
+	root pointer.MemoryPointer
 }
 
-func (m *testMetaPage) SetRoot(mp common.MemoryPointer) error {
+func (m *testMetaPage) SetRoot(mp pointer.MemoryPointer) error {
 	m.root = mp
 	return m.write()
 }
 
-func (m *testMetaPage) Root() (common.MemoryPointer, error) {
+func (m *testMetaPage) Root() (pointer.MemoryPointer, error) {
 	return m.root, nil
 }
 

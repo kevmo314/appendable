@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/btree"
-	"github.com/kevmo314/appendable/pkg/common"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"log"
 	"os"
 )
@@ -20,7 +20,7 @@ func writeBufferToFile(buf *bytes.Buffer, filename string) error {
 func generateLeafNode() {
 	// Create a test BPTreeNode
 	node1 := &btree.BPTreeNode{
-		LeafPointers: []common.MemoryPointer{
+		LeafPointers: []pointer.MemoryPointer{
 			{Offset: 0, Length: 3},
 			{Offset: 3, Length: 3},
 			{Offset: 6, Length: 3},

@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/csv"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/common"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 	"log/slog"
 	"math"
@@ -63,7 +63,7 @@ func (c CSVHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 
 		dec := csv.NewReader(bytes.NewReader(df[metadata.ReadOffset : metadata.ReadOffset+uint64(i)]))
 
-		if err := c.handleCSVLine(f, df, dec, headers, []string{}, common.MemoryPointer{
+		if err := c.handleCSVLine(f, df, dec, headers, []string{}, pointer.MemoryPointer{
 			Offset: metadata.ReadOffset,
 			Length: uint32(i),
 		}); err != nil {
@@ -150,7 +150,7 @@ func (c CSVHandler) Parse(value []byte) []byte {
 	panic("unknown type")
 }
 
-func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers []string, path []string, data common.MemoryPointer) error {
+func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.Reader, headers []string, path []string, data pointer.MemoryPointer) error {
 	record, err := dec.Read()
 	if err != nil {
 		slog.Error("Failed to read CSV record at index", "error", err)
@@ -179,7 +179,7 @@ func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.R
 			return fmt.Errorf("failed to find or create index: %w", err)
 		}
 
-		mp := common.MemoryPointer{
+		mp := pointer.MemoryPointer{
 			Offset: fieldOffset,
 			Length: fieldLength,
 		}

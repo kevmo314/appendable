@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
 
@@ -31,16 +31,16 @@ func New(t pagefile.ReadWriteSeekPager) *MultiPager {
 	return m
 }
 
-func (m *MultiPager) Root(offset uint64) (common.MemoryPointer, error) {
+func (m *MultiPager) Root(offset uint64) (pointer.MemoryPointer, error) {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
-		return common.MemoryPointer{}, err
+		return pointer.MemoryPointer{}, err
 	}
 
-	var mp common.MemoryPointer
+	var mp pointer.MemoryPointer
 	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
 }
 
-func (m *MultiPager) SetRoot(offset uint64, mp common.MemoryPointer) error {
+func (m *MultiPager) SetRoot(offset uint64, mp pointer.MemoryPointer) error {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (m *MultiPager) Next(offset uint64) (*LinkedMetaSlot, error) {
 	if _, err := m.rws.Seek(int64(offset)+12, io.SeekStart); err != nil {
 		return nil, err
 	}
-	var next common.MemoryPointer
+	var next pointer.MemoryPointer
 	if err := binary.Read(m.rws, binary.LittleEndian, &next); err != nil {
 		return nil, err
 	}
