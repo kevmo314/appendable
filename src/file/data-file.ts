@@ -1,6 +1,6 @@
-import { Config } from ".";
-import { requestRanges } from "./range-request";
-import { RangeResolver } from "./resolver";
+import { Config } from "../index";
+import { requestRanges } from "../resolver/range-request";
+import { RangeResolver } from "../resolver/resolver";
 
 export class DataFile {
   private originalResolver?: RangeResolver;
