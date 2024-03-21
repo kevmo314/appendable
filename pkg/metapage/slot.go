@@ -2,13 +2,10 @@ package metapage
 
 import (
 	"encoding"
-	"encoding/binary"
-	"errors"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/btree"
-	"io"
-
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
 const N = 16
@@ -24,23 +21,16 @@ const N = 16
  * math.MaxUint64.
  */
 type LinkedMetaSlot struct {
-	rws    pagefile.ReadWriteSeekPager
+	pager  *MultiPager
 	offset uint64
 }
 
-func (m *LinkedMetaSlot) Root() (btree.MemoryPointer, error) {
-	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
-		return btree.MemoryPointer{}, err
-	}
-	var mp btree.MemoryPointer
-	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
+func (m *LinkedMetaSlot) Root() (pointer.MemoryPointer, error) {
+	return m.pager.Root(m.offset)
 }
 
-func (m *LinkedMetaSlot) SetRoot(mp btree.MemoryPointer) error {
-	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
-		return err
-	}
-	return binary.Write(m.rws, binary.LittleEndian, mp)
+func (m *LinkedMetaSlot) SetRoot(mp pointer.MemoryPointer) error {
+	return m.pager.SetRoot(m.offset, mp)
 }
 
 // BPTree returns a B+ tree that uses this meta page as the root
@@ -50,22 +40,13 @@ func (m *LinkedMetaSlot) SetRoot(mp btree.MemoryPointer) error {
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
 func (m *LinkedMetaSlot) BPTree(t *btree.BPTree) *btree.BPTree {
-	t.PageFile = m.rws
 	t.MetaPage = m
+	t.PageFile = m.pager.rws
 	return t
 }
 
 func (m *LinkedMetaSlot) Metadata() ([]byte, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+(8*N+16), io.SeekStart); err != nil {
-		return nil, err
-	}
-	buf := make([]byte, m.rws.PageSize()-(8*N+16))
-	if _, err := m.rws.Read(buf); err != nil {
-		return nil, err
-	}
-	// the first four bytes represents the length
-	length := binary.LittleEndian.Uint32(buf[:4])
-	return buf[4 : 4+length], nil
+	return m.pager.Metadata(m.offset)
 }
 
 func (m *LinkedMetaSlot) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
@@ -77,18 +58,7 @@ func (m *LinkedMetaSlot) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error 
 }
 
 func (m *LinkedMetaSlot) SetMetadata(data []byte) error {
-	if len(data) > m.rws.PageSize()-(8*N+16) {
-		return errors.New("metadata too large")
-	}
-	if _, err := m.rws.Seek(int64(m.offset)+(8*N+16), io.SeekStart); err != nil {
-		return err
-	}
-	buf := append(make([]byte, 4), data...)
-	binary.LittleEndian.PutUint32(buf, uint32(len(data)))
-	if _, err := m.rws.Write(buf); err != nil {
-		return err
-	}
-	return nil
+	return m.pager.SetMetadata(m.offset, data)
 }
 
 func (m *LinkedMetaSlot) MarshalMetadata(bm encoding.BinaryMarshaler) error {
@@ -100,109 +70,31 @@ func (m *LinkedMetaSlot) MarshalMetadata(bm encoding.BinaryMarshaler) error {
 }
 
 func (m *LinkedMetaSlot) NextNOffsets(offsets []uint64) ([]uint64, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < N; i++ {
-		if err := binary.Read(m.rws, binary.LittleEndian, &offsets[i]); err != nil {
-			return nil, err
-		}
-	}
-
-	return offsets, nil
+	return m.pager.NextNOffsets(m.offset, offsets)
 }
 
 func (m *LinkedMetaSlot) SetNextNOffsets(offsets []uint64) error {
-	if len(offsets) > N {
-		return fmt.Errorf("too many offsets, max number of offsets should be %d", N)
-	}
-
-	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
-		return err
-	}
-
-	for _, offset := range offsets {
-		if err := binary.Write(m.rws, binary.LittleEndian, offset); err != nil {
-			return err
-		}
-	}
-
-	if err := binary.Write(m.rws, binary.LittleEndian, ^uint64(0)); err != nil {
-		return err
-	}
-	return nil
+	return m.pager.SetNextNOffsets(m.offset, offsets)
 }
 
 func (m *LinkedMetaSlot) Next() (*LinkedMetaSlot, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
-		return nil, err
-	}
-	var next btree.MemoryPointer
-	if err := binary.Read(m.rws, binary.LittleEndian, &next); err != nil {
-		return nil, err
-	}
-	return &LinkedMetaSlot{rws: m.rws, offset: next.Offset}, nil
+	return m.pager.Next(m.offset)
 }
 
 func (m *LinkedMetaSlot) AddNext() (*LinkedMetaSlot, error) {
-	curr, err := m.Next()
-	if err != nil {
-		return nil, err
-	}
-	if curr.offset != ^uint64(0) {
-		return nil, errors.New("next pointer already exists")
-	}
-	offset, err := m.rws.NewPage(nil)
-	if err != nil {
-		return nil, err
-	}
-	next := &LinkedMetaSlot{rws: m.rws, offset: uint64(offset)}
-	if err := next.Reset(); err != nil {
-		return nil, err
-	}
-	// save the next pointer
-	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
-		return nil, err
-	}
-	return next, nil
+	return m.pager.AddNext(m.offset)
 }
 
-func (m *LinkedMetaSlot) MemoryPointer() btree.MemoryPointer {
-	return btree.MemoryPointer{Offset: m.offset, Length: 24}
+func (m *LinkedMetaSlot) MemoryPointer() pointer.MemoryPointer {
+	return pointer.MemoryPointer{Offset: m.offset, Length: 24}
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {
-	if m.offset == ^uint64(0) {
-		return false, nil
-	}
-	// attempt to read the page
-	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
-		return false, err
-	}
-	if _, err := m.rws.Read(make([]byte, m.rws.PageSize())); err != nil {
-		if err == io.EOF {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return m.pager.Exists(m.offset)
 }
 
 func (m *LinkedMetaSlot) Reset() error {
-	// write a full page of zeros
-	emptyPage := make([]byte, m.rws.PageSize())
-	binary.LittleEndian.PutUint64(emptyPage[12:20], ^uint64(0))
-	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
-		return err
-	}
-	if _, err := m.rws.Write(emptyPage); err != nil {
-		return err
-	}
-	return nil
+	return m.pager.Reset(m.offset)
 }
 
 // Collect returns a slice of all linked meta pages from this page to the end.
@@ -241,10 +133,10 @@ func (m *LinkedMetaSlot) String() string {
 	return fmt.Sprintf("LinkedMetaSlot{offset: %x,\tnext: %x,\troot: %x}", m.offset, nm.offset, root.Offset)
 }
 
-func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaSlot, error) {
+func NewMultiBPTree(t pagefile.ReadWriteSeekPager, ms *MultiPager, page int) (*LinkedMetaSlot, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err
 	}
-	return &LinkedMetaSlot{rws: t, offset: uint64(offset)}, nil
+	return &LinkedMetaSlot{pager: ms, offset: uint64(offset)}, nil
 }

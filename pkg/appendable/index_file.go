@@ -32,7 +32,10 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
-	tree, err := metapage.NewMultiBPTree(pf, 0)
+
+	ms := metapage.New(pf)
+
+	tree, err := metapage.NewMultiBPTree(pf, ms, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}

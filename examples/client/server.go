@@ -13,7 +13,7 @@ func main() {
 	http.Handle("/", fs)
 
 	// Define the port to listen on
-	port := "8080"
+	port := "3000"
 	log.Printf("Listening on http://localhost:%s/", port)
 
 	// Start the server

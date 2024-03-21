@@ -1,5 +1,5 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../btree/multi";
+import { maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";

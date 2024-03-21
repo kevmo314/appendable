@@ -4,19 +4,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 	"math/bits"
 )
-
-// MemoryPointer is a uint64 offset and uint32 length
-type MemoryPointer struct {
-	Offset uint64
-	Length uint32
-}
-
-func (mp MemoryPointer) String() string {
-	return fmt.Sprintf("Pointer[%08x:%08x]", mp.Offset, mp.Offset+uint64(mp.Length))
-}
 
 type ReferencedValue struct {
 	// it is generally optional to set the DataPointer. if it is not set, the
@@ -27,7 +18,7 @@ type ReferencedValue struct {
 	// caveat: DataPointer is used as a disambiguator for the value. the b+ tree
 	// implementation does not support duplicate keys and uses the DataPointer
 	// to disambiguate between keys that compare as equal.
-	DataPointer MemoryPointer
+	DataPointer pointer.MemoryPointer
 	Value       []byte
 }
 
@@ -59,7 +50,7 @@ type BPTreeNode struct {
 	DataParser DataParser
 	// contains the offset of the child node or the offset of the record for leaf
 	// if the node is a leaf, the last pointer is the offset of the next leaf
-	LeafPointers     []MemoryPointer
+	LeafPointers     []pointer.MemoryPointer
 	InternalPointers []uint64
 	Keys             []ReferencedValue
 
@@ -71,11 +62,11 @@ func (n *BPTreeNode) Leaf() bool {
 	return len(n.LeafPointers) > 0
 }
 
-func (n *BPTreeNode) Pointer(i int) MemoryPointer {
+func (n *BPTreeNode) Pointer(i int) pointer.MemoryPointer {
 	if n.Leaf() {
 		return n.LeafPointers[i]
 	}
-	return MemoryPointer{Offset: n.InternalPointers[i]}
+	return pointer.MemoryPointer{Offset: n.InternalPointers[i]}
 }
 
 func (n *BPTreeNode) NumPointers() int {
@@ -165,7 +156,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	size := int32(binary.LittleEndian.Uint32(buf[:4]))
 	leaf := size < 0
 	if leaf {
-		n.LeafPointers = make([]MemoryPointer, -size)
+		n.LeafPointers = make([]pointer.MemoryPointer, -size)
 		n.Keys = make([]ReferencedValue, -size)
 	} else {
 		n.InternalPointers = make([]uint64, size+1)
