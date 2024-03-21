@@ -90,6 +90,16 @@ func TestMetaPager(t *testing.T) {
 				lastOffset = offset
 			}
 
+			if i < 15 {
+				if pf.PageCount() != 1 {
+					t.Fatalf("expected page count to be 1, got: %v at %v", pf.PageCount(), i)
+				}
+			} else {
+				if pf.PageCount() != 2 {
+					t.Fatalf("expected page count to be 1, got: %v at %v", pf.PageCount(), i)
+				}
+			}
+
 		}
 		if pf.PageCount() != 2 {
 			t.Fatalf("expected page count to be 2, got: %v", pf.PageCount())

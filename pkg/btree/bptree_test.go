@@ -41,7 +41,7 @@ func (m *testMetaPage) write() error {
 
 func newTestMetaPage(t *testing.T, pf *pagefile.PageFile) *testMetaPage {
 	meta := &testMetaPage{pf: pf}
-	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
+	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

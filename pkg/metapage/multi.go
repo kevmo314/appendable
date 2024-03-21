@@ -133,29 +133,23 @@ func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
 			if !used {
 				m.freeSlotIndexes[pageIndex][slotIndex] = true
 				offset := int64(pageIndex*m.rws.PageSize()) + int64(slotIndex*m.rws.SlotSize())
+				fmt.Printf("page index: %v, slot index: %v, offset: %v\n", pageIndex, slotIndex, offset)
 				return offset, nil
 			}
 		}
 	}
 
-	newPageOffset, err := m.rws.NewPage(nil)
-
+	newPageOffset, err := m.rws.NewPage(nil, &m.freeSlotIndexes)
 	if err != nil {
 		return 0, err
 	}
 
 	pageIndex := newPageOffset / int64(m.rws.PageSize())
 	metaSlotsPerPage := m.rws.PageSize() / m.rws.SlotSize()
-	if int(pageIndex) >= len(m.freeSlotIndexes) {
-		m.freeSlotIndexes = append(m.freeSlotIndexes, make([]bool, metaSlotsPerPage))
-	}
+	m.freeSlotIndexes = append(m.freeSlotIndexes, make([]bool, metaSlotsPerPage))
+	m.freeSlotIndexes[pageIndex][0] = true
 
-	newPageIndex := int(newPageOffset / int64(m.rws.PageSize()))
-	m.freeSlotIndexes = append(m.freeSlotIndexes, make([]bool, m.rws.PageSize()/m.rws.SlotSize()))
-
-	m.freeSlotIndexes[newPageIndex][0] = true
-
-	return int64(newPageIndex) * int64(m.rws.PageSize()), nil
+	return pageIndex * int64(m.rws.PageSize()), nil
 
 }
 
@@ -173,6 +167,7 @@ func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
 		return nil, err
 	}
 	next := &LinkedMetaSlot{rws: m.rws, offset: uint64(nextOffset), pager: m}
+	fmt.Printf("next offset: %v\n", nextOffset)
 	if err := next.Reset(); err != nil {
 		return nil, err
 	}

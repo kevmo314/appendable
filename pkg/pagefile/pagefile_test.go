@@ -14,7 +14,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset, err := pf.NewPage(nil)
+		offset, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -29,7 +29,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage(nil)
+		offset1, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -44,7 +44,7 @@ func TestPageFile(t *testing.T) {
 		if n != pageSizeBytes {
 			t.Fatalf("expected offset %d, got %d", pageSizeBytes, n)
 		}
-		offset2, err := pf.NewPage(nil)
+		offset2, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,7 +67,7 @@ func TestPageFile(t *testing.T) {
 			t.Fatal(err)
 		}
 		data := []byte("hello")
-		offset1, err := pf.NewPage(data)
+		offset1, err := pf.NewPage(data, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -92,7 +92,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage(nil)
+		offset1, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -111,7 +111,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset1, err := pf.NewPage(nil)
+		offset1, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -122,7 +122,7 @@ func TestPageFile(t *testing.T) {
 		if _, err := pf.Write(make([]byte, 1)); err != nil {
 			t.Fatal(err)
 		}
-		offset2, err := pf.NewPage(nil)
+		offset2, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,7 +133,7 @@ func TestPageFile(t *testing.T) {
 		if err := pf.FreePage(offset1); err != nil {
 			t.Fatal(err)
 		}
-		offset3, err := pf.NewPage(nil)
+		offset3, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -150,7 +150,7 @@ func TestPageFile(t *testing.T) {
 		}
 		offsets := make([]int64, 0, 10)
 		for i := 0; i < 10; i++ {
-			offset, err := pf.NewPage(nil)
+			offset, err := pf.NewPage(nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -165,7 +165,7 @@ func TestPageFile(t *testing.T) {
 			}
 		}
 		for i := 0; i < 10; i++ {
-			offset, err := pf.NewPage(nil)
+			offset, err := pf.NewPage(nil, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -181,7 +181,7 @@ func TestPageFile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		offset, err := pf.NewPage(nil)
+		offset, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -202,7 +202,7 @@ func TestPageFile(t *testing.T) {
 		if pf.PageCount() != 1 {
 			t.Fatalf("expected 1, got %d", pf.PageCount())
 		}
-		offset, err := pf.NewPage(nil)
+		offset, err := pf.NewPage(nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -215,13 +215,13 @@ func TestPageFile(t *testing.T) {
 		if pf.PageCount() != 2 {
 			t.Fatalf("expected 2, got %d", pf.PageCount())
 		}
-		if _, err := pf.NewPage(nil); err != nil {
+		if _, err := pf.NewPage(nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if pf.PageCount() != 2 {
 			t.Fatalf("expected 2, got %d", pf.PageCount())
 		}
-		if _, err := pf.NewPage(nil); err != nil {
+		if _, err := pf.NewPage(nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		if pf.PageCount() != 3 {

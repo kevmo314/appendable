@@ -287,4 +287,31 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatalf("got %v, want nil", collectedPages)
 		}
 	})
+
+	t.Run("packs slot into one page", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ms := New(p)
+		currPage, err := NewMultiBPTree(p, ms, 0)
+		if err := currPage.Reset(); err != nil {
+			t.Fatal(err)
+		}
+
+		n := 26
+		for i := 0; i < n; i++ {
+			nextPage, err := currPage.AddNext()
+			if err != nil {
+				t.Fatalf("%v at %v", err, i)
+			}
+
+			if (i/16 + 1) != int(p.PageCount()) {
+				t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
+			}
+
+			currPage = nextPage
+		}
+	})
 }
