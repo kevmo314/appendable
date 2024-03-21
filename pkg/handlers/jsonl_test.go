@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/kevmo314/appendable/pkg/common"
 	"math"
 	"testing"
 
@@ -91,7 +92,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp1 == (btree.MemoryPointer{}) {
+		if mp1 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
@@ -107,7 +108,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp2 == (btree.MemoryPointer{}) {
+		if mp2 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test3\") = nil, want non-nil")
 		}
 
@@ -156,7 +157,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp1 == (btree.MemoryPointer{}) {
+		if mp1 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
@@ -184,7 +185,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp2 == (btree.MemoryPointer{}) {
+		if mp2 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = nil, want non-nil")
 		}
 
@@ -241,7 +242,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp1 == (btree.MemoryPointer{}) {
+		if mp1 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
@@ -271,7 +272,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp2 == (btree.MemoryPointer{}) {
+		if mp2 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(123) = nil, want non-nil")
 		}
 
@@ -542,7 +543,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp1 == (btree.MemoryPointer{}) {
+		if mp1 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
 		}
 
@@ -570,7 +571,7 @@ func TestJSONL(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if mp2 == (btree.MemoryPointer{}) {
+		if mp2 == (common.MemoryPointer{}) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(null) = nil, want non-nil")
 		}
 

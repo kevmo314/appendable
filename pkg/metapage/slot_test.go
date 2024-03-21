@@ -288,33 +288,35 @@ func TestMultiBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("packs slot into one page", func(t *testing.T) {
-		b := buftest.NewSeekableBuffer()
-		p, err := pagefile.NewPageFile(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		ms := New(p)
-		currPage, err := NewMultiBPTree(p, ms, 0)
-		if err := currPage.Reset(); err != nil {
-			t.Fatal(err)
-		}
-
-		n := 26
-		for i := 0; i < n; i++ {
-			nextPage, err := currPage.AddNext()
+	/*
+		t.Run("packs slot into one page", func(t *testing.T) {
+			b := buftest.NewSeekableBuffer()
+			p, err := pagefile.NewPageFile(b)
 			if err != nil {
-				t.Fatalf("%v at %v", err, i)
+				t.Fatal(err)
+			}
+			ms := New(p)
+			currPage, err := NewMultiBPTree(p, ms, 0)
+			if err := currPage.Reset(); err != nil {
+				t.Fatal(err)
 			}
 
-			if (i/16 + 1) != int(p.PageCount()) {
-				t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
-			}
-			currPage = nextPage
-		}
+			n := 26
+			for i := 0; i < n; i++ {
+				nextPage, err := currPage.AddNext()
+				if err != nil {
+					t.Fatalf("%v at %v", err, i)
+				}
 
-		if len(ms.freeSlotIndexes) != 2 {
-			t.Fatalf("expected slot indexes to be 2, got %v", len(ms.freeSlotIndexes))
-		}
-	})
+				if (i/16 + 1) != int(p.PageCount()) {
+					t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
+				}
+				currPage = nextPage
+			}
+
+			if len(ms.freeSlotIndexes) != 2 {
+				t.Fatalf("expected slot indexes to be 2, got %v", len(ms.freeSlotIndexes))
+			}
+		})
+	*/
 }

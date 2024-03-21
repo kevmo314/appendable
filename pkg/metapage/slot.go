@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
@@ -21,15 +22,14 @@ const N = 16
  */
 type LinkedMetaSlot struct {
 	pager  *MultiPager
-	rws    pagefile.ReadWriteSeekPager
 	offset uint64
 }
 
-func (m *LinkedMetaSlot) Root() (btree.MemoryPointer, error) {
+func (m *LinkedMetaSlot) Root() (common.MemoryPointer, error) {
 	return m.pager.Root(m.offset)
 }
 
-func (m *LinkedMetaSlot) SetRoot(mp btree.MemoryPointer) error {
+func (m *LinkedMetaSlot) SetRoot(mp common.MemoryPointer) error {
 	return m.pager.SetRoot(m.offset, mp)
 }
 
@@ -40,8 +40,8 @@ func (m *LinkedMetaSlot) SetRoot(mp btree.MemoryPointer) error {
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
 func (m *LinkedMetaSlot) BPTree(t *btree.BPTree) *btree.BPTree {
-	t.PageFile = m.rws
 	t.MetaPage = m
+	t.PageFile = m.pager.rws
 	return t
 }
 
@@ -85,8 +85,8 @@ func (m *LinkedMetaSlot) AddNext() (*LinkedMetaSlot, error) {
 	return m.pager.AddNext(m.offset)
 }
 
-func (m *LinkedMetaSlot) MemoryPointer() btree.MemoryPointer {
-	return btree.MemoryPointer{Offset: m.offset, Length: 24}
+func (m *LinkedMetaSlot) MemoryPointer() common.MemoryPointer {
+	return common.MemoryPointer{Offset: m.offset, Length: 24}
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {
@@ -138,5 +138,5 @@ func NewMultiBPTree(t pagefile.ReadWriteSeekPager, ms *MultiPager, page int) (*L
 	if err != nil {
 		return nil, err
 	}
-	return &LinkedMetaSlot{pager: ms, rws: t, offset: uint64(offset)}, nil
+	return &LinkedMetaSlot{pager: ms, offset: uint64(offset)}, nil
 }

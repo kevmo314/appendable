@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/common"
 	"log/slog"
 	"math"
 	"strings"
@@ -41,7 +42,7 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 			return fmt.Errorf("expected '%U', got '%U' (only json objects are supported at the root)", '{', t)
 		}
 
-		if err := j.handleJSONLObject(f, df, dec, []string{}, btree.MemoryPointer{
+		if err := j.handleJSONLObject(f, df, dec, []string{}, common.MemoryPointer{
 			Offset: metadata.ReadOffset,
 			Length: uint32(i),
 		}); err != nil {
@@ -125,7 +126,7 @@ func (j JSONLHandler) Parse(value []byte) []byte {
 	panic(fmt.Sprintf("unexpected token '%v'", token))
 }
 
-func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *json.Decoder, path []string, data btree.MemoryPointer) error {
+func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *json.Decoder, path []string, data common.MemoryPointer) error {
 	// while the next token is not }, read the key
 	for dec.More() {
 		key, err := dec.Token()
@@ -151,7 +152,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				return fmt.Errorf("failed to find or create index: %w", err)
 			}
 
-			mp := btree.MemoryPointer{
+			mp := common.MemoryPointer{
 				Offset: data.Offset + uint64(fieldOffset),
 				Length: uint32(dec.InputOffset() - fieldOffset),
 			}

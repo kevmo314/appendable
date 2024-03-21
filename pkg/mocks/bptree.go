@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/buftest"
+	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"log"
 	"math"
@@ -22,16 +23,16 @@ func generateBasicBtree() {
 	}
 
 	tree := &btree.BPTree{PageFile: p, MetaPage: mp, Width: uint16(6)}
-	if err := tree.Insert(btree.ReferencedValue{Value: []byte("hello")}, btree.MemoryPointer{Offset: 1, Length: 5}); err != nil {
+	if err := tree.Insert(btree.ReferencedValue{Value: []byte("hello")}, common.MemoryPointer{Offset: 1, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := tree.Insert(btree.ReferencedValue{Value: []byte("world")}, btree.MemoryPointer{Offset: 2, Length: 5}); err != nil {
+	if err := tree.Insert(btree.ReferencedValue{Value: []byte("world")}, common.MemoryPointer{Offset: 2, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := tree.Insert(btree.ReferencedValue{Value: []byte("moooo")}, btree.MemoryPointer{Offset: 3, Length: 5}); err != nil {
+	if err := tree.Insert(btree.ReferencedValue{Value: []byte("moooo")}, common.MemoryPointer{Offset: 3, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := tree.Insert(btree.ReferencedValue{Value: []byte("cooow")}, btree.MemoryPointer{Offset: 4, Length: 5}); err != nil {
+	if err := tree.Insert(btree.ReferencedValue{Value: []byte("cooow")}, common.MemoryPointer{Offset: 4, Length: 5}); err != nil {
 		log.Fatalf("%v", err)
 	}
 
@@ -64,8 +65,8 @@ func generateBtreeIterator() {
 		if err := tree.Insert(btree.ReferencedValue{
 			Value: []byte{1, 2, 3, 4, 5, 6, 7, 8},
 			// DataPointer is used as a disambiguator.
-			DataPointer: btree.MemoryPointer{Offset: uint64(i), Length: 8},
-		}, btree.MemoryPointer{Offset: uint64(i)}); err != nil {
+			DataPointer: common.MemoryPointer{Offset: uint64(i), Length: 8},
+		}, common.MemoryPointer{Offset: uint64(i)}); err != nil {
 			log.Fatalf("%v", err)
 		}
 	}
@@ -92,7 +93,7 @@ func generate1023Btree() {
 		buf := make([]byte, 8)
 		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
 
-		if err := tree.Insert(btree.ReferencedValue{Value: buf, DataPointer: btree.MemoryPointer{Offset: uint64(i)}}, btree.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+		if err := tree.Insert(btree.ReferencedValue{Value: buf, DataPointer: common.MemoryPointer{Offset: uint64(i)}}, common.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			log.Fatal(err)
 		}
 	}

@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/common"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"io"
 )
@@ -31,16 +31,16 @@ func New(t pagefile.ReadWriteSeekPager) *MultiPager {
 	return m
 }
 
-func (m *MultiPager) Root(offset uint64) (btree.MemoryPointer, error) {
+func (m *MultiPager) Root(offset uint64) (common.MemoryPointer, error) {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
-		return btree.MemoryPointer{}, err
+		return common.MemoryPointer{}, err
 	}
 
-	var mp btree.MemoryPointer
+	var mp common.MemoryPointer
 	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
 }
 
-func (m *MultiPager) SetRoot(offset uint64, mp btree.MemoryPointer) error {
+func (m *MultiPager) SetRoot(offset uint64, mp common.MemoryPointer) error {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return err
 	}
@@ -115,11 +115,11 @@ func (m *MultiPager) Next(offset uint64) (*LinkedMetaSlot, error) {
 	if _, err := m.rws.Seek(int64(offset)+12, io.SeekStart); err != nil {
 		return nil, err
 	}
-	var next btree.MemoryPointer
+	var next common.MemoryPointer
 	if err := binary.Read(m.rws, binary.LittleEndian, &next); err != nil {
 		return nil, err
 	}
-	return &LinkedMetaSlot{rws: m.rws, offset: next.Offset, pager: m}, nil
+	return &LinkedMetaSlot{offset: next.Offset, pager: m}, nil
 }
 
 func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
@@ -163,11 +163,11 @@ func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
 		return nil, errors.New("next pointer already exists")
 	}
 
-	nextOffset, err := m.NextSlot(nil)
+	nextOffset, err := m.rws.NewPage(nil)
 	if err != nil {
 		return nil, err
 	}
-	next := &LinkedMetaSlot{rws: m.rws, offset: uint64(nextOffset), pager: m}
+	next := &LinkedMetaSlot{offset: uint64(nextOffset), pager: m}
 	fmt.Printf("next offset: %v\n", nextOffset)
 	if err := next.Reset(); err != nil {
 		return nil, err
