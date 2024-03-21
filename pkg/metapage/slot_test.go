@@ -310,8 +310,11 @@ func TestMultiBPTree(t *testing.T) {
 			if (i/16 + 1) != int(p.PageCount()) {
 				t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
 			}
-
 			currPage = nextPage
+		}
+
+		if len(ms.freeSlotIndexes) != 2 {
+			t.Fatalf("expected slot indexes to be 2, got %v", len(ms.freeSlotIndexes))
 		}
 	})
 }

@@ -259,7 +259,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 		if err != nil {
 			return err
 		}
-		offset, err := t.PageFile.NewPage(buf, nil)
+		offset, err := t.PageFile.NewPage(buf)
 		if err != nil {
 			return err
 		}
@@ -312,7 +312,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 			if err != nil {
 				return err
 			}
-			moffset, err := t.PageFile.NewPage(mbuf, nil)
+			moffset, err := t.PageFile.NewPage(mbuf)
 			if err != nil {
 				return err
 			}
@@ -359,7 +359,7 @@ func (t *BPTree) Insert(key ReferencedValue, value MemoryPointer) error {
 				if err != nil {
 					return err
 				}
-				poffset, err := t.PageFile.NewPage(pbuf, nil)
+				poffset, err := t.PageFile.NewPage(pbuf)
 				if err != nil {
 					return err
 				}

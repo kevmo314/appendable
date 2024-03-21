@@ -10,7 +10,7 @@ type ReadWriteSeekPager interface {
 	io.ReadWriteSeeker
 
 	Page(int) (int64, error)
-	NewPage([]byte, *[][]bool) (int64, error)
+	NewPage([]byte) (int64, error)
 	FreePage(int64) error
 
 	LastPage() int64
@@ -128,7 +128,7 @@ func (pf *PageFile) FreePageIndex() (int64, error) {
 	return offset, nil
 }
 
-func (pf *PageFile) NewPage(buf []byte, freeSlotIndexes *[][]bool) (int64, error) {
+func (pf *PageFile) NewPage(buf []byte) (int64, error) {
 	if buf != nil && len(buf) > pf.pageSize {
 		return 0, errors.New("buffer is too large")
 	}
@@ -150,15 +150,6 @@ func (pf *PageFile) NewPage(buf []byte, freeSlotIndexes *[][]bool) (int64, error
 		}
 		offset = n
 		pf.lastPage++
-
-		pageIndex := offset / int64(pf.pageSize)
-		metaSlotsPerPage := pf.pageSize / pf.slotSize
-
-		if freeSlotIndexes != nil {
-			if int(pageIndex) >= len(*freeSlotIndexes) {
-				*freeSlotIndexes = append(*freeSlotIndexes, make([]bool, metaSlotsPerPage))
-			}
-		}
 	}
 
 	// if the offset is not a multiple of the page size, we need to pad the file

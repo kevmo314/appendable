@@ -36,7 +36,7 @@ func (m *testMetaPage) write() error {
 
 func newTestMetaPage(pf *pagefile.PageFile) (*testMetaPage, error) {
 	meta := &testMetaPage{pf: pf}
-	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0}, nil)
+	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	if err != nil {
 		return nil, fmt.Errorf("%v", err)
 	}

@@ -139,15 +139,16 @@ func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
 		}
 	}
 
-	newPageOffset, err := m.rws.NewPage(nil, &m.freeSlotIndexes)
+	newPageOffset, err := m.rws.NewPage(nil)
 	if err != nil {
 		return 0, err
 	}
 
 	pageIndex := newPageOffset / int64(m.rws.PageSize())
 	metaSlotsPerPage := m.rws.PageSize() / m.rws.SlotSize()
-	m.freeSlotIndexes = append(m.freeSlotIndexes, make([]bool, metaSlotsPerPage))
-	m.freeSlotIndexes[pageIndex][0] = true
+	metaSlotsRow := make([]bool, metaSlotsPerPage)
+	metaSlotsRow[0] = true
+	m.freeSlotIndexes = append(m.freeSlotIndexes, metaSlotsRow)
 
 	return pageIndex * int64(m.rws.PageSize()), nil
 
