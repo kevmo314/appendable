@@ -1,8 +1,8 @@
 import { FieldType } from "../db/database";
-import { FileFormat, readFileMeta, readIndexMeta } from "../index-file/meta";
+import { FileFormat, readFileMeta, readIndexMeta } from "../file/meta";
 import { readBinaryFile } from "./test-util";
 
-describe("test index-file parsing", () => {
+describe("test file parsing", () => {
   let fileMetaBuffer: Uint8Array;
   let indexMetaBuffer: Uint8Array;
 

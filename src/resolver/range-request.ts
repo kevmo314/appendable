@@ -1,4 +1,4 @@
-import { Config } from ".";
+import { Config } from "../index";
 import parseMultipartBody from "./multipart";
 import { LengthIntegrityError } from "./resolver";
 

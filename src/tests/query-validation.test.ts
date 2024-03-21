@@ -1,6 +1,6 @@
-import { Query } from "../db/database";
 import { validateQuery } from "../db/query-validation";
-import { IndexHeader } from "../index-file/meta";
+import { IndexHeader } from "../file/meta";
+import { Query } from "../db/query-lang";
 
 describe("test validate queries", () => {
   interface MockSchema {

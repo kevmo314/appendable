@@ -1,7 +1,7 @@
 import { FieldType } from "../db/database";
-import { FileFormat } from "../index-file/meta";
-import { RangeResolver } from "../resolver";
-import { decodeUvarint } from "../uvarint";
+import { FileFormat } from "../file/meta";
+import { RangeResolver } from "../resolver/resolver";
+import { decodeUvarint } from "../util/uvarint";
 import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
@@ -50,28 +50,6 @@ export class BPTreeNode {
     return this.internalPointers.length + this.leafPointers.length;
   }
 
-  size(): bigint {
-    let size = 4;
-
-    for (let idx = 0; idx <= this.keys.length - 1; idx++) {
-      const k = this.keys[idx];
-      if (k.dataPointer.length > 0) {
-        size += 4 + 12;
-      } else {
-        size += 4 * k.value.byteLength;
-      }
-    }
-
-    for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
-      size += 12;
-    }
-    for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
-      size += 8;
-    }
-
-    return BigInt(size);
-  }
-
   async unmarshalBinary(buffer: ArrayBuffer, pageFieldWidth: number) {
     let dataView = new DataView(buffer);
     let size = dataView.getUint32(0, true);
@@ -116,12 +94,19 @@ export class BPTreeNode {
 
     let m = 4;
     for (let idx = 0; idx <= this.keys.length - 1; idx++) {
-      dataView = new DataView(buffer, m);
-      const dpOffset = dataView.getBigUint64(0, true);
-      const { value: dpLength, bytesRead } = decodeUvarint(buffer.slice(m + 8));
-      m += 8 + bytesRead;
+      const { value: dpOffset, bytesRead: oBytes } = decodeUvarint(
+        buffer.slice(m),
+      );
+      const { value: dpLength, bytesRead: lBytes } = decodeUvarint(
+        buffer.slice(m + oBytes),
+      );
+      m += oBytes + lBytes;
 
-      this.keys[idx].setDataPointer({ offset: dpOffset, length: dpLength });
+      this.keys[idx].setDataPointer({
+        offset: BigInt(dpOffset),
+        length: dpLength,
+      });
+
       if (pageFieldWidth === 0) {
         const dp = this.keys[idx].dataPointer;
 
@@ -151,19 +136,24 @@ export class BPTreeNode {
     }
 
     for (let idx = 0; idx <= this.leafPointers.length - 1; idx++) {
-      dataView = new DataView(buffer, m);
-      this.leafPointers[idx].offset = dataView.getBigUint64(0, true);
+      const { value: lpOffset, bytesRead: lBytes } = decodeUvarint(
+        buffer.slice(m),
+      );
+      const { value: lpLength, bytesRead: oBytes } = decodeUvarint(
+        buffer.slice(m + lBytes),
+      );
 
-      const { value: lpLength, bytesRead } = decodeUvarint(buffer.slice(m + 8));
+      this.leafPointers[idx].offset = BigInt(lpOffset);
       this.leafPointers[idx].length = lpLength;
-      m += 8 + bytesRead;
+      m += oBytes + lBytes;
     }
 
     for (let idx = 0; idx <= this.internalPointers.length - 1; idx++) {
-      dataView = new DataView(buffer, m);
-      this.internalPointers[idx] = dataView.getBigUint64(0, true);
-
-      m += 8;
+      const { value: ipOffset, bytesRead: oBytes } = decodeUvarint(
+        buffer.slice(m),
+      );
+      this.internalPointers[idx] = BigInt(ipOffset);
+      m += oBytes;
     }
   }
 
