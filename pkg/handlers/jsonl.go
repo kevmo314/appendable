@@ -147,7 +147,9 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			name := strings.Join(append(path, key), ".")
 
-			page, width, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
+			page, meta, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
+			width := meta.Width
+
 			if err != nil {
 				return fmt.Errorf("failed to find or create index: %w", err)
 			}
