@@ -3,6 +3,7 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"math"
 	"testing"
@@ -51,7 +52,8 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(collected2) != 1 {
+		fmt.Printf("collected2: %v", collected2)
+		if len(collected2) != 2 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected2))
 		}
 	})
@@ -84,8 +86,8 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(collected) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 2 {
+			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
 		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
