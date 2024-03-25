@@ -173,7 +173,7 @@ func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.R
 		fieldLength := uint32(len(fieldValue))
 
 		_, fieldType := InferCSVField(fieldValue)
-		page, err := f.FindOrCreateIndex(name, fieldType)
+		page, _, err := f.FindOrCreateIndex(name, fieldType)
 
 		if err != nil {
 			return fmt.Errorf("failed to find or create index: %w", err)
