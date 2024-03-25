@@ -2,11 +2,11 @@ package appendable
 
 import (
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/metapage"
 	"io"
 	"time"
 
 	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 

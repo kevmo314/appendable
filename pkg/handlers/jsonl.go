@@ -147,6 +147,11 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			name := strings.Join(append(path, key), ".")
 
+			/*
+				if FieldTypeString == jsonTypeToFieldType(value) {
+					handle two pages at once here?
+				}
+			*/
 			page, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
 			if err != nil {
 				return fmt.Errorf("failed to find or create index: %w", err)
@@ -159,6 +164,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			switch value := value.(type) {
 			case string:
+				// string
 				valueBytes := []byte(value)
 
 				width := appendable.DetermineType(appendable.FieldTypeString)
@@ -169,6 +175,12 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				}, data); err != nil {
 					return fmt.Errorf("failed to insert into b+tree: %w", err)
 				}
+
+				// trigram work here
+				// for trigram in []byte(value) {
+				//		insert to bptree
+				// }
+
 			case json.Number, float64:
 				buf := make([]byte, 8)
 				switch value := value.(type) {

@@ -53,11 +53,12 @@ const (
 	FieldTypeArray
 	FieldTypeBoolean
 	FieldTypeNull
+	FieldTypeTrigram
 )
 
 func (t FieldType) TypescriptType() string {
-	components := []string{}
-	if t&FieldTypeString != 0 {
+	var components []string
+	if t&FieldTypeString != 0 || t&FieldTypeTrigram != 0 {
 		components = append(components, "string")
 	}
 	if t&FieldTypeInt64 != 0 || t&FieldTypeFloat64 != 0 {
