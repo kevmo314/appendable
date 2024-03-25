@@ -154,38 +154,38 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 	return fieldNames, nil
 }
 
-func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaSlot, error) {
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaSlot, uint16, error) {
 	mp := i.tree
 	for {
 		// this is done in an odd order to avoid needing to keep track of the previous page
 		next, err := mp.Next()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get next meta page: %w", err)
+			return nil, ^uint16(0), fmt.Errorf("failed to get next meta page: %w", err)
 		}
 		exists, err := next.Exists()
 		if err != nil {
-			return nil, fmt.Errorf("failed to check if meta page exists: %w", err)
+			return nil, ^uint16(0), fmt.Errorf("failed to check if meta page exists: %w", err)
 		}
 		if !exists {
 			break
 		}
 		buf, err := next.Metadata()
 		if err != nil {
-			return nil, fmt.Errorf("failed to read metadata: %w", err)
+			return nil, ^uint16(0), fmt.Errorf("failed to read metadata: %w", err)
 		}
 		metadata := &IndexMeta{}
 		if err := metadata.UnmarshalBinary(buf); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal metadata: %w", err)
+			return nil, ^uint16(0), fmt.Errorf("failed to unmarshal metadata: %w", err)
 		}
 		if metadata.FieldName == name && metadata.FieldType == fieldType {
-			return next, nil
+			return next, metadata.Width, nil
 		}
 		mp = next
 	}
 	// we haven't found the index, so we need to create it
 	next, err := mp.AddNext()
 	if err != nil {
-		return nil, fmt.Errorf("failed to add next meta page: %w", err)
+		return nil, ^uint16(0), fmt.Errorf("failed to add next meta page: %w", err)
 	}
 	metadata := &IndexMeta{}
 	metadata.FieldName = name
@@ -193,9 +193,9 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapa
 	metadata.Width = DetermineType(fieldType)
 	buf, err := metadata.MarshalBinary()
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal metadata: %w", err)
+		return nil, ^uint16(0), fmt.Errorf("failed to marshal metadata: %w", err)
 	}
-	return next, next.SetMetadata(buf)
+	return next, metadata.Width, next.SetMetadata(buf)
 }
 
 func (i *IndexFile) UpdateOffsets() error {

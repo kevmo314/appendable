@@ -81,6 +81,11 @@ func (t FieldType) TypescriptType() string {
 	return strings.Join(components, " | ")
 }
 
+type Metadata interface {
+	FileMeta
+	IndexMeta
+}
+
 type FileMeta struct {
 	Version
 	Format

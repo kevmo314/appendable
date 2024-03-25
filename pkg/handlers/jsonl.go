@@ -147,7 +147,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			name := strings.Join(append(path, key), ".")
 
-			page, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
+			page, width, err := f.FindOrCreateIndex(name, jsonTypeToFieldType(value))
 			if err != nil {
 				return fmt.Errorf("failed to find or create index: %w", err)
 			}
@@ -160,8 +160,6 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 			switch value := value.(type) {
 			case string:
 				valueBytes := []byte(value)
-
-				width := appendable.DetermineType(appendable.FieldTypeString)
 
 				if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 					DataPointer: mp,
@@ -182,8 +180,6 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					binary.BigEndian.PutUint64(buf, math.Float64bits(value))
 				}
 
-				width := appendable.DetermineType(appendable.FieldTypeFloat64)
-
 				if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 					DataPointer: mp,
 					Value:       buf,
@@ -193,8 +189,6 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				}
 
 			case bool:
-				width := appendable.DetermineType(appendable.FieldTypeBoolean)
-
 				if value {
 					if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 						DataPointer: mp,
@@ -247,9 +241,6 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					return fmt.Errorf("unexpected token '%v'", value)
 				}
 			case nil:
-
-				width := appendable.DetermineType(appendable.FieldTypeNull)
-
 				// nil values are a bit of a degenerate case, we are essentially using the btree
 				// as a set. we store the value as an empty byte slice.
 				if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
