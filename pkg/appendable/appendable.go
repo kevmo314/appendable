@@ -3,6 +3,7 @@ package appendable
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/trigram"
 	"strings"
 )
 
@@ -161,6 +162,8 @@ func DetermineType(ft FieldType) uint16 {
 		width = uint16(shift + 0)
 	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
 		width = uint16(shift + 8)
+	case FieldTypeTrigram:
+		width = uint16(shift + trigram.N)
 	}
 
 	return width

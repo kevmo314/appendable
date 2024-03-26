@@ -22,6 +22,7 @@ export enum FieldType {
   Array = 5,
   Boolean = 6,
   Null = 7,
+  Trigram = 8,
 }
 
 export function fieldTypeToString(f: FieldType): string {
@@ -56,6 +57,9 @@ export function fieldTypeToString(f: FieldType): string {
       break;
     case FieldType.Null:
       str = "Null";
+      break;
+    case FieldType.Trigram:
+      str = "Trigram";
       break;
   }
   return str;
