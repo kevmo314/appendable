@@ -3,7 +3,6 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"math"
 	"testing"
@@ -52,8 +51,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		fmt.Printf("collected2: %v", collected2)
-		if len(collected2) != 2 {
+		if len(collected2) != 1*2 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected2))
 		}
 	})
@@ -86,7 +84,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(collected) != 2 {
+		if len(collected) != 1*2 {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
@@ -151,8 +149,8 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 2 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 2*2 {
+			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
 		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
@@ -183,7 +181,8 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test3")})
+		bp := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)})
+		rv2, mp2, err := bp.Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +235,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 2 {
+		if len(collected) != 3 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 

@@ -149,23 +149,39 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 			name := strings.Join(append(path, key), ".")
 
 			for _, ft := range jsonTypeToFieldType(value) {
-
 				page, meta, err := f.FindOrCreateIndex(name, ft)
 				if err != nil {
 					return fmt.Errorf("failed to find or create index: %w", err)
 				}
-
 				width := meta.Width
-
 				mp := pointer.MemoryPointer{
 					Offset: data.Offset + uint64(fieldOffset),
 					Length: uint32(dec.InputOffset() - fieldOffset),
 				}
 
-				switch value := value.(type) {
-				case string:
-					if ft == appendable.FieldTypeString {
-						valueBytes := []byte(value)
+				switch ft {
+				case appendable.FieldTypeString:
+					valueStr, ok := value.(string)
+					if !ok {
+						return fmt.Errorf("expected string")
+					}
+					valueBytes := []byte(valueStr)
+
+					if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
+						DataPointer: mp,
+						Value:       valueBytes,
+					}, data); err != nil {
+						return fmt.Errorf("failed to insert into b+tree: %w", err)
+					}
+				case appendable.FieldTypeTrigram:
+					valueStr, ok := value.(string)
+					if !ok {
+						return fmt.Errorf("expected string")
+					}
+					trigrams := trigram.BuildTrigram(valueStr)
+
+					for _, tri := range trigrams {
+						valueBytes := []byte(tri.Word)
 
 						if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 							DataPointer: mp,
@@ -174,25 +190,16 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 							return fmt.Errorf("failed to insert into b+tree: %w", err)
 						}
 					}
-
-					if ft == appendable.FieldTypeTrigram {
-						// we start at fieldOffset
-						trigrams := trigram.BuildTrigram(value)
-
-						for _, tri := range trigrams {
-							valueBytes := []byte(tri.Word)
-							mp.Offset = uint64(fieldOffset) + tri.Offset
-
-							if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
-								DataPointer: mp,
-								Value:       valueBytes,
-							}, data); err != nil {
-								return fmt.Errorf("failed to insert into b+tree: %w", err)
-							}
-						}
+				case appendable.FieldTypeNull:
+					// nil values are a bit of a degenerate case, we are essentially using the btree
+					// as a set. we store the value as an empty byte slice.
+					if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
+						Value:       []byte{},
+						DataPointer: mp,
+					}, data); err != nil {
+						return fmt.Errorf("failed to insert into b+tree: %w\nmp: %v", err, data.Offset)
 					}
-
-				case json.Number, float64:
+				case appendable.FieldTypeFloat64, appendable.FieldTypeUint64, appendable.FieldTypeInt64:
 					buf := make([]byte, 8)
 					switch value := value.(type) {
 					case json.Number:
@@ -212,9 +219,12 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
-
-				case bool:
-					if value {
+				case appendable.FieldTypeBoolean:
+					valueBool, ok := value.(bool)
+					if !ok {
+						return fmt.Errorf("expected bool type")
+					}
+					if valueBool {
 						if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 							DataPointer: mp,
 							Value:       []byte{1},
@@ -229,54 +239,48 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 							return fmt.Errorf("failed to insert into b+tree: %w", err)
 						}
 					}
-				case json.Token:
-					switch value {
-					case json.Delim('['):
-						// arrays are not indexed yet because we need to incorporate
-						// subindexing into the specification. however, we have to
-						// skip tokens until we reach the end of the array.
-						depth := 1
-						for {
-							t, err := dec.Token()
-							if err != nil {
-								return fmt.Errorf("failed to read token: %w", err)
-							}
+				case appendable.FieldTypeArray, appendable.FieldTypeObject:
+					switch value := value.(type) {
+					case json.Token:
+						switch value {
+						case json.Delim('['):
+							// arrays are not indexed yet because we need to incorporate
+							// subindexing into the specification. however, we have to
+							// skip tokens until we reach the end of the array.
+							depth := 1
+							for {
+								t, err := dec.Token()
+								if err != nil {
+									return fmt.Errorf("failed to read token: %w", err)
+								}
 
-							switch t {
-							case json.Delim('['):
-								depth++
-							case json.Delim(']'):
-								depth--
-							}
+								switch t {
+								case json.Delim('['):
+									depth++
+								case json.Delim(']'):
+									depth--
+								}
 
-							if depth == 0 {
-								break
+								if depth == 0 {
+									break
+								}
+							}
+						case json.Delim('{'):
+							// find the index to set the field type to unknown.
+							if err := j.handleJSONLObject(f, r, dec, append(path, key), data); err != nil {
+								return fmt.Errorf("failed to handle object: %w", err)
+							}
+							// read the }
+							if t, err := dec.Token(); err != nil || t != json.Delim('}') {
+								return fmt.Errorf("expected '}', got '%v'", t)
 							}
 						}
-					case json.Delim('{'):
-						// find the index to set the field type to unknown.
-						if err := j.handleJSONLObject(f, r, dec, append(path, key), data); err != nil {
-							return fmt.Errorf("failed to handle object: %w", err)
-						}
-						// read the }
-						if t, err := dec.Token(); err != nil || t != json.Delim('}') {
-							return fmt.Errorf("expected '}', got '%v'", t)
-						}
-					default:
-						return fmt.Errorf("unexpected token '%v'", value)
 					}
-				case nil:
-					// nil values are a bit of a degenerate case, we are essentially using the btree
-					// as a set. we store the value as an empty byte slice.
-					if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
-						Value:       []byte{},
-						DataPointer: mp,
-					}, data); err != nil {
-						return fmt.Errorf("failed to insert into b+tree: %w\nmp: %v", err, data.Offset)
-					}
+
 				default:
-					return fmt.Errorf("unexpected type '%T'", value)
+					return fmt.Errorf("unrecognized type: %T: %v", ft, ft)
 				}
+
 			}
 		}
 	}
