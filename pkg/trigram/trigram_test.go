@@ -1,6 +1,7 @@
 package trigram
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -67,7 +68,7 @@ func TestTrigram(t *testing.T) {
 	t.Run("test special trigram", func(t *testing.T) {
 		p := "h∫owd*y)__do "
 
-		expected := [3]Trigram{
+		expected := [5]Trigram{
 			{
 				Word:   "how",
 				Offset: 0,
@@ -79,6 +80,14 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "wdy",
 				Offset: 3,
+			},
+			{
+				Word:   "dyd",
+				Offset: 4,
+			},
+			{
+				Word:   "ydo",
+				Offset: 6,
 			},
 		}
 
@@ -115,6 +124,15 @@ func TestTrigram(t *testing.T) {
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("cleans properly", func(t *testing.T) {
+		p := [2]string{"h∫owd∫y dow", "café"}
+
+		for _, str := range p {
+			clean, _ := normalizeToAscii(str)
+			fmt.Printf("clean: %v", clean)
 		}
 	})
 

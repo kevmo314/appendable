@@ -1,33 +1,15 @@
 package trigram
 
 import (
-	"fmt"
 	"golang.org/x/text/unicode/norm"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 type Trigram struct {
 	Word   string
 	Offset uint64
-}
-
-func normalizeToAscii(s string) (string, map[int]int) {
-	ogOffsets := make(map[int]int)
-
-	var b strings.Builder
-	norm := norm.NFKD.String(s)
-
-	for i, r := range norm {
-		if r <= unicode.MaxASCII {
-			b.WriteRune(r)
-
-			fmt.Printf("valid: %v\n", i)
-		} else {
-			fmt.Printf("invalid: %v\n", i)
-		}
-	}
-	return b.String(), ogOffsets
 }
 
 const N = 3
@@ -36,14 +18,41 @@ const N = 3
 //
 //	1 - splits by white space and keeps track of the positions
 //	2 - performs a sliding window and builds trigrams
+
+func normalizeToAscii(s string) (string, map[int]int) {
+	ogOffsets := make(map[int]int)
+
+	var b strings.Builder
+	norm := norm.NFKD.String(s)
+
+	additionalOffsets := 0
+
+	newIndex := 0
+
+	for i, r := range norm {
+		if utf8.RuneLen(r) > 1 {
+			additionalOffsets += utf8.RuneLen(r) - 1
+		}
+
+		if r <= unicode.MaxASCII {
+			b.WriteRune(r)
+			ogOffsets[newIndex] = i - additionalOffsets
+			newIndex++
+		}
+
+	}
+	return b.String(), ogOffsets
+}
+
 func BuildTrigram(phrase string) []Trigram {
-	normPhrase, _ := normalizeToAscii(phrase)
 	var trigrams []Trigram
 
 	var words [][]int
 	var currWord []int
 
-	runes := []rune(normPhrase)
+	clean, ogOffsets := normalizeToAscii(phrase)
+
+	runes := []rune(clean)
 	for i := 0; i < len(runes); i++ {
 		r := runes[i]
 
@@ -69,7 +78,8 @@ func BuildTrigram(phrase string) []Trigram {
 				str += string(runes[wOffsets[j]])
 			}
 
-			trigrams = append(trigrams, Trigram{Word: str, Offset: uint64(wOffsets[i])})
+			q := ogOffsets[wOffsets[i]]
+			trigrams = append(trigrams, Trigram{Word: str, Offset: uint64(q)})
 
 		}
 	}
