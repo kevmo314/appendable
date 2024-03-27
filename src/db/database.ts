@@ -12,6 +12,7 @@ import {
   handleSelect,
   processWhere,
 } from "./query-lang";
+import { buildTrigram, shuffle, TrigramTable } from "./search";
 
 export enum FieldType {
   String = 0,
@@ -101,30 +102,25 @@ export class Database<T extends Schema> {
 
     const headers = await this.fields();
 
-    validateQuery(query, headers);
+    //   validateQuery(query, headers);
 
-    for (const { key, value, operation } of query.where ?? []) {
-      const header = headers.find((header) => header.fieldName === key);
-      if (!header) {
-        throw new Error("field not found");
+    if (query.search) {
+      // find the correct header
+      const mps = await this.indexFile.seek(
+        query.search!.key as string,
+        FieldType.Trigram,
+      );
+
+      if (mps.length < 1) {
+        throw new Error(
+          `unable to search for key: ${query.search!.key as string}`,
+        );
       }
 
-      const res = processWhere(value);
-      if (res === null) {
-        throw new Error(`unable to process key with a type ${typeof value}`);
-      }
-      const { fieldType, valueBuf } = res;
-
-      const mps = await this.indexFile.seek(key as string, fieldType);
       const mp = mps[0];
+
       const { fieldType: mpFieldType, width: mpFieldWidth } =
         await readIndexMeta(await mp.metadata());
-
-      let ord: "ASC" | "DESC" = "ASC";
-      if (query.orderBy && query.orderBy[0]) {
-        ord = query.orderBy[0].direction;
-      }
-
       const bptree = new BPTree(
         this.indexFile.getResolver(),
         mp,
@@ -134,84 +130,14 @@ export class Database<T extends Schema> {
         mpFieldWidth,
       );
 
-      if (operation === ">") {
-        if (ord === "ASC") {
-          const valueRef = new ReferencedValue(
-            { offset: maxUint64, length: 0 },
-            valueBuf,
-          );
-          const iter = bptree.iter(valueRef);
+      const phraseTrigrams = shuffle(buildTrigram(query.search.like));
 
-          while (await iter.next()) {
-            const mp = iter.getPointer();
+      const encoder = new TextEncoder();
 
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
+      const table = new TrigramTable();
 
-            yield handleSelect(data, query.select);
-          }
-        } else {
-          const lastKey = await bptree.last();
-          const iter = bptree.iter(lastKey);
-
-          while (await iter.prev()) {
-            const currentKey = iter.getKey();
-
-            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0) {
-              break;
-            }
-
-            const mp = iter.getPointer();
-
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
-            yield handleSelect(data, query.select);
-          }
-        }
-      } else if (operation === ">=") {
-        if (ord === "ASC") {
-          const valueRef = new ReferencedValue(
-            { offset: 0n, length: 0 },
-            valueBuf,
-          );
-          const iter = bptree.iter(valueRef);
-
-          while (await iter.next()) {
-            const mp = iter.getPointer();
-
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
-
-            yield handleSelect(data, query.select);
-          }
-        } else {
-          const lastKey = await bptree.last();
-          const iter = bptree.iter(lastKey);
-
-          while (await iter.prev()) {
-            const currentKey = iter.getKey();
-
-            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0) {
-              break;
-            }
-
-            const mp = iter.getPointer();
-
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
-
-            yield handleSelect(data, query.select);
-          }
-        }
-      } else if (operation === "==") {
+      for (const tri in phraseTrigrams) {
+        const valueBuf = encoder.encode(tri).buffer;
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
@@ -232,73 +158,143 @@ export class Database<T extends Schema> {
             Number(mp.offset) + mp.length - 1,
           );
 
-          yield handleSelect(data, query.select);
+          console.log(`inserting data: ${data}`);
+          table.insert(data);
         }
-      } else if (operation === "<=") {
-        if (ord === "DESC") {
-          const valueRef = new ReferencedValue(
-            { offset: maxUint64, length: 0 },
-            valueBuf,
-          );
-          const iter = bptree.iter(valueRef);
-          while (await iter.prev()) {
-            const mp = iter.getPointer();
+      }
 
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
+      const res = table.get();
+      if (res === null) {
+        throw new Error(`failed to get any results`);
+      }
+
+      yield handleSelect(res, query.select);
+    } else {
+      for (const { key, value, operation } of query.where ?? []) {
+        const header = headers.find((header) => header.fieldName === key);
+        if (!header) {
+          throw new Error("field not found");
+        }
+
+        const res = processWhere(value);
+        if (res === null) {
+          throw new Error(`unable to process key with a type ${typeof value}`);
+        }
+        const { fieldType, valueBuf } = res;
+
+        const mps = await this.indexFile.seek(key as string, fieldType);
+        const mp = mps[0];
+        const { fieldType: mpFieldType, width: mpFieldWidth } =
+          await readIndexMeta(await mp.metadata());
+
+        let ord: "ASC" | "DESC" = "ASC";
+        if (query.orderBy && query.orderBy[0]) {
+          ord = query.orderBy[0].direction;
+        }
+
+        const bptree = new BPTree(
+          this.indexFile.getResolver(),
+          mp,
+          dfResolver,
+          format,
+          mpFieldType,
+          mpFieldWidth,
+        );
+
+        if (operation === ">") {
+          if (ord === "ASC") {
+            const valueRef = new ReferencedValue(
+              { offset: maxUint64, length: 0 },
+              valueBuf,
             );
+            const iter = bptree.iter(valueRef);
 
-            yield handleSelect(data, query.select);
-          }
-        } else {
-          const firstKey = await bptree.first();
-          const iter = bptree.iter(firstKey);
+            while (await iter.next()) {
+              const mp = iter.getPointer();
 
-          while (await iter.next()) {
-            const currentKey = iter.getKey();
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
 
-            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) > 0) {
-              break;
+              yield handleSelect(data, query.select);
             }
+          } else {
+            const lastKey = await bptree.last();
+            const iter = bptree.iter(lastKey);
 
-            const mp = iter.getPointer();
+            while (await iter.prev()) {
+              const currentKey = iter.getKey();
 
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
+              if (
+                ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0
+              ) {
+                break;
+              }
 
-            yield handleSelect(data, query.select);
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+              yield handleSelect(data, query.select);
+            }
           }
-        }
-      } else if (operation === "<") {
-        if (ord === "DESC") {
+        } else if (operation === ">=") {
+          if (ord === "ASC") {
+            const valueRef = new ReferencedValue(
+              { offset: 0n, length: 0 },
+              valueBuf,
+            );
+            const iter = bptree.iter(valueRef);
+
+            while (await iter.next()) {
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
+          } else {
+            const lastKey = await bptree.last();
+            const iter = bptree.iter(lastKey);
+
+            while (await iter.prev()) {
+              const currentKey = iter.getKey();
+
+              if (
+                ReferencedValue.compareBytes(currentKey.value, valueBuf) < 0
+              ) {
+                break;
+              }
+
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
+          }
+        } else if (operation === "==") {
           const valueRef = new ReferencedValue(
             { offset: 0n, length: 0 },
             valueBuf,
           );
           const iter = bptree.iter(valueRef);
-          while (await iter.prev()) {
-            const currentKey = iter.getKey();
-
-            const mp = iter.getPointer();
-
-            const data = await this.dataFile.get(
-              Number(mp.offset),
-              Number(mp.offset) + mp.length - 1,
-            );
-
-            yield handleSelect(data, query.select);
-          }
-        } else {
-          const firstKey = await bptree.first();
-          const iter = bptree.iter(firstKey);
 
           while (await iter.next()) {
             const currentKey = iter.getKey();
 
-            if (ReferencedValue.compareBytes(currentKey.value, valueBuf) >= 0) {
+            if (
+              ReferencedValue.compareBytes(currentKey.value, valueBuf) !== 0
+            ) {
               break;
             }
 
@@ -310,6 +306,88 @@ export class Database<T extends Schema> {
             );
 
             yield handleSelect(data, query.select);
+          }
+        } else if (operation === "<=") {
+          if (ord === "DESC") {
+            const valueRef = new ReferencedValue(
+              { offset: maxUint64, length: 0 },
+              valueBuf,
+            );
+            const iter = bptree.iter(valueRef);
+            while (await iter.prev()) {
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
+          } else {
+            const firstKey = await bptree.first();
+            const iter = bptree.iter(firstKey);
+
+            while (await iter.next()) {
+              const currentKey = iter.getKey();
+
+              if (
+                ReferencedValue.compareBytes(currentKey.value, valueBuf) > 0
+              ) {
+                break;
+              }
+
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
+          }
+        } else if (operation === "<") {
+          if (ord === "DESC") {
+            const valueRef = new ReferencedValue(
+              { offset: 0n, length: 0 },
+              valueBuf,
+            );
+            const iter = bptree.iter(valueRef);
+            while (await iter.prev()) {
+              const currentKey = iter.getKey();
+
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
+          } else {
+            const firstKey = await bptree.first();
+            const iter = bptree.iter(firstKey);
+
+            while (await iter.next()) {
+              const currentKey = iter.getKey();
+
+              if (
+                ReferencedValue.compareBytes(currentKey.value, valueBuf) >= 0
+              ) {
+                break;
+              }
+
+              const mp = iter.getPointer();
+
+              const data = await this.dataFile.get(
+                Number(mp.offset),
+                Number(mp.offset) + mp.length - 1,
+              );
+
+              yield handleSelect(data, query.select);
+            }
           }
         }
       }
