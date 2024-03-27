@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pointer"
+	"github.com/kevmo314/appendable/pkg/trigram"
 	"math"
 	"testing"
 
@@ -793,6 +794,71 @@ func TestJSONL(t *testing.T) {
 				t.Fatal("keys are not equal")
 			}
 		}
+	})
+
+	t.Run("able to insert trigrams and find trigrams", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r1 := []byte("{\"test\":\"howdydohowyalldoing\"}\n")
+
+		if err := i.Synchronize(r1); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 2 {
+			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
+		}
+
+		var tripage *metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType == appendable.FieldTypeTrigram {
+				tripage = ms
+			}
+		}
+
+		bp := tripage.BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+
+		tris := trigram.BuildTrigram(" howdydohowyalldoing")
+
+		for _, tri := range tris {
+			rv1, mp1, err := bp.Find(btree.ReferencedValue{Value: []byte(tri.Word)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mp1 == (pointer.MemoryPointer{}) {
+				t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			}
+
+			if !bytes.Equal(rv1.Value, []byte(tri.Word)) {
+				t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte(tri.Word))
+			}
+		}
+
 	})
 
 }
