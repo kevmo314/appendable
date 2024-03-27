@@ -65,7 +65,7 @@ func TestTrigram(t *testing.T) {
 	})
 
 	t.Run("test special trigram", func(t *testing.T) {
-		p := "h∫owd∫y do "
+		p := "h∫owd*y)__do "
 
 		expected := [3]Trigram{
 			{
@@ -116,5 +116,26 @@ func TestTrigram(t *testing.T) {
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
 		}
+	})
+
+	t.Run("test special case", func(t *testing.T) {
+		p := "café"
+		expected := [2]Trigram{
+			{
+				Word:   "caf",
+				Offset: 0,
+			},
+			{
+				Word:   "afe",
+				Offset: 1,
+			},
+		}
+
+		incoming := BuildTrigram(p)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+
 	})
 }
