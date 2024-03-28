@@ -10,7 +10,7 @@ import {
 import { FieldType } from "../db/database";
 import { requestRanges } from "../resolver/range-request";
 import { Config } from "..";
-import { PageFile, ReadMultiBPTree } from "./pagefile";
+import { NUM_SLOTS, PageFile, ReadMultiBPTree } from "./pagefile";
 
 export class IndexFile {
   static async forUrl<T = any>(url: string, config: Config) {
@@ -132,15 +132,24 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
   async fetchMetaPages(): Promise<void> {
     let currPage = await this.tree();
-    let mps = await currPage.splitPage();
-    let offsets = await currPage.nextNOffsets();
-    let lastoffset = offsets[offsets.length - 1];
 
-    const nextPage = new PageFile(this.resolver, lastoffset);
-    if (nextPage) {
-      const currMps = await nextPage.splitPage();
-      mps = [...mps, ...currMps];
+    let mps = await currPage.splitPage();
+
+    let currMps = mps;
+    while (currMps.length === NUM_SLOTS) {
+      const lastMp = currMps[currMps.length - 1];
+      const nextOffset = await lastMp.next();
+      if (nextOffset === null) {
+        break;
+      }
+
+      const nextPage = new PageFile(this.resolver, nextOffset);
+      const nextMps = await nextPage.splitPage();
+      mps = [...mps, ...nextMps];
+
+      currMps = nextMps;
     }
+
     this.fileMeta = mps[0];
     this.linkedMetaPages = mps.slice(1);
   }

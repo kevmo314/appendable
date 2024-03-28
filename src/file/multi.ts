@@ -1,12 +1,11 @@
 import { RangeResolver } from "../resolver/resolver";
 import { MemoryPointer } from "../btree/node";
 
-export const N = 16;
 export const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
 
 export class LinkedMetaPage {
-  private metaPageData: ArrayBuffer;
+  private readonly metaPageData: ArrayBuffer;
 
   constructor(data: ArrayBuffer) {
     this.metaPageData = data;
@@ -31,12 +30,23 @@ export class LinkedMetaPage {
   async metadata(): Promise<ArrayBuffer> {
     const pageData = this.metaPageData;
 
-    const lengthView = new DataView(pageData, 8 * N + 16);
+    const lengthView = new DataView(pageData, 24);
 
     // read the first four because that represents length
     const metadataLength = lengthView.getUint32(0, true);
-    const start = 8 * N + 20;
 
-    return pageData.slice(start, start + metadataLength);
+    return pageData.slice(28, 28 + metadataLength);
+  }
+
+  async next(): Promise<bigint | null> {
+    const pageData = this.metaPageData;
+    const view = new DataView(pageData, 12, 8);
+    const nextOffset = view.getBigUint64(0, true);
+
+    if (nextOffset === maxUint64) {
+      return null;
+    }
+
+    return nextOffset;
   }
 }
