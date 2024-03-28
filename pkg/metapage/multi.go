@@ -3,7 +3,6 @@ package metapage
 import (
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
@@ -49,10 +48,10 @@ func (m *MultiPager) SetRoot(offset uint64, mp pointer.MemoryPointer) error {
 }
 
 func (m *MultiPager) Metadata(offset uint64) ([]byte, error) {
-	if _, err := m.rws.Seek(int64(offset)+(8*N+16), io.SeekStart); err != nil {
+	if _, err := m.rws.Seek(int64(offset)+24, io.SeekStart); err != nil {
 		return nil, err
 	}
-	buf := make([]byte, m.rws.PageSize()-(8*N+16))
+	buf := make([]byte, m.rws.PageSize()-24)
 	if _, err := m.rws.Read(buf); err != nil {
 		return nil, err
 	}
@@ -62,50 +61,15 @@ func (m *MultiPager) Metadata(offset uint64) ([]byte, error) {
 }
 
 func (m *MultiPager) SetMetadata(offset uint64, data []byte) error {
-	if len(data) > m.rws.PageSize()-(8*N+16) {
+	if len(data) > m.rws.PageSize()-24 {
 		return errors.New("metadata too large")
 	}
-	if _, err := m.rws.Seek(int64(offset)+(8*N+16), io.SeekStart); err != nil {
+	if _, err := m.rws.Seek(int64(offset)+24, io.SeekStart); err != nil {
 		return err
 	}
 	buf := append(make([]byte, 4), data...)
 	binary.LittleEndian.PutUint32(buf, uint32(len(data)))
 	if _, err := m.rws.Write(buf); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (m *MultiPager) NextNOffsets(offset uint64, offsets []uint64) ([]uint64, error) {
-	if _, err := m.rws.Seek(int64(offset)+12, io.SeekStart); err != nil {
-		return nil, err
-	}
-
-	for i := 0; i < N; i++ {
-		if err := binary.Read(m.rws, binary.LittleEndian, &offsets[i]); err != nil {
-			return nil, err
-		}
-	}
-
-	return offsets, nil
-}
-
-func (m *MultiPager) SetNextNOffsets(offset uint64, offsets []uint64) error {
-	if len(offsets) > N {
-		return fmt.Errorf("too many offsets, max number of offsets should be %d", N)
-	}
-
-	if _, err := m.rws.Seek(int64(offset)+12, io.SeekStart); err != nil {
-		return err
-	}
-
-	for _, offset := range offsets {
-		if err := binary.Write(m.rws, binary.LittleEndian, offset); err != nil {
-			return err
-		}
-	}
-
-	if err := binary.Write(m.rws, binary.LittleEndian, ^uint64(0)); err != nil {
 		return err
 	}
 	return nil
