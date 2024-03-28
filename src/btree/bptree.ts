@@ -17,9 +17,9 @@ export class BPTree {
   private readonly tree: RangeResolver;
   private meta: MetaPage;
   private readonly dataFileResolver: RangeResolver;
-  private fileFormat: FileFormat;
-  private pageFieldType: FieldType;
-  private pageFieldWidth: number;
+  private readonly fileFormat: FileFormat;
+  private readonly pageFieldType: FieldType;
+  private readonly pageFieldWidth: number;
 
   constructor(
     tree: RangeResolver,

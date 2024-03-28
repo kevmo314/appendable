@@ -223,6 +223,10 @@ export class Database<T extends Schema> {
 
           const mp = iter.getPointer();
 
+          if (mp === null) {
+            throw new Error(`memory pointer is undefined`);
+          }
+
           const data = await this.dataFile.get(
             Number(mp.offset),
             Number(mp.offset) + mp.length - 1,
@@ -276,8 +280,6 @@ export class Database<T extends Schema> {
           );
           const iter = bptree.iter(valueRef);
           while (await iter.prev()) {
-            const currentKey = iter.getKey();
-
             const mp = iter.getPointer();
 
             const data = await this.dataFile.get(
