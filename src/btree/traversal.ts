@@ -9,7 +9,7 @@ export type TraversalRecord = {
 
 export class TraversalIterator {
   private tree: BPTree;
-  private key: ReferencedValue;
+  private readonly key: ReferencedValue;
   private records: TraversalRecord[];
 
   constructor(tree: BPTree, key: ReferencedValue) {
@@ -27,8 +27,7 @@ export class TraversalIterator {
 
     const root = rootResponse.rootNode;
     const offset = rootResponse.pointer;
-    const path = await this.tree.traverse(this.key, root, offset);
-    this.records = path;
+    this.records = await this.tree.traverse(this.key, root, offset);
     return true;
   }
 
@@ -51,19 +50,17 @@ export class TraversalIterator {
       this.records[i].index >= this.records[i].node.numPointers();
 
     if (rolloverLeft || rolloverRight) {
-      if (!this.increment(i + 1, delta)) {
+      if (!(await this.increment(i + 1, delta))) {
         return false;
       }
 
       if (!this.records[i + 1]) {
         return false;
       }
-      const node = await this.tree.readNode(
+      // propagate the rollover
+      this.records[i].node = await this.tree.readNode(
         this.records[i + 1].node.pointer(this.records[i + 1].index),
       );
-
-      // propagate the rollover
-      this.records[i].node = node;
 
       if (rolloverLeft) {
         this.records[i].index = this.records[i].node.numPointers() - 1;
