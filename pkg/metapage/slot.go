@@ -8,8 +8,6 @@ import (
 	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
-const N = 16
-
 /**
  * LinkedMetaSlot is a linked list of meta pages. Each page contains
  * a pointer to the root of the B+ tree, a pointer to the next meta page,
@@ -67,14 +65,6 @@ func (m *LinkedMetaSlot) MarshalMetadata(bm encoding.BinaryMarshaler) error {
 		return err
 	}
 	return m.SetMetadata(buf)
-}
-
-func (m *LinkedMetaSlot) NextNOffsets(offsets []uint64) ([]uint64, error) {
-	return m.pager.NextNOffsets(m.offset, offsets)
-}
-
-func (m *LinkedMetaSlot) SetNextNOffsets(offsets []uint64) error {
-	return m.pager.SetNextNOffsets(m.offset, offsets)
 }
 
 func (m *LinkedMetaSlot) Next() (*LinkedMetaSlot, error) {
