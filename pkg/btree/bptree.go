@@ -242,7 +242,7 @@ func (t *BPTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error 
 
 	if t.Width != uint16(0) {
 		if uint16(len(key.Value)) != t.Width-1 {
-			return fmt.Errorf("key to insert does not match with bptree width. Expected width: %v, got: %v", t.Width, len(key.Value))
+			return fmt.Errorf("key |%v| to insert does not match with bptree width. Expected width: %v, got: %v", string(key.Value), t.Width-1, len(key.Value))
 		}
 	}
 

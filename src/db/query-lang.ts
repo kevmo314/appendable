@@ -10,6 +10,11 @@ export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
   value: T[K];
 };
 
+export type Search<T extends Schema> = {
+  key: keyof T;
+  like: string;
+};
+
 export type OrderBy<T extends Schema> = {
   key: keyof T;
   direction: "ASC" | "DESC";
@@ -21,6 +26,7 @@ export type Query<T extends Schema> = {
   where?: WhereNode<T>[];
   orderBy?: OrderBy<T>[];
   select?: SelectField<T>[];
+  search?: Search<T>;
   limit?: number;
 };
 
