@@ -102,10 +102,9 @@ export class Database<T extends Schema> {
 
     const headers = await this.fields();
 
-    //   validateQuery(query, headers);
+    // validateQuery(query, headers);
 
     if (query.search) {
-      // find the correct header
       const mps = await this.indexFile.seek(
         query.search!.key as string,
         FieldType.Trigram,
@@ -131,35 +130,28 @@ export class Database<T extends Schema> {
       );
 
       const phraseTrigrams = shuffle(buildTrigram(query.search.like));
-
+      console.log("shuffled phrase trigrams", phraseTrigrams);
       const encoder = new TextEncoder();
-
       const table = new TrigramTable();
 
-      for (const tri in phraseTrigrams) {
+      for (const tri of phraseTrigrams) {
         const valueBuf = encoder.encode(tri).buffer;
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
         );
         const iter = bptree.iter(valueRef);
-
         while (await iter.next()) {
           const currentKey = iter.getKey();
-
-          if (ReferencedValue.compareBytes(currentKey.value, valueBuf) !== 0) {
-            break;
+          if (ReferencedValue.compareBytes(currentKey.value, valueBuf) === 0) {
+            const mp = iter.getPointer();
+            const data = await this.dataFile.get(
+              Number(mp.offset),
+              Number(mp.offset) + mp.length - 1,
+            );
+            console.log(`inserting data: ${data}`);
+            table.insert(data);
           }
-
-          const mp = iter.getPointer();
-
-          const data = await this.dataFile.get(
-            Number(mp.offset),
-            Number(mp.offset) + mp.length - 1,
-          );
-
-          console.log(`inserting data: ${data}`);
-          table.insert(data);
         }
       }
 
@@ -300,6 +292,10 @@ export class Database<T extends Schema> {
 
             const mp = iter.getPointer();
 
+            if (mp === null) {
+              throw new Error(`memory pointer is undefined`);
+            }
+
             const data = await this.dataFile.get(
               Number(mp.offset),
               Number(mp.offset) + mp.length - 1,
@@ -355,8 +351,6 @@ export class Database<T extends Schema> {
             );
             const iter = bptree.iter(valueRef);
             while (await iter.prev()) {
-              const currentKey = iter.getKey();
-
               const mp = iter.getPointer();
 
               const data = await this.dataFile.get(

@@ -1,9 +1,6 @@
 export const N = 3;
 
-type Trigram = {
-  chunk: string;
-  offset: number;
-};
+type Trigram = string;
 
 // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 export function shuffle(trigrams: Trigram[]): Trigram[] {
@@ -46,10 +43,7 @@ export function buildTrigram(phrase: string): Trigram[] {
         tri += phrase[word[jdx]];
       }
 
-      trigrams.push({
-        chunk: tri,
-        offset: word[idx],
-      });
+      trigrams.push(tri);
     }
   });
 
