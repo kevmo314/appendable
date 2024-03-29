@@ -183,7 +183,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					for _, tri := range trigrams {
 						valueBytes := []byte(tri.Word)
 						mp.Offset += tri.Offset
-						mp.Length += uint32(tri.Offset)
+						mp.Length += tri.Length
 						if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 							DataPointer: mp,
 							Value:       valueBytes,

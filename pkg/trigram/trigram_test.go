@@ -14,22 +14,27 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "how",
 				Offset: 0,
+				Length: 3,
 			},
 			{
 				Word:   "owd",
 				Offset: 1,
+				Length: 3,
 			},
 			{
 				Word:   "wdy",
 				Offset: 2,
+				Length: 3,
 			},
 			{
 				Word:   "dyd",
 				Offset: 3,
+				Length: 3,
 			},
 			{
 				Word:   "ydo",
 				Offset: 4,
+				Length: 3,
 			},
 		}
 
@@ -47,14 +52,17 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "how",
 				Offset: 0,
+				Length: 3,
 			},
 			{
 				Word:   "owd",
 				Offset: 1,
+				Length: 3,
 			},
 			{
 				Word:   "wdy",
 				Offset: 2,
+				Length: 3,
 			},
 		}
 
@@ -72,22 +80,27 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "how",
 				Offset: 0,
+				Length: 4,
 			},
 			{
 				Word:   "owd",
 				Offset: 2,
+				Length: 3,
 			},
 			{
 				Word:   "wdy",
 				Offset: 3,
+				Length: 4,
 			},
 			{
 				Word:   "dyd",
 				Offset: 4,
+				Length: 7,
 			},
 			{
 				Word:   "ydo",
 				Offset: 6,
+				Length: 6,
 			},
 		}
 
@@ -105,18 +118,22 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "how",
 				Offset: 0,
+				Length: 4,
 			},
 			{
 				Word:   "owd",
 				Offset: 2,
+				Length: 3,
 			},
 			{
 				Word:   "wdy",
 				Offset: 3,
+				Length: 4,
 			},
 			{
 				Word:   "dow",
 				Offset: 8,
+				Length: 3,
 			},
 		}
 
@@ -142,10 +159,12 @@ func TestTrigram(t *testing.T) {
 			{
 				Word:   "caf",
 				Offset: 0,
+				Length: 3,
 			},
 			{
 				Word:   "afe",
 				Offset: 1,
+				Length: 3,
 			},
 		}
 

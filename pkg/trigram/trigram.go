@@ -2,9 +2,9 @@ package trigram
 
 import (
 	"golang.org/x/text/unicode/norm"
+	"hash/fnv"
 	"math/rand"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -12,6 +12,7 @@ import (
 type Trigram struct {
 	Word   string
 	Offset uint64
+	Length uint32
 }
 
 const N = 3
@@ -46,11 +47,20 @@ func normalizeToAscii(s string) (string, map[int]int) {
 	return b.String(), ogOffsets
 }
 
+func combineHashes(trigrams []Trigram) int64 {
+	h := fnv.New32a()
+	for _, t := range trigrams {
+		h.Write([]byte(t.Word))
+	}
+	return int64(h.Sum32())
+}
+
 func Shuffle(trigrams []Trigram) []Trigram {
 	soup := make([]Trigram, len(trigrams))
 	copy(soup, trigrams)
 
-	rand.Seed(time.Now().UnixNano())
+	seed := combineHashes(trigrams)
+	rand.Seed(seed)
 	for i := len(trigrams) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		soup[i], soup[j] = soup[j], soup[i]
@@ -89,12 +99,19 @@ func BuildTrigram(phrase string) []Trigram {
 		for i := 0; i <= len(wOffsets)-N; i++ {
 
 			var str string
+
+			p := 0
 			for j := i; j < i+N; j++ {
 				str += string(runes[wOffsets[j]])
+				p = j
 			}
 
 			q := ogOffsets[wOffsets[i]]
-			trigrams = append(trigrams, Trigram{Word: str, Offset: uint64(q)})
+			trigrams = append(trigrams, Trigram{
+				Word:   str,
+				Offset: uint64(q),
+				Length: uint32(ogOffsets[wOffsets[p]] - q + 1),
+			})
 
 		}
 	}
