@@ -1,6 +1,13 @@
 import { IndexHeader } from "../file/meta";
 import { FieldType } from "./database";
-import { OrderBy, Schema, Query, SelectField, WhereNode } from "./query-lang";
+import {
+  OrderBy,
+  Schema,
+  Query,
+  SelectField,
+  WhereNode,
+  Search,
+} from "./query-lang";
 
 function checkType(headerType: number[], queryType: FieldType): boolean {
   return headerType.includes(queryType);
@@ -131,11 +138,34 @@ function validateSelect<T extends Schema>(
   }
 }
 
+export function validateSearch<T extends Schema>(
+  search: Search<T>,
+  headers: IndexHeader[],
+) {
+  if (search) {
+    const found = headers.find(
+      (header) =>
+        header.fieldName === search.key &&
+        header.fieldTypes.find((ft) => ft === FieldType.Trigram),
+    );
+
+    if (!found) {
+      throw new Error(`${search.key as string} doesn't support searching`);
+    }
+  }
+}
+
 export function validateQuery<T extends Schema>(
   query: Query<T>,
   headers: IndexHeader[],
 ): void {
-  validateWhere(query.where, headers);
-  validateOrderBy(query.orderBy, query.where![0].key as string);
-  validateSelect(query.select, headers);
+  if (query.search) {
+    validateSearch(query.search, headers);
+  }
+
+  if (query.where) {
+    validateWhere(query.where, headers);
+    validateOrderBy(query.orderBy, query.where![0].key as string);
+    validateSelect(query.select, headers);
+  }
 }
