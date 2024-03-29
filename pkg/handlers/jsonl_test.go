@@ -3,7 +3,9 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
+	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pointer"
+	"github.com/kevmo314/appendable/pkg/trigram"
 	"math"
 	"testing"
 
@@ -51,7 +53,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(collected2) != 1 {
+		if len(collected2) != 1*2 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected2))
 		}
 	})
@@ -84,8 +86,8 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if len(collected) != 1 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 1*2 {
+			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
 		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
@@ -149,11 +151,28 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 2 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 2*2 {
+			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		var strIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType == appendable.FieldTypeString {
+				strIndexes = append(strIndexes, ms)
+			}
+		}
+
+		rv1, mp1, err := strIndexes[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -169,7 +188,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		buf1, err := collected[0].Metadata()
+		buf1, err := strIndexes[0].Metadata()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,7 +200,8 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test3")})
+		bp2 := strIndexes[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)})
+		rv2, mp2, err := bp2.Find(btree.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -198,7 +218,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		md2 := &appendable.IndexMeta{}
-		if err := collected[1].UnmarshalMetadata(md2); err != nil {
+		if err := strIndexes[1].UnmarshalMetadata(md2); err != nil {
 			t.Fatal(err)
 		}
 		if md2.FieldType != appendable.FieldTypeString {
@@ -234,11 +254,28 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 2 {
+		if len(collected) != 3 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		var vanillaIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType != appendable.FieldTypeTrigram {
+				vanillaIndexes = append(vanillaIndexes, ms)
+			}
+		}
+
+		rv1, mp1, err := vanillaIndexes[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +291,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		buf1, err := collected[0].Metadata()
+		buf1, err := vanillaIndexes[0].Metadata()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -268,7 +305,7 @@ func TestJSONL(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := vanillaIndexes[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Find(btree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -285,7 +322,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		md2 := &appendable.IndexMeta{}
-		if err := collected[1].UnmarshalMetadata(md2); err != nil {
+		if err := vanillaIndexes[1].UnmarshalMetadata(md2); err != nil {
 			t.Fatal(err)
 		}
 		if md2.FieldType != appendable.FieldTypeFloat64 {
@@ -316,27 +353,44 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional data ranges but same number of indices
-		if len(collected) != 4 {
+		if len(collected) != 6 {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
+		var vanillaIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType != appendable.FieldTypeTrigram {
+				vanillaIndexes = append(vanillaIndexes, ms)
+			}
+		}
+
 		md0 := &appendable.IndexMeta{}
-		if err := collected[0].UnmarshalMetadata(md0); err != nil {
+		if err := vanillaIndexes[0].UnmarshalMetadata(md0); err != nil {
 			t.Fatal(err)
 		}
 
 		md1 := &appendable.IndexMeta{}
-		if err := collected[1].UnmarshalMetadata(md1); err != nil {
+		if err := vanillaIndexes[1].UnmarshalMetadata(md1); err != nil {
 			t.Fatal(err)
 		}
 
 		md2 := &appendable.IndexMeta{}
-		if err := collected[2].UnmarshalMetadata(md2); err != nil {
+		if err := vanillaIndexes[2].UnmarshalMetadata(md2); err != nil {
 			t.Fatal(err)
 		}
 
 		md3 := &appendable.IndexMeta{}
-		if err := collected[3].UnmarshalMetadata(md3); err != nil {
+		if err := vanillaIndexes[3].UnmarshalMetadata(md3); err != nil {
 			t.Fatal(err)
 		}
 
@@ -396,27 +450,44 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional data ranges but same number of indices
-		if len(collected) != 4 {
+		if len(collected) != 6 {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
+		var vanillaIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType != appendable.FieldTypeTrigram {
+				vanillaIndexes = append(vanillaIndexes, ms)
+			}
+		}
+
 		md0 := &appendable.IndexMeta{}
-		if err := collected[0].UnmarshalMetadata(md0); err != nil {
+		if err := vanillaIndexes[0].UnmarshalMetadata(md0); err != nil {
 			t.Fatal(err)
 		}
 
 		md1 := &appendable.IndexMeta{}
-		if err := collected[1].UnmarshalMetadata(md1); err != nil {
+		if err := vanillaIndexes[1].UnmarshalMetadata(md1); err != nil {
 			t.Fatal(err)
 		}
 
 		md2 := &appendable.IndexMeta{}
-		if err := collected[2].UnmarshalMetadata(md2); err != nil {
+		if err := vanillaIndexes[2].UnmarshalMetadata(md2); err != nil {
 			t.Fatal(err)
 		}
 
 		md3 := &appendable.IndexMeta{}
-		if err := collected[3].UnmarshalMetadata(md3); err != nil {
+		if err := vanillaIndexes[3].UnmarshalMetadata(md3); err != nil {
 			t.Fatal(err)
 		}
 
@@ -476,17 +547,34 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional data ranges but same number of indices
-		if len(collected) != 2 {
+		if len(collected) != 3 {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
+		var vanillaIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType != appendable.FieldTypeTrigram {
+				vanillaIndexes = append(vanillaIndexes, ms)
+			}
+		}
+
 		md0 := &appendable.IndexMeta{}
-		if err := collected[0].UnmarshalMetadata(md0); err != nil {
+		if err := vanillaIndexes[0].UnmarshalMetadata(md0); err != nil {
 			t.Fatal(err)
 		}
 
 		md1 := &appendable.IndexMeta{}
-		if err := collected[1].UnmarshalMetadata(md1); err != nil {
+		if err := vanillaIndexes[1].UnmarshalMetadata(md1); err != nil {
 			t.Fatal(err)
 		}
 
@@ -535,11 +623,28 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 2 {
+		if len(collected) != 3 {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		var vanillaIndexes []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType != appendable.FieldTypeTrigram {
+				vanillaIndexes = append(vanillaIndexes, ms)
+			}
+		}
+
+		rv1, mp1, err := vanillaIndexes[0].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(btree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -555,7 +660,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		buf1, err := collected[0].Metadata()
+		buf1, err := vanillaIndexes[0].Metadata()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -567,7 +672,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := collected[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(1)}).Find(btree.ReferencedValue{})
+		rv2, mp2, err := vanillaIndexes[1].BPTree(&btree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(1)}).Find(btree.ReferencedValue{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -583,7 +688,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[1].BPTree().Find(\"test3\") = %+v, want {%d, %d}", mp2, len("{\"test\":\"test1\"}\n"), len("{\"test\":null}"))
 		}
 
-		buf2, err := collected[1].Metadata()
+		buf2, err := vanillaIndexes[1].Metadata()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -688,6 +793,164 @@ func TestJSONL(t *testing.T) {
 			if !bytes.Equal(k.Value, v2) {
 				t.Fatal("keys are not equal")
 			}
+		}
+	})
+
+	t.Run("able to insert trigrams and find trigrams", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r1 := []byte("{\"test\":\"howdy do how yall doing\"}\n{\"test\":\"how dyd oh owyal ldoing\"}\n")
+
+		if err := i.Synchronize(r1); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 2 {
+			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
+		}
+
+		var tripage []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType == appendable.FieldTypeTrigram {
+				tripage = append(tripage, ms)
+			}
+		}
+
+		if len(tripage) != 1 {
+			t.Fatalf("expected length to be %v, got %v", 1, len(tripage))
+		}
+
+		bp := tripage[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+
+		tris := trigram.BuildTrigram("howdy")
+
+		for _, tri := range tris {
+			rv1, mp1, err := bp.Find(btree.ReferencedValue{Value: []byte(tri.Word)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if mp1 == (pointer.MemoryPointer{}) {
+				t.Errorf("got i.Indexes[0].BPTree().Find(\"test1\") = nil, want non-nil")
+			}
+
+			if !bytes.Equal(rv1.Value, []byte(tri.Word)) {
+				t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte(tri.Word))
+			}
+		}
+	})
+
+	t.Run("iteratively search", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r1 := []byte("{\"test\":\"howdy do how yall doing\"}\n{\"test\":\"oh owyal ldoing\"}\n")
+
+		if err := i.Synchronize(r1); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 2 {
+			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
+		}
+
+		var tripages []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType == appendable.FieldTypeTrigram {
+				tripages = append(tripages, ms)
+			}
+		}
+
+		if len(tripages) != 1 {
+			t.Fatalf("expected length to be %v, got %v", 1, len(tripages))
+		}
+
+		tree := tripages[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+		tris := trigram.Shuffle(trigram.BuildTrigram("howdy"))
+
+		trigramTable := make(map[uint64]int)
+
+		for _, tri := range tris {
+			iter, err := tree.Iter(btree.ReferencedValue{Value: []byte(tri.Word)})
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for iter.Next() {
+				k := iter.Key()
+
+				if !bytes.Equal(k.Value, []byte(tri.Word)) {
+					break
+				}
+
+				if ct, exists := trigramTable[tri.Offset]; exists {
+					trigramTable[tri.Offset] = ct + 1
+				} else {
+					trigramTable[tri.Offset] = 1
+				}
+			}
+		}
+
+		maxOffset := ^uint64(0)
+		maxCount := -1
+		for key, ct := range trigramTable {
+			if maxCount < ct {
+				maxCount = ct
+				maxOffset = key
+			}
+		}
+
+		if maxOffset == ^uint64(0) {
+			t.Errorf("failed to search through any trigrams")
 		}
 	})
 

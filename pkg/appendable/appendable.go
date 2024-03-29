@@ -3,6 +3,7 @@ package appendable
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/trigram"
 	"strings"
 )
 
@@ -53,11 +54,12 @@ const (
 	FieldTypeArray
 	FieldTypeBoolean
 	FieldTypeNull
+	FieldTypeTrigram
 )
 
 func (t FieldType) TypescriptType() string {
 	components := []string{}
-	if t&FieldTypeString != 0 {
+	if t&FieldTypeString != 0 || t&FieldTypeTrigram != 0 {
 		components = append(components, "string")
 	}
 	if t&FieldTypeInt64 != 0 || t&FieldTypeFloat64 != 0 {
@@ -160,6 +162,8 @@ func DetermineType(ft FieldType) uint16 {
 		width = uint16(shift + 0)
 	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
 		width = uint16(shift + 8)
+	case FieldTypeTrigram:
+		width = uint16(shift + trigram.N)
 	}
 
 	return width
