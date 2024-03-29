@@ -804,7 +804,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		r1 := []byte("{\"test\":\"howdydohowyalldoing\"}\n")
+		r1 := []byte("{\"test\":\"howdy do how yall doing\"}\n{\"test\":\"how dyd oh owyal ldoing\"}\n")
 
 		if err := i.Synchronize(r1); err != nil {
 			t.Fatal(err)
@@ -824,7 +824,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
 		}
 
-		var tripage *metapage.LinkedMetaSlot
+		var tripage []*metapage.LinkedMetaSlot
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -837,13 +837,17 @@ func TestJSONL(t *testing.T) {
 			}
 
 			if im.FieldType == appendable.FieldTypeTrigram {
-				tripage = ms
+				tripage = append(tripage, ms)
 			}
 		}
 
-		bp := tripage.BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+		if len(tripage) != 1 {
+			t.Fatalf("expected length to be %v, got %v", 1, len(tripage))
+		}
 
-		tris := trigram.BuildTrigram(" howdydohowyalldoing")
+		bp := tripage[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+
+		tris := trigram.BuildTrigram("howdy")
 
 		for _, tri := range tris {
 			rv1, mp1, err := bp.Find(btree.ReferencedValue{Value: []byte(tri.Word)})
@@ -858,7 +862,96 @@ func TestJSONL(t *testing.T) {
 				t.Errorf("incorrect values, got %v, want %v", rv1.Value, []byte(tri.Word))
 			}
 		}
+	})
 
+	t.Run("iteratively search", func(t *testing.T) {
+		f := buftest.NewSeekableBuffer()
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		r1 := []byte("{\"test\":\"howdy do how yall doing\"}\n{\"test\":\"oh owyal ldoing\"}\n")
+
+		if err := i.Synchronize(r1); err != nil {
+			t.Fatal(err)
+		}
+
+		indexes, err := i.Indexes()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collected, err := indexes.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collected) != 2 {
+			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
+		}
+
+		var tripages []*metapage.LinkedMetaSlot
+
+		for _, ms := range collected {
+			buf, err := ms.Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			im := &appendable.IndexMeta{}
+			if err := im.UnmarshalBinary(buf); err != nil {
+				t.Fatal(err)
+			}
+
+			if im.FieldType == appendable.FieldTypeTrigram {
+				tripages = append(tripages, ms)
+			}
+		}
+
+		if len(tripages) != 1 {
+			t.Fatalf("expected length to be %v, got %v", 1, len(tripages))
+		}
+
+		tree := tripages[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+		tris := trigram.Shuffle(trigram.BuildTrigram("howdy"))
+
+		trigramTable := make(map[uint64]int)
+
+		for _, tri := range tris {
+			iter, err := tree.Iter(btree.ReferencedValue{Value: []byte(tri.Word)})
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for iter.Next() {
+				k := iter.Key()
+
+				if !bytes.Equal(k.Value, []byte(tri.Word)) {
+					break
+				}
+
+				if ct, exists := trigramTable[tri.Offset]; exists {
+					trigramTable[tri.Offset] = ct + 1
+				} else {
+					trigramTable[tri.Offset] = 1
+				}
+			}
+		}
+
+		maxOffset := ^uint64(0)
+		maxCount := -1
+		for key, ct := range trigramTable {
+			if maxCount < ct {
+				maxCount = ct
+				maxOffset = key
+			}
+		}
+
+		if maxOffset == ^uint64(0) {
+			t.Errorf("failed to search through any trigrams")
+		}
 	})
 
 }

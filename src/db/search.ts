@@ -43,7 +43,7 @@ export function buildTrigram(phrase: string): Trigram[] {
         tri += phrase[word[jdx]];
       }
 
-      trigrams.push(tri.toLowerCase());
+      trigrams.push(tri);
     }
   });
 

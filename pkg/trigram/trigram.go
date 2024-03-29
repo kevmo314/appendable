@@ -2,7 +2,9 @@ package trigram
 
 import (
 	"golang.org/x/text/unicode/norm"
+	"math/rand"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
@@ -42,6 +44,19 @@ func normalizeToAscii(s string) (string, map[int]int) {
 
 	}
 	return b.String(), ogOffsets
+}
+
+func Shuffle(trigrams []Trigram) []Trigram {
+	soup := make([]Trigram, len(trigrams))
+	copy(soup, trigrams)
+
+	rand.Seed(time.Now().UnixNano())
+	for i := len(trigrams) - 1; i > 0; i-- {
+		j := rand.Intn(i + 1)
+		soup[i], soup[j] = soup[j], soup[i]
+	}
+
+	return soup
 }
 
 func BuildTrigram(phrase string) []Trigram {

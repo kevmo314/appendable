@@ -78,6 +78,11 @@ func (p *TraversalIterator) init() bool {
 		return false
 	}
 	p.records = path
+
+	if path[0].index == path[0].node.NumPointers() {
+		return false
+	}
+
 	return true
 }
 
