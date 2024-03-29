@@ -15,8 +15,7 @@ export class DataFile {
 
   static forResolver(resolver: RangeResolver) {
     const instance = new DataFile(async (ranges) => {
-      const result = await resolver(ranges);
-      return result;
+      return await resolver(ranges);
     });
     instance.originalResolver = resolver;
     return instance;

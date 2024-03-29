@@ -1,5 +1,5 @@
 import { RangeResolver } from "../resolver/resolver";
-import { LinkedMetaPage, maxUint64 } from "./multi";
+import { LinkedMetaPage } from "./multi";
 
 export const META_SIZE_BYTES = 256;
 export const PAGE_SIZE_BYTES = 4096;

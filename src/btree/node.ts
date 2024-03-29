@@ -42,7 +42,7 @@ export class BPTreeNode {
 
     return {
       offset: this.internalPointers[i],
-      length: 0, // disregard since this is a free value in golang version
+      length: 0, // disregard since this is a zeroed value in golang version
     };
   }
 
