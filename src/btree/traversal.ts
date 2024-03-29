@@ -28,7 +28,8 @@ export class TraversalIterator {
     const root = rootResponse.rootNode;
     const offset = rootResponse.pointer;
     this.records = await this.tree.traverse(this.key, root, offset);
-    return true;
+
+    return this.records[0].index !== this.records[0].node.numPointers();
   }
 
   getKey(): ReferencedValue {
