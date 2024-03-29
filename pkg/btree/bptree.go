@@ -345,7 +345,7 @@ func (t *BPTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error 
 					p.node.Keys[p.index] = midKey
 				}
 				p.node.InternalPointers = append(p.node.InternalPointers[:p.index+1], p.node.InternalPointers[p.index:]...)
-				p.node.InternalPointers[p.index] = uint64(noffset)
+				p.node.InternalPointers[p.index] = noffset
 				p.node.InternalPointers[p.index+1] = uint64(moffset)
 				// the parent will be written to disk in the next iteration
 			} else {
@@ -353,7 +353,7 @@ func (t *BPTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error 
 				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 				p.Keys = []ReferencedValue{midKey}
 				p.InternalPointers = []uint64{
-					uint64(noffset), uint64(moffset),
+					noffset, uint64(moffset),
 				}
 
 				pbuf, err := p.MarshalBinary()
