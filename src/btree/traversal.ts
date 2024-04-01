@@ -29,7 +29,7 @@ export class TraversalIterator {
     const offset = rootResponse.pointer;
     this.records = await this.tree.traverse(this.key, root, offset);
 
-    return this.records[0].index !== this.records[0].node.numPointers();
+    return true;
   }
 
   getKey(): ReferencedValue {
@@ -75,7 +75,11 @@ export class TraversalIterator {
 
   async next(): Promise<boolean> {
     if (this.records.length === 0) {
-      return await this.init();
+      const res = await this.init();
+
+      return (
+        res && this.records[0].index !== this.records[0].node.numPointers()
+      );
     }
 
     return this.increment(0, 1);

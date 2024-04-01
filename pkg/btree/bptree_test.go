@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 	"math"
 	"math/rand"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/pointer"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/pagefile"
@@ -652,4 +653,78 @@ func TestBPTree_Iteration_Overcount(t *testing.T) {
 
 	})
 
+}
+
+func TestBPTree_Iteration_EmptyTree(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := pagefile.NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9)}
+
+	t.Run("finds nothing", func(t *testing.T) {
+		buf := make([]byte, 8)
+		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
+
+		valueRef := ReferencedValue{
+			Value: buf,
+		}
+
+		iter, err := tree.Iter(valueRef)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if iter.Next() {
+			t.Errorf("should not have iterated")
+		}
+
+		if iter.Prev() {
+			t.Errorf("should not have iterated")
+		}
+
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+	})
+}
+
+func TestBPTree_Iteration_StartsAfterTree(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := pagefile.NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(2)}
+	count := 10
+
+	for i := 0; i < count; i++ {
+		buf := []byte{0x01}
+		if err := tree.Insert(ReferencedValue{Value: buf, DataPointer: pointer.MemoryPointer{Offset: uint64(i)}}, pointer.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	t.Run("finds nothing", func(t *testing.T) {
+		buf := []byte{0x02}
+		valueRef := ReferencedValue{
+			Value: buf,
+		}
+
+		iter, err := tree.Iter(valueRef)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if iter.Next() {
+			t.Errorf("should not have iterated")
+		}
+
+		if iter.Err() != nil {
+			t.Fatal(iter.Err())
+		}
+	})
 }

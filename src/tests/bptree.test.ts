@@ -4,6 +4,7 @@ import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
 import { readBinaryFile } from "./test-util";
+import { maxUint64 } from "../file/multi";
 
 class testMetaPage implements MetaPage {
   private rootMP: MemoryPointer;
@@ -129,6 +130,28 @@ describe("test btree iterator count", () => {
     let count = 0;
 
     while (await iter.next()) {
+      const currKey = iter.getKey();
+      if (ReferencedValue.compareBytes(valueBuf, currKey.value) === 0) {
+        count++;
+      }
+    }
+
+    expect(count).toEqual(10);
+  });
+
+  it("should count the value 23 10 times reverse", async () => {
+    const valueBuf = new ArrayBuffer(8);
+    new DataView(valueBuf).setFloat64(0, Number(23));
+
+    const valueRef = new ReferencedValue(
+      { offset: maxUint64, length: 0 },
+      valueBuf,
+    );
+
+    const iter = bptree.iter(valueRef);
+    let count = 0;
+
+    while (await iter.prev()) {
       const currKey = iter.getKey();
       if (ReferencedValue.compareBytes(valueBuf, currKey.value) === 0) {
         count++;
