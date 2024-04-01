@@ -11,6 +11,7 @@ import {
   WhereNode,
   handleSelect,
   processWhere,
+  Search,
 } from "./query-lang";
 import { buildTrigram, shuffle, TrigramTable } from "./search";
 
@@ -387,5 +388,16 @@ export class Database<T extends Schema> {
     value: T[keyof T],
   ): QueryBuilder<T> {
     return new QueryBuilder(this).where(key, operation, value);
+  }
+
+  search(key: keyof T, like: string) {
+    const search: Search<T> = {
+      key,
+      like,
+    };
+
+    return this.query({
+      search,
+    });
   }
 }
