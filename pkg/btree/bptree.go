@@ -3,10 +3,11 @@ package btree
 import (
 	"bytes"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/pagefile"
-	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 	"slices"
+
+	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
 // MetaPage is an abstract interface over the root page of a btree
@@ -79,7 +80,7 @@ func (p *TraversalIterator) init() bool {
 	}
 	p.records = path
 
-	return true
+	return p.records[0].index != p.records[0].node.NumPointers()
 }
 
 // incr moves the iterator by delta, returning false if there is no more data

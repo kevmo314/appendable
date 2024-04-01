@@ -698,22 +698,18 @@ func TestBPTree_Iteration_StartsAfterTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9)}
+	tree := &BPTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(2)}
 	count := 10
 
 	for i := 0; i < count; i++ {
-		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, math.Float64bits(23))
-
+		buf := []byte{0x01}
 		if err := tree.Insert(ReferencedValue{Value: buf, DataPointer: pointer.MemoryPointer{Offset: uint64(i)}}, pointer.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	t.Run("finds nothing", func(t *testing.T) {
-		buf := make([]byte, 8)
-		binary.BigEndian.PutUint64(buf, math.Float64bits(24))
-
+		buf := []byte{0x02}
 		valueRef := ReferencedValue{
 			Value: buf,
 		}
@@ -724,7 +720,7 @@ func TestBPTree_Iteration_StartsAfterTree(t *testing.T) {
 		}
 
 		if iter.Next() {
-			t.Errorf("should not have iterated, found: %v", iter.Key())
+			t.Errorf("should not have iterated")
 		}
 
 		if iter.Err() != nil {
