@@ -19,7 +19,9 @@ func TestJSONL(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 		g := []byte("{\"test\":\"test1\"}\n")
 
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		em := []string{"test"}
+
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,8 +62,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("correctly sets field offset", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		em := []string{"test"}
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -125,8 +127,9 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("new index", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
+		em := []string{"test", "test2"}
 
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -228,8 +231,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("existing index but different type", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,8 +257,8 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 3 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 2 {
+			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
 		var vanillaIndexes []*metapage.LinkedMetaSlot
@@ -332,8 +335,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("creates nested indices", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -353,7 +356,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional data ranges but same number of indices
-		if len(collected) != 6 {
+		if len(collected) != 4 {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
@@ -430,7 +433,8 @@ func TestJSONL(t *testing.T) {
 	t.Run("creates second indices with same parent", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -450,7 +454,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional data ranges but same number of indices
-		if len(collected) != 6 {
+		if len(collected) != 4 {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
@@ -526,8 +530,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("creates index for arrays", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		em := []string{"test"}
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -598,7 +602,8 @@ func TestJSONL(t *testing.T) {
 	t.Run("existing index but nullable type", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -623,8 +628,8 @@ func TestJSONL(t *testing.T) {
 		}
 
 		// check that the index file now has the additional index
-		if len(collected) != 3 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+		if len(collected) != 2 {
+			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
 		var vanillaIndexes []*metapage.LinkedMetaSlot
@@ -706,8 +711,8 @@ func TestJSONL(t *testing.T) {
 		r2 := []byte("{\"nullheader\":null}\n{\"nullheader\":null}\n")
 
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -751,7 +756,8 @@ func TestJSONL(t *testing.T) {
 	t.Run("correctly iterates through btree", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -798,8 +804,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("able to insert trigrams and find trigrams", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		em := []string{"test"}
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -866,8 +872,8 @@ func TestJSONL(t *testing.T) {
 
 	t.Run("iteratively search", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-
-		i, err := appendable.NewIndexFile(f, JSONLHandler{})
+		em := []string{"test"}
+		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}

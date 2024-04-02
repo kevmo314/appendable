@@ -82,7 +82,7 @@ func jsonTypeToFieldType(t json.Token) []appendable.FieldType {
 	case json.Number, float64:
 		return []appendable.FieldType{appendable.FieldTypeFloat64}
 	case string:
-		return []appendable.FieldType{appendable.FieldTypeString, appendable.FieldTypeTrigram}
+		return []appendable.FieldType{appendable.FieldTypeString}
 	case bool:
 		return []appendable.FieldType{appendable.FieldTypeBoolean}
 	case nil:
@@ -148,7 +148,12 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			name := strings.Join(append(path, key), ".")
 
-			for _, ft := range jsonTypeToFieldType(value) {
+			fts := jsonTypeToFieldType(value)
+			if f.IsSearch(name) {
+				fts = append(fts, appendable.FieldTypeTrigram)
+			}
+
+			for _, ft := range fts {
 				page, meta, err := f.FindOrCreateIndex(name, ft)
 				if err != nil {
 					return fmt.Errorf("failed to find or create index: %w", err)

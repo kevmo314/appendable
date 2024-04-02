@@ -13,9 +13,21 @@ import (
 	"github.com/kevmo314/appendable/pkg/mmap"
 )
 
+type StringSlice []string
+
+func (s *StringSlice) String() string {
+	return fmt.Sprintf("%v", *s)
+}
+
+func (s *StringSlice) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
+
 func main() {
 	var debugFlag, jsonlFlag, csvFlag, showTimings bool
 	var indexFilename, pprofFilename, benchmarkFilename string
+	var searchHeaders StringSlice
 
 	flag.BoolVar(&debugFlag, "debug", false, "Use logger that prints at the debug-level")
 	flag.BoolVar(&jsonlFlag, "jsonl", false, "Use JSONL handler")
@@ -24,8 +36,10 @@ func main() {
 	flag.StringVar(&indexFilename, "i", "", "Specify the existing index of the file to be opened, writing to stdout")
 	flag.StringVar(&pprofFilename, "pprof", "", "Specify the file to write the pprof data to")
 	flag.StringVar(&benchmarkFilename, "b", "", "Specify the file to write the benchmark data to")
+	flag.Var(&searchHeaders, "s", "Specify the headers you want to search")
 
 	flag.Parse()
+
 	logLevel := &slog.LevelVar{}
 
 	if debugFlag {
@@ -92,7 +106,7 @@ func main() {
 	defer mmpif.Close()
 
 	// Open the index file
-	i, err := appendable.NewIndexFile(mmpif, dataHandler)
+	i, err := appendable.NewIndexFile(mmpif, dataHandler, searchHeaders)
 	if err != nil {
 		panic(err)
 	}

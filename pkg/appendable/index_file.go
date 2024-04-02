@@ -25,9 +25,11 @@ type IndexFile struct {
 
 	pf                *pagefile.PageFile
 	BenchmarkCallback func(int)
+
+	searchHeaders []string
 }
 
-func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, error) {
+func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders []string) (*IndexFile, error) {
 	pf, err := pagefile.NewPageFile(f)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create page file: %w", err)
@@ -78,7 +80,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler) (*IndexFile, er
 			if metadata.Format != dataHandler.Format() {
 				return nil, fmt.Errorf("unsupported format: %x", metadata.Format)
 			}
-			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf}, nil
+			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf, searchHeaders: searchHeaders}, nil
 		}
 	}
 }
@@ -212,4 +214,14 @@ func (i *IndexFile) SetBenchmarkFile(f io.Writer) {
 		dt := time.Since(t0)
 		fmt.Fprintf(f, "%d,%d,%d\n", dt.Microseconds(), n, i.pf.PageCount())
 	}
+}
+
+func (i *IndexFile) IsSearch(fieldName string) bool {
+	for _, sh := range i.searchHeaders {
+		if fieldName == sh {
+			return true
+		}
+	}
+
+	return false
 }

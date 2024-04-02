@@ -24,12 +24,18 @@ func TestIndexFile(t *testing.T) {
 	t.Run("validate metadata throws error if format doesn't match on second read", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 
-		if _, err := NewIndexFile(f, &FormatHandler{ReturnsFormat: Format(1)}); err != nil {
+		var em []string
+
+		if _, err := NewIndexFile(
+			f,
+			&FormatHandler{ReturnsFormat: Format(1)},
+			em,
+		); err != nil {
 			t.Fatal(err)
 		}
 
 		// try creating a new index file with a different format
-		if _, err := NewIndexFile(f, &FormatHandler{ReturnsFormat: Format(2)}); err == nil {
+		if _, err := NewIndexFile(f, &FormatHandler{ReturnsFormat: Format(2)}, em); err == nil {
 			t.Fatal("expected error")
 		}
 	})
