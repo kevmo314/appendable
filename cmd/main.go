@@ -124,6 +124,14 @@ func main() {
 		panic(err)
 	}
 
+	fh, err := i.IndexFieldNames()
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%v\n", fh)
+
 	if showTimings {
 		readDuration := time.Since(readStart)
 		logger.Info("Opening + synchronizing index file took", slog.Duration("duration", readDuration))
