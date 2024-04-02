@@ -224,7 +224,6 @@ func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr pointer.Mem
 	// binary search node.Keys to find the first key greater than key
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
-	fmt.Printf("index: %v", index)
 	if node.Leaf() {
 		return []TraversalRecord{{node: node, index: index, ptr: ptr}}, nil
 	}

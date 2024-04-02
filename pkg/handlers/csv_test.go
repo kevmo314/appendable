@@ -31,7 +31,9 @@ func TestCSV(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 		g := []byte("test\ntest1\n")
 
-		i, err := appendable.NewIndexFile(f, CSVHandler{})
+		var em []string
+
+		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +76,9 @@ func TestCSV(t *testing.T) {
 
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, CSVHandler{})
+		var em []string
+
+		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,7 +145,8 @@ func TestCSV(t *testing.T) {
 
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, CSVHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,7 +235,9 @@ func TestCSV(t *testing.T) {
 
 		f := buftest.NewSeekableBuffer()
 
-		i, err := appendable.NewIndexFile(f, CSVHandler{})
+		var em []string
+
+		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -273,7 +280,8 @@ func TestCSV(t *testing.T) {
 
 	t.Run("correctly iterates through btree", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
-		i, err := appendable.NewIndexFile(f, CSVHandler{})
+		var em []string
+		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
 		}
