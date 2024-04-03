@@ -17,6 +17,7 @@ type ReadWriteSeekPager interface {
 
 	PageSize() int
 	SlotSize() int
+	PageCount() int64
 }
 
 type PageFile struct {
@@ -194,7 +195,6 @@ func (pf *PageFile) FreePage(offset int64) error {
 	pf.freePageIndexes[pf.freePageHead] = offset
 	pf.freePageHead = (pf.freePageHead + 1) % len(pf.freePageIndexes)
 	pf.freePageCount++
-
 	return pf.writeFreePageIndices()
 }
 

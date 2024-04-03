@@ -116,7 +116,6 @@ func (m *MultiPager) GetNextSlot(buf []byte) (int64, error) {
 
 	m.freeSlotIndexes[pageIndex][0] = true
 	return newPageOffset, nil
-
 }
 
 func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
@@ -174,4 +173,8 @@ func (m *MultiPager) Reset(offset uint64) error {
 		return err
 	}
 	return nil
+}
+
+func (m *MultiPager) PageCount() int64 {
+	return m.rws.PageCount()
 }

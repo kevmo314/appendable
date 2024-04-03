@@ -60,7 +60,7 @@ func TestMultiBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("insert a second page", func(t *testing.T) {
+	t.Run("insert a second slot", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -93,7 +93,7 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatalf("expected different offsets, got %d", next1.MemoryPointer().Offset)
 		}
 
-		// check the first page
+		// check the first slot
 		m1, err := tree.Next()
 		if err != nil {
 			t.Fatal(err)
@@ -202,7 +202,7 @@ func TestMultiBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("collect pages", func(t *testing.T) {
+	t.Run("collect slots", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -218,29 +218,61 @@ func TestMultiBPTree(t *testing.T) {
 		}
 
 		// Create a linked list of LinkedMetaSlots
-		page1, err := tree.AddNext()
+		slot1, err := tree.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		page2, err := page1.AddNext()
+		slot2, err := slot1.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		page3, err := page2.AddNext()
+		slot3, err := slot2.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// Collect the pages
-		collectedPages, err := page1.Collect()
+		// Collect the slots
+		collectedSlots, err := slot1.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Verify the collected pages
-		expectedPages := []*LinkedMetaSlot{page1, page2, page3}
-		if !reflect.DeepEqual(collectedPages, expectedPages) {
-			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		expectedSlots := []*LinkedMetaSlot{slot1, slot2, slot3}
+		if !reflect.DeepEqual(collectedSlots, expectedSlots) {
+			t.Fatalf("got %v, want %v", collectedSlots, expectedSlots)
+		}
+	})
+
+	t.Run("test m slots for n pages", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+
+		sn := 30
+
+		ps := tree
+		for i := 0; i < sn; i++ {
+			ns, err := ps.AddNext()
+			if err != nil {
+				t.Fatal(err)
+			}
+			ps = ns
+		}
+
+		if 1+(sn/16) != (int)(ms.PageCount()) {
+			t.Errorf("expected %v pages, got %v", (int)(ms.PageCount()), 1+(sn/16))
 		}
 	})
 
@@ -258,13 +290,13 @@ func TestMultiBPTree(t *testing.T) {
 		if err := tree.Reset(); err != nil {
 			t.Fatal(err)
 		}
-		collectedPages, err := tree.Collect()
+		collectedSlots, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		expectedPages := []*LinkedMetaSlot{tree}
-		if !reflect.DeepEqual(collectedPages, expectedPages) {
-			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		expectedSlots := []*LinkedMetaSlot{tree}
+		if !reflect.DeepEqual(collectedSlots, expectedSlots) {
+			t.Fatalf("got %v, want %v", collectedSlots, expectedSlots)
 		}
 	})
 
@@ -279,44 +311,13 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		collectedPages, err := tree.Collect()
+		collectedSlots, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if collectedPages != nil {
-			t.Fatalf("got %v, want nil", collectedPages)
+		if collectedSlots != nil {
+			t.Fatalf("got %v, want nil", collectedSlots)
 		}
 	})
 
-	/*
-		t.Run("packs slot into one page", func(t *testing.T) {
-			b := buftest.NewSeekableBuffer()
-			p, err := pagefile.NewPageFile(b)
-			if err != nil {
-				t.Fatal(err)
-			}
-			ms := New(p)
-			currPage, err := NewMultiBPTree(p, ms, 0)
-			if err := currPage.Reset(); err != nil {
-				t.Fatal(err)
-			}
-
-			n := 26
-			for i := 0; i < n; i++ {
-				nextPage, err := currPage.AddNext()
-				if err != nil {
-					t.Fatalf("%v at %v", err, i)
-				}
-
-				if (i/16 + 1) != int(p.PageCount()) {
-					t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
-				}
-				currPage = nextPage
-			}
-
-			if len(ms.freeSlotIndexes) != 2 {
-				t.Fatalf("expected slot indexes to be 2, got %v", len(ms.freeSlotIndexes))
-			}
-		})
-	*/
 }
