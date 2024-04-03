@@ -87,11 +87,11 @@ func (m *LinkedMetaSlot) Reset() error {
 	return m.pager.Reset(m.offset)
 }
 
-// Collect returns a slice of all linked meta pages from this page to the end.
+// Collect returns a slice of all linked meta slots from this page to the end.
 // This function is useful for debugging and testing, however generally it should
 // not be used for functional code.
 func (m *LinkedMetaSlot) Collect() ([]*LinkedMetaSlot, error) {
-	var pages []*LinkedMetaSlot
+	var slots []*LinkedMetaSlot
 	node := m
 	for {
 		exists, err := node.Exists()
@@ -101,14 +101,14 @@ func (m *LinkedMetaSlot) Collect() ([]*LinkedMetaSlot, error) {
 		if !exists {
 			break
 		}
-		pages = append(pages, node)
+		slots = append(slots, node)
 		next, err := node.Next()
 		if err != nil {
 			return nil, err
 		}
 		node = next
 	}
-	return pages, nil
+	return slots, nil
 }
 
 func (m *LinkedMetaSlot) String() string {

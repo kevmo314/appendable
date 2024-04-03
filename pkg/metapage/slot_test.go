@@ -271,6 +271,20 @@ func TestMultiBPTree(t *testing.T) {
 			ps = ns
 		}
 
+		slot1, err := tree.Next()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		collectedSlots, err := slot1.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collectedSlots) != sn {
+			t.Fatalf("expected # of slots to be %v, got %v", sn, len(collectedSlots))
+		}
+
 		if 1+(sn/16) != (int)(ms.PageCount()) {
 			t.Errorf("expected %v pages, got %v", (int)(ms.PageCount()), 1+(sn/16))
 		}

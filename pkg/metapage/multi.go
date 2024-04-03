@@ -3,6 +3,7 @@ package metapage
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
@@ -96,7 +97,7 @@ func (m *MultiPager) GetNextSlot(buf []byte) (int64, error) {
 		for slotIndex, used := range slots {
 			if !used {
 				m.freeSlotIndexes[pageIndex][slotIndex] = true
-				offset := int64(pageIndex*m.rws.PageSize() + slotIndex*m.rws.SlotSize())
+				offset := int64(pageIndex*m.rws.PageSize()+(slotIndex+1)*m.rws.SlotSize()) + int64(m.rws.PageSize())
 				return offset, nil
 			}
 		}
@@ -119,6 +120,7 @@ func (m *MultiPager) GetNextSlot(buf []byte) (int64, error) {
 }
 
 func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
+	fmt.Printf("\ncurrent offset: %v\n", offset)
 	exists, err := m.Next(offset)
 	if err != nil {
 		return nil, err
@@ -128,10 +130,12 @@ func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
 	}
 
 	nextOffset, err := m.GetNextSlot(nil)
+
 	if err != nil {
 		return nil, err
 	}
 	next := &LinkedMetaSlot{offset: uint64(nextOffset), pager: m}
+	fmt.Printf("next offset: %v\n\n", nextOffset)
 	if err := next.Reset(); err != nil {
 		return nil, err
 	}
