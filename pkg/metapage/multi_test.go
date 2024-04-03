@@ -39,7 +39,7 @@ func TestMetaPager(t *testing.T) {
 		s := make([]int64, nm)
 
 		for i := 0; i < nm; i++ {
-			offset, err := m.NextSlot(nil)
+			offset, err := m.GetNextSlot(nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -62,7 +62,7 @@ func TestMetaPager(t *testing.T) {
 		m := New(pf)
 
 		n := 26
-		offset, err := m.NextSlot(nil)
+		offset, err := m.GetNextSlot(nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -74,7 +74,7 @@ func TestMetaPager(t *testing.T) {
 		var lastOffset int64 = -1
 
 		for i := 0; i < n; i++ {
-			offset, err = m.NextSlot(nil)
+			offset, err = m.GetNextSlot(nil)
 			if err != nil {
 				t.Fatal(err)
 			}
