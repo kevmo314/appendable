@@ -86,7 +86,7 @@ func (m *MultiPager) Next(offset uint64) (*LinkedMetaSlot, error) {
 	return &LinkedMetaSlot{offset: next.Offset, pager: m}, nil
 }
 
-func (m *MultiPager) NextSlot(buf []byte) (int64, error) {
+func (m *MultiPager) GetNextSlot(buf []byte) (int64, error) {
 	if buf != nil && len(buf) > m.rws.SlotSize() {
 		return 0, errors.New("buffer is too large")
 	}
@@ -128,7 +128,7 @@ func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
 		return nil, errors.New("next pointer already exists")
 	}
 
-	nextOffset, err := m.NextSlot(nil)
+	nextOffset, err := m.GetNextSlot(nil)
 	if err != nil {
 		return nil, err
 	}
