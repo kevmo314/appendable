@@ -76,7 +76,7 @@ func NewPageFile(rws io.ReadWriteSeeker) (*PageFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if n%int64(pf.pageSize) != 0 {
+	if n%int64(pf.slotSize) != 0 {
 		return nil, errors.New("file size is not a multiple of the page size")
 	}
 	pf.lastPage = n / int64(pf.pageSize)

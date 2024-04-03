@@ -262,7 +262,11 @@ func TestMultiBPTree(t *testing.T) {
 
 		sn := 30
 
-		ps := tree
+		ps, err := tree.AddNext()
+		if err != nil {
+			t.Fatal(err)
+		}
+		slot1 := ps
 		for i := 0; i < sn; i++ {
 			ns, err := ps.AddNext()
 			if err != nil {
@@ -271,17 +275,12 @@ func TestMultiBPTree(t *testing.T) {
 			ps = ns
 		}
 
-		slot1, err := tree.Next()
-		if err != nil {
-			t.Fatal(err)
-		}
-
 		collectedSlots, err := slot1.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(collectedSlots) != sn {
+		if len(collectedSlots) != sn+1 {
 			t.Fatalf("expected # of slots to be %v, got %v", sn, len(collectedSlots))
 		}
 

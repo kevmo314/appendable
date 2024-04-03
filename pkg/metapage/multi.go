@@ -157,7 +157,7 @@ func (m *MultiPager) Exists(offset uint64) (bool, error) {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return false, err
 	}
-	if _, err := m.rws.Read(make([]byte, m.rws.PageSize())); err != nil {
+	if _, err := m.rws.Read(make([]byte, m.rws.SlotSize())); err != nil {
 		if err == io.EOF {
 			return false, nil
 		}
@@ -168,7 +168,7 @@ func (m *MultiPager) Exists(offset uint64) (bool, error) {
 
 func (m *MultiPager) Reset(offset uint64) error {
 	// write a full page of zeros
-	emptyPage := make([]byte, m.rws.PageSize())
+	emptyPage := make([]byte, m.rws.SlotSize())
 	binary.LittleEndian.PutUint64(emptyPage[12:20], ^uint64(0))
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return err

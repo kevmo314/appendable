@@ -80,6 +80,8 @@ func (m *LinkedMetaSlot) MemoryPointer() pointer.MemoryPointer {
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {
+	exist, _ := m.pager.Exists(m.offset)
+	fmt.Printf("does %v exist? %v\n", m.offset, exist)
 	return m.pager.Exists(m.offset)
 }
 
