@@ -1,13 +1,13 @@
 package main
 
 func main() {
-	//	generateUVariantTestCases()
+	generateUVariantTestCases()
 	generateFilledMetadata()
-	// generateBasicBtree()
-	// generateInternalNode()
-	// generateLeafNode()
-	// generateBtreeIterator()
-	// generateFileMeta()
-	// generateIndexMeta()
-	// generate1023Btree()
+	generateBasicBtree()
+	generateInternalNode()
+	generateLeafNode()
+	generateBtreeIterator()
+	generateFileMeta()
+	generateIndexMeta()
+	generate1023Btree()
 }
