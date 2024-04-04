@@ -17,6 +17,8 @@ type ReadWriteSeekPager interface {
 
 	PageSize() int
 	SlotSize() int
+
+	PageCount() int64
 }
 
 type PageFile struct {
