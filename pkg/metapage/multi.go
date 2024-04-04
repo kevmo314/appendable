@@ -146,7 +146,7 @@ func (m *MultiPager) AddNext(offset uint64) (*LinkedMetaSlot, error) {
 	return next, nil
 }
 
-func (m *MultiPager) Exists(offset uint64) (bool, error) {
+func (m *MultiPager) spaceExists(offset uint64, size int) (bool, error) {
 	if offset == ^uint64(0) {
 		return false, nil
 	}
@@ -154,7 +154,7 @@ func (m *MultiPager) Exists(offset uint64) (bool, error) {
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return false, err
 	}
-	if _, err := m.rws.Read(make([]byte, m.rws.PageSize())); err != nil {
+	if _, err := m.rws.Read(make([]byte, size)); err != nil {
 		if err == io.EOF {
 			return false, nil
 		}
@@ -163,9 +163,17 @@ func (m *MultiPager) Exists(offset uint64) (bool, error) {
 	return true, nil
 }
 
-func (m *MultiPager) Reset(offset uint64) error {
-	// write a full page of zeros
-	emptyPage := make([]byte, m.rws.PageSize())
+func (m *MultiPager) SlotExists(offset uint64) (bool, error) {
+	return m.spaceExists(offset, m.rws.SlotSize())
+}
+
+func (m *MultiPager) PageExists(offset uint64) (bool, error) {
+	return m.spaceExists(offset, m.rws.PageSize())
+}
+
+func (m *MultiPager) spaceReset(offset uint64, size int) error {
+	// write a full slot of zeros
+	emptyPage := make([]byte, size)
 	binary.LittleEndian.PutUint64(emptyPage[12:20], ^uint64(0))
 	if _, err := m.rws.Seek(int64(offset), io.SeekStart); err != nil {
 		return err
@@ -174,4 +182,12 @@ func (m *MultiPager) Reset(offset uint64) error {
 		return err
 	}
 	return nil
+}
+
+func (m *MultiPager) PageReset(offset uint64) error {
+	return m.spaceReset(offset, m.rws.PageSize())
+}
+
+func (m *MultiPager) SlotReset(offset uint64) error {
+	return m.spaceReset(offset, m.rws.SlotSize())
 }

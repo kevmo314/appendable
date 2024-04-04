@@ -80,11 +80,11 @@ func (m *LinkedMetaSlot) MemoryPointer() pointer.MemoryPointer {
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {
-	return m.pager.Exists(m.offset)
+	return m.pager.SlotExists(m.offset)
 }
 
 func (m *LinkedMetaSlot) Reset() error {
-	return m.pager.Reset(m.offset)
+	return m.pager.SlotReset(m.offset)
 }
 
 // Collect returns a slice of all linked meta pages from this page to the end.
