@@ -80,11 +80,11 @@ func (m *LinkedMetaSlot) MemoryPointer() pointer.MemoryPointer {
 }
 
 func (m *LinkedMetaSlot) Exists() (bool, error) {
-	return m.pager.Exists(m.offset)
+	return m.pager.SlotExists(m.offset)
 }
 
 func (m *LinkedMetaSlot) Reset() error {
-	return m.pager.Reset(m.offset)
+	return m.pager.SlotReset(m.offset)
 }
 
 // Collect returns a slice of all linked meta pages from this page to the end.
@@ -128,5 +128,6 @@ func NewMultiBPTree(t pagefile.ReadWriteSeekPager, ms *MultiPager, page int) (*L
 	if err != nil {
 		return nil, err
 	}
+	ms.freeSlotIndexes[0][0] = true
 	return &LinkedMetaSlot{pager: ms, offset: uint64(offset)}, nil
 }

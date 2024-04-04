@@ -218,29 +218,73 @@ func TestMultiBPTree(t *testing.T) {
 		}
 
 		// Create a linked list of LinkedMetaSlots
-		page1, err := tree.AddNext()
+		slot1, err := tree.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		page2, err := page1.AddNext()
+		slot2, err := slot1.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		page3, err := page2.AddNext()
+		slot3, err := slot2.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Collect the pages
-		collectedPages, err := page1.Collect()
+		collectedSlots, err := slot1.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		// Verify the collected pages
-		expectedPages := []*LinkedMetaSlot{page1, page2, page3}
-		if !reflect.DeepEqual(collectedPages, expectedPages) {
-			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		expectedSlots := []*LinkedMetaSlot{slot1, slot2, slot3}
+		if !reflect.DeepEqual(collectedSlots, expectedSlots) {
+			t.Fatalf("got %v, want %v", collectedSlots, expectedSlots)
+		}
+	})
+
+	t.Run("collect N slots for m pages", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ms := New(p)
+		tree, err := NewMultiBPTree(p, ms, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Reset(); err != nil {
+			t.Fatal(err)
+		}
+
+		N := 30
+
+		// Create a linked list of LinkedMetaSlots
+		currSlot, err := tree.AddNext()
+		slot1 := currSlot
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		for i := 1; i < N; i++ {
+			newSlot, err := currSlot.AddNext()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			currSlot = newSlot
+		}
+
+		// Collect the pages
+		collectedPages, err := slot1.Collect()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(collectedPages) != N {
+			t.Fatalf("expected collected pages to be %v, got %v", N, len(collectedPages))
 		}
 	})
 
@@ -287,36 +331,4 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatalf("got %v, want nil", collectedPages)
 		}
 	})
-
-	/*
-		t.Run("packs slot into one page", func(t *testing.T) {
-			b := buftest.NewSeekableBuffer()
-			p, err := pagefile.NewPageFile(b)
-			if err != nil {
-				t.Fatal(err)
-			}
-			ms := New(p)
-			currPage, err := NewMultiBPTree(p, ms, 0)
-			if err := currPage.Reset(); err != nil {
-				t.Fatal(err)
-			}
-
-			n := 26
-			for i := 0; i < n; i++ {
-				nextPage, err := currPage.AddNext()
-				if err != nil {
-					t.Fatalf("%v at %v", err, i)
-				}
-
-				if (i/16 + 1) != int(p.PageCount()) {
-					t.Fatalf("expected %v, got %v", i/16+1, p.PageCount())
-				}
-				currPage = nextPage
-			}
-
-			if len(ms.freeSlotIndexes) != 2 {
-				t.Fatalf("expected slot indexes to be 2, got %v", len(ms.freeSlotIndexes))
-			}
-		})
-	*/
 }
