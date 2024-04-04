@@ -128,5 +128,6 @@ func NewMultiBPTree(t pagefile.ReadWriteSeekPager, ms *MultiPager, page int) (*L
 	if err != nil {
 		return nil, err
 	}
+	ms.freeSlotIndexes[0][0] = true
 	return &LinkedMetaSlot{pager: ms, offset: uint64(offset)}, nil
 }
