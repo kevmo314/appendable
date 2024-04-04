@@ -60,7 +60,7 @@ func TestMultiBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("insert a second page", func(t *testing.T) {
+	t.Run("insert a second slot", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -202,7 +202,7 @@ func TestMultiBPTree(t *testing.T) {
 		}
 	})
 
-	t.Run("collect pages", func(t *testing.T) {
+	t.Run("collect slots", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -277,14 +277,17 @@ func TestMultiBPTree(t *testing.T) {
 			currSlot = newSlot
 		}
 
-		// Collect the pages
-		collectedPages, err := slot1.Collect()
+		collectedSlots, err := slot1.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(collectedPages) != N {
-			t.Fatalf("expected collected pages to be %v, got %v", N, len(collectedPages))
+		if len(collectedSlots) != N {
+			t.Fatalf("expected collected pages to be %v, got %v", N, len(collectedSlots))
+		}
+
+		if int64(len(collectedSlots)/16+1) != ms.rws.PageCount() {
+			t.Fatalf("expected # of pages to be %v, got %v", len(collectedSlots)/16+1, ms.rws.PageCount())
 		}
 	})
 
