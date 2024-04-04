@@ -83,9 +83,7 @@ func main() {
 			// this is a linked meta page
 			lmps = lmps[1:]
 
-			ms := metapage.New(pf)
-
-			metaPage, err := metapage.NewMultiBPTree(pf, ms, int(i))
+			metaPage, err := metapage.NewMultiBPTree(pf, int(i))
 			if err != nil {
 				panic(err)
 			}

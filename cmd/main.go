@@ -124,6 +124,10 @@ func main() {
 		panic(err)
 	}
 
+	if err := i.UpdateOffsets(); err != nil {
+		panic(err)
+	}
+
 	if showTimings {
 		readDuration := time.Since(readStart)
 		logger.Info("Opening + synchronizing index file took", slog.Duration("duration", readDuration))

@@ -158,7 +158,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		var strIndexes []*metapage.LinkedMetaSlot
+		var strIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -261,7 +261,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
-		var vanillaIndexes []*metapage.LinkedMetaSlot
+		var vanillaIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -360,7 +360,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		var vanillaIndexes []*metapage.LinkedMetaSlot
+		var vanillaIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -458,7 +458,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		var vanillaIndexes []*metapage.LinkedMetaSlot
+		var vanillaIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -555,7 +555,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
-		var vanillaIndexes []*metapage.LinkedMetaSlot
+		var vanillaIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -632,7 +632,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
-		var vanillaIndexes []*metapage.LinkedMetaSlot
+		var vanillaIndexes []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -830,7 +830,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
 		}
 
-		var tripage []*metapage.LinkedMetaSlot
+		var tripage []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -898,7 +898,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected 2 multi slots, got: %v", len(collected))
 		}
 
-		var tripages []*metapage.LinkedMetaSlot
+		var tripages []*metapage.LinkedMetaPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
