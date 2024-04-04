@@ -51,7 +51,7 @@ func (m *MultiPager) Metadata(offset uint64) ([]byte, error) {
 	if _, err := m.rws.Seek(int64(offset)+24, io.SeekStart); err != nil {
 		return nil, err
 	}
-	buf := make([]byte, m.rws.SlotSize()-24)
+	buf := make([]byte, m.rws.PageSize()-24)
 	if _, err := m.rws.Read(buf); err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (m *MultiPager) Metadata(offset uint64) ([]byte, error) {
 }
 
 func (m *MultiPager) SetMetadata(offset uint64, data []byte) error {
-	if len(data) > m.rws.SlotSize()-24 {
+	if len(data) > m.rws.PageSize()-24 {
 		return errors.New("metadata too large")
 	}
 	if _, err := m.rws.Seek(int64(offset)+24, io.SeekStart); err != nil {
