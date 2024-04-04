@@ -20,7 +20,7 @@ type DataHandler interface {
 
 // IndexFile is a representation of the entire index file.
 type IndexFile struct {
-	tree        *metapage.LinkedMetaSlot
+	tree        *metapage.LinkedMetaPage
 	dataHandler DataHandler
 
 	pf                *pagefile.PageFile
@@ -35,9 +35,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
 
-	ms := metapage.New(pf)
-
-	tree, err := metapage.NewMultiBPTree(pf, ms, 0)
+	tree, err := metapage.NewMultiBPTree(pf, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}
@@ -103,7 +101,7 @@ func (i *IndexFile) SetMetadata(metadata *FileMeta) error {
 	return i.tree.SetMetadata(buf)
 }
 
-func (i *IndexFile) Indexes() (*metapage.LinkedMetaSlot, error) {
+func (i *IndexFile) Indexes() (*metapage.LinkedMetaPage, error) {
 	return i.tree.Next()
 }
 
@@ -156,7 +154,7 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 	return fieldNames, nil
 }
 
-func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaSlot, *IndexMeta, error) {
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaPage, *IndexMeta, error) {
 	mp := i.tree
 	for {
 		// this is done in an odd order to avoid needing to keep track of the previous page
@@ -205,6 +203,63 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapa
 // Synchronize() on the data handler itself.
 func (i *IndexFile) Synchronize(df []byte) error {
 	return i.dataHandler.Synchronize(i, df)
+}
+
+func (i *IndexFile) UpdateOffsets() error {
+	// first pass to collect all offsets
+	mp := i.tree
+	var offsets []uint64
+
+	for {
+		next, err := mp.Next()
+		if err != nil {
+			return fmt.Errorf("failed to get next meta page: %w", err)
+		}
+		exists, err := next.Exists()
+		if err != nil {
+			return fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+
+		if !exists {
+			offsets = append(offsets, ^uint64(0))
+			break
+		}
+
+		offsets = append(offsets, next.MemoryPointer().Offset)
+
+		mp = next
+	}
+
+	mp = i.tree
+
+	for idx := 0; ; idx++ {
+		exists, err := mp.Exists()
+		if err != nil {
+			return fmt.Errorf("failed to check if meta page exists: %w", err)
+		}
+
+		if !exists {
+			break
+		}
+
+		upperBound := idx + metapage.N
+		if upperBound > len(offsets) {
+			upperBound = len(offsets)
+		}
+
+		if err = mp.SetNextNOffsets(offsets[idx:upperBound]); err != nil {
+			return fmt.Errorf("failed to set next N offsets: %w", err)
+		}
+
+		next, err := mp.Next()
+		if err != nil {
+			return fmt.Errorf("failed to get next meta page: %w", err)
+		}
+
+		mp = next
+	}
+
+	return nil
 }
 
 func (i *IndexFile) SetBenchmarkFile(f io.Writer) {

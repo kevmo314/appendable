@@ -15,8 +15,7 @@ func generateFilledMetadata() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	ms := metapage.New(p)
-	tree, err := metapage.NewMultiBPTree(p, ms, 0)
+	tree, err := metapage.NewMultiBPTree(p, 0)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
