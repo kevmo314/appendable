@@ -173,6 +173,38 @@ func TestTrigram(t *testing.T) {
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
 		}
+	})
 
+	t.Run("test letter case", func(t *testing.T) {
+		p := "NEW ROOF kWm"
+
+		expected := [4]Trigram{
+			{
+				Word:   "new",
+				Offset: 0,
+				Length: 3,
+			},
+			{
+				Word:   "roo",
+				Offset: 4,
+				Length: 3,
+			},
+			{
+				Word:   "oof",
+				Offset: 5,
+				Length: 3,
+			},
+			{
+				Word:   "kwm",
+				Offset: 9,
+				Length: 3,
+			},
+		}
+
+		incoming := BuildTrigram(p)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
 	})
 }
