@@ -54,8 +54,10 @@
       async function updateSearchBarState(value) {
         if (value.length >= 3 && dbInstance != null) {
           const query = await dbInstance.query({
-            key: "description",
-            like: value,
+            search: {
+              key: "description",
+              like: value,
+            },
           });
 
           await bindQuery(query);
@@ -69,8 +71,6 @@
           if (result.done) {
             return;
           }
-
-          console.log("result value: ", result.value);
 
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
