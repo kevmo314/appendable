@@ -108,7 +108,7 @@ func BuildTrigram(phrase string) []Trigram {
 
 			q := ogOffsets[wOffsets[i]]
 			trigrams = append(trigrams, Trigram{
-				Word:   str,
+				Word:   strings.ToLower(str),
 				Offset: uint64(q),
 				Length: uint32(ogOffsets[wOffsets[p]] - q + 1),
 			})
