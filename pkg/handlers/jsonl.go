@@ -190,10 +190,8 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 						newMp := pointer.MemoryPointer{
 							Offset: mp.Offset + tri.Offset,
-							Length: mp.Length + tri.Length,
+							Length: tri.Length,
 						}
-
-						mp.Length += tri.Length
 
 						if err := page.BPTree(&btree.BPTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 							DataPointer: newMp,
