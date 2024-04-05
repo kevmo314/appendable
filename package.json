@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "build": "esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
-    "reset": "rm -rf dist examples/client/appendable.min.js examples/client/appendable.min.js.map",
-    "warp": "rm -rf dist examples/client/appendable.min.js examples/client/appendable.min.js.map && esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
+    "warp": "rm -rf dist examples/client/appendable.min.js examples/client/appendable.min.js.map examples/search/appendable.min.js examples/search/appendable.min.js.map && esbuild src/index.ts --bundle --minify --sourcemap --outfile=dist/appendable.min.js",
     "client": "cd examples/client && go run server.go",
+    "search": "cd examples/search && go run server.go",
     "test": "jest"
   },
   "repository": {

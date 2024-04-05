@@ -131,8 +131,6 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     let currMp = await this.tree();
     let offsets = await currMp.nextNOffsets();
 
-    console.log(offsets);
-
     while (offsets.length > 0) {
       let ranges = offsets.map((o) => ({
         start: Number(o),

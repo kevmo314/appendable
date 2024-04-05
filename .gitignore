@@ -8,8 +8,8 @@ pprof.out
 *.index
 *.jsonl
 *.csv
-examples/client/appendable.min.js
-examples/client/appendable.min.js.map
+examples/**/appendable.min.js
+examples/**/appendable.min.js.map
 
 # But include these files in src/tests/mock_binaries
 !src/tests/mock_binaries/*.jsonl
