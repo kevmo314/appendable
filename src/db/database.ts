@@ -6,14 +6,14 @@ import { IndexHeader, readIndexMeta } from "../file/meta";
 import { QueryBuilder } from "./query-builder";
 import { validateQuery } from "./query-validation";
 import {
-  Query,
-  Schema,
-  WhereNode,
   handleSelect,
   processWhere,
+  Query,
+  Schema,
   Search,
+  WhereNode,
 } from "./query-lang";
-import { buildTrigram, shuffle, TrigramTable } from "./search";
+import { Tokenizer, TokTable } from "../search/tokenizer";
 
 export enum FieldType {
   String = 0,
@@ -124,7 +124,7 @@ export class Database<T extends Schema> {
       const like = query.search.like;
       const likeTrigrams = shuffle(buildTrigram(like));
 
-      const trigramTable = new TrigramTable();
+      const trigramTable = new TokTable();
 
       for (const tri of likeTrigrams) {
         const valueBuf = encoder.encode(tri).buffer;
@@ -390,10 +390,11 @@ export class Database<T extends Schema> {
     return new QueryBuilder(this).where(key, operation, value);
   }
 
-  search(key: keyof T, like: string) {
+  search(key: keyof T, like: string, tokenizer: Tokenizer) {
     const search: Search<T> = {
       key,
       like,
+      tokenizer,
     };
 
     return this.query({
