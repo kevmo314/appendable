@@ -1,14 +1,29 @@
+import { FieldType } from "../db/database";
+
+export type NgramToken = {
+  value: string;
+  encodedValue: ArrayBuffer;
+  type: FieldType;
+};
+
 export class NgramTokenizer {
+  private encoder: TextEncoder;
   private readonly minGram: number;
   private readonly maxGram: number;
+  private readonly allGrams: Map<number, FieldType> = new Map([
+    [1, FieldType.Unigram],
+    [2, FieldType.Bigram],
+    [3, FieldType.Trigram],
+  ]);
 
   constructor(minGram: number, maxGram: number) {
     this.maxGram = maxGram;
     this.minGram = minGram;
+    this.encoder = new TextEncoder();
   }
 
-  tokens(phrase: string): string[] {
-    let ngrams: string[] = [];
+  tokens(phrase: string): NgramToken[] {
+    let ngrams: NgramToken[] = [];
 
     let wordOffsets: number[][] = [];
     let currentWordOffsets: number[] = [];
@@ -37,7 +52,11 @@ export class NgramTokenizer {
             str += phrase[word[jdx]];
           }
 
-          ngrams.push(str.toLowerCase());
+          ngrams.push({
+            type: this.allGrams.get(N)!,
+            value: str.toLowerCase(),
+            encodedValue: this.encoder.encode(str.toLowerCase()).buffer,
+          });
         }
       });
     }
@@ -45,7 +64,18 @@ export class NgramTokenizer {
     return ngrams;
   }
 
-  static shuffle(tokens: string[]): string[] {
+  get fieldTypes(): Set<FieldType> {
+    let fts: Set<FieldType> = new Set();
+    for (let idx = this.minGram; idx <= this.maxGram; idx++) {
+      const fieldType = this.allGrams.get(idx);
+      if (fieldType !== undefined) {
+        fts.add(fieldType);
+      }
+    }
+    return fts;
+  }
+
+  static shuffle(tokens: NgramToken[]): NgramToken[] {
     // https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
     let soup = [...tokens];
 
@@ -55,49 +85,5 @@ export class NgramTokenizer {
     }
 
     return soup;
-  }
-}
-
-type Entry = { key: string; count: number };
-export class NgramTable {
-  private visited: Map<string, number>;
-  private topValue: Entry = { key: "", count: -1 };
-
-  constructor() {
-    this.visited = new Map();
-  }
-
-  insert(key: string) {
-    const count = (this.visited.get(key) || 0) + 1;
-
-    if (this.topValue.count < count) {
-      this.topValue = { key, count };
-    }
-
-    this.visited.set(key, count);
-  }
-
-  get(): string | null {
-    const { key, count } = this.topValue;
-
-    if (count < 0) {
-      return null;
-    }
-
-    this.visited.delete(key);
-
-    this.topValue = { key: "", count: -1 };
-    for (const [key, count] of this.visited.entries()) {
-      if (count > this.topValue.count) {
-        this.topValue = { key, count };
-      }
-    }
-
-    return key;
-  }
-
-  clear() {
-    this.visited = new Map();
-    this.topValue = { key: "", count: -1 };
   }
 }

@@ -1,5 +1,5 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../file/multi";
+import { LinkedMetaPage, maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
@@ -13,7 +13,8 @@ import {
   processWhere,
   Search,
 } from "./query-lang";
-import { NgramTokenizer, NgramTable } from "../search/tokenizer";
+import { NgramTokenizer } from "../search/tokenizer";
+import { NgramTable } from "../search/table";
 
 export enum FieldType {
   String = 0,
@@ -25,6 +26,8 @@ export enum FieldType {
   Boolean = 6,
   Null = 7,
   Trigram = 8,
+  Bigram = 9,
+  Unigram = 10,
 }
 
 export function fieldTypeToString(f: FieldType): string {
@@ -59,6 +62,12 @@ export function fieldTypeToString(f: FieldType): string {
       break;
     case FieldType.Null:
       str = "Null";
+      break;
+    case FieldType.Unigram:
+      str = "Unigram";
+      break;
+    case FieldType.Bigram:
+      str = "Bigram";
       break;
     case FieldType.Trigram:
       str = "Trigram";
@@ -106,44 +115,56 @@ export class Database<T extends Schema> {
     validateQuery(query, headers);
 
     if (query.search) {
-      const { minGram, maxGram } = query.search;
+      const { key, like, minGram, maxGram } = query.search;
+
       const tok = new NgramTokenizer(minGram, maxGram);
-
-      const key = query.search.key;
-      const mps = await this.indexFile.seek(
-        key as string,
-        new Set<FieldType>([FieldType.Trigram]),
-      );
-      const mp = mps[0];
-      const { fieldType: mpFieldType, width: mpFieldWidth } =
-        await readIndexMeta(await mp.metadata());
-      const bptree = new BPTree(
-        this.indexFile.getResolver(),
-        mp,
-        dfResolver,
-        format,
-        mpFieldType,
-        mpFieldWidth,
-      );
-
-      const encoder = new TextEncoder();
-      const like = query.search.like;
-      const likeTrigrams = NgramTokenizer.shuffle(tok.tokens(like));
-
+      const likeTokens = NgramTokenizer.shuffle(tok.tokens(like));
       const trigramTable = new NgramTable();
 
-      for (const tri of likeTrigrams) {
-        const valueBuf = encoder.encode(tri).buffer;
+      const btreeCache = new Map<FieldType, BPTree>();
+
+      for (const likeToken of likeTokens) {
+        const { encodedValue, type: fieldType } = likeToken;
+        let currBtree = btreeCache.get(fieldType);
+
+        if (currBtree === undefined) {
+          const mps = await this.indexFile.seek(key as string, fieldType);
+          if (mps.length !== 1) {
+            throw new Error(
+              `unable to find meta page for field type ${fieldType} with field name: ${key as string}`,
+            );
+          }
+
+          const mp = mps[0];
+
+          const { fieldType: mpFieldType, width: mpFieldWidth } =
+            await readIndexMeta(await mp.metadata());
+
+          const btree = new BPTree(
+            this.indexFile.getResolver(),
+            mp,
+            dfResolver,
+            format,
+            mpFieldType,
+            mpFieldWidth,
+          );
+
+          btreeCache.set(fieldType, btree);
+          currBtree = btree;
+        }
+
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
-          valueBuf,
+          encodedValue,
         );
-        const iter = bptree.iter(valueRef);
 
+        const iter = currBtree.iter(valueRef);
         while (await iter.next()) {
           const currentKey = iter.getKey();
 
-          if (ReferencedValue.compareBytes(currentKey.value, valueBuf) !== 0) {
+          if (
+            ReferencedValue.compareBytes(currentKey.value, encodedValue) !== 0
+          ) {
             break;
           }
           const mp = iter.getPointer();
@@ -174,10 +195,7 @@ export class Database<T extends Schema> {
         }
         const { fieldType, valueBuf } = res;
 
-        const mps = await this.indexFile.seek(
-          key as string,
-          new Set<FieldType>([fieldType]),
-        );
+        const mps = await this.indexFile.seek(key as string, fieldType);
         const mp = mps[0];
         const { fieldType: mpFieldType, width: mpFieldWidth } =
           await readIndexMeta(await mp.metadata());

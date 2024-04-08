@@ -1,7 +1,10 @@
-import { NgramTable, NgramTokenizer } from "../search/tokenizer";
+import { NgramToken, NgramTokenizer } from "../search/tokenizer";
+import { FieldType } from "../db/database";
+import { QuickTextEncoder } from "../util/textEncoder";
 
 describe("builds 12grams", () => {
   let tok: NgramTokenizer;
+  let txtEncoder: QuickTextEncoder = new QuickTextEncoder();
 
   beforeEach(() => {
     tok = new NgramTokenizer(1, 2);
@@ -9,7 +12,7 @@ describe("builds 12grams", () => {
 
   it("builds a basic 12gram", () => {
     const phrase = "wakemeup";
-    const expected = [
+    const expected: NgramToken[] = [
       "w",
       "a",
       "k",
@@ -25,7 +28,11 @@ describe("builds 12grams", () => {
       "me",
       "eu",
       "up",
-    ];
+    ].map((s) => ({
+      value: s,
+      encodedValue: txtEncoder.buffer(s),
+      type: s.length === 1 ? FieldType.Unigram : FieldType.Bigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -52,7 +59,11 @@ describe("builds 12grams", () => {
       "ak",
       "ke",
       "up",
-    ];
+    ].map((s) => ({
+      value: s,
+      encodedValue: txtEncoder.buffer(s),
+      type: s.length === 1 ? FieldType.Unigram : FieldType.Bigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -61,6 +72,7 @@ describe("builds 12grams", () => {
 
 describe("builds trigrams", () => {
   let tok: NgramTokenizer;
+  let txtEncoder: QuickTextEncoder = new QuickTextEncoder();
 
   beforeEach(() => {
     tok = new NgramTokenizer(3, 3);
@@ -68,7 +80,11 @@ describe("builds trigrams", () => {
 
   it("builds a basic trigram", () => {
     const phrase = "wakemeup";
-    const expected = ["wak", "ake", "kem", "eme", "meu", "eup"];
+    const expected = ["wak", "ake", "kem", "eme", "meu", "eup"].map((s) => ({
+      value: s,
+      encodedValue: txtEncoder.buffer(s),
+      type: FieldType.Trigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -76,7 +92,11 @@ describe("builds trigrams", () => {
 
   it("builds a complex trigram", () => {
     const phrase = "I can't wake up";
-    const expected = ["can", "ant", "wak", "ake"];
+    const expected = ["can", "ant", "wak", "ake"].map((s) => ({
+      value: s,
+      encodedValue: txtEncoder.buffer(s),
+      type: FieldType.Trigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -107,6 +127,31 @@ describe("fuzz shuffle", () => {
 
       expect(shuffled.length).toBe(trigrams.length);
       expect(new Set(shuffled)).toEqual(new Set(trigrams));
+    }
+  });
+});
+
+describe("gets correct field types", () => {
+  it("gets the correct field type", () => {
+    const expected = new Map([
+      [1, FieldType.Unigram],
+      [2, FieldType.Bigram],
+      [3, FieldType.Trigram],
+    ]);
+
+    for (let idx = 1; idx <= 3; idx++) {
+      for (let jdx = 1; jdx <= 3; jdx++) {
+        let tok = new NgramTokenizer(idx, jdx);
+
+        const fts = tok.fieldTypes;
+
+        const expectedFts: Set<FieldType> = new Set();
+        for (let t = idx; t <= jdx; t++) {
+          expectedFts.add(expected.get(t)!);
+        }
+
+        expect(fts).toEqual(expectedFts);
+      }
     }
   });
 });
