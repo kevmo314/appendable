@@ -1,5 +1,5 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../file/multi";
+import { maxUint64, N } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
@@ -114,31 +114,42 @@ export class Database<T extends Schema> {
     validateQuery(query, headers);
 
     if (query.search) {
-      const { minGram, maxGram } = query.search;
+      const { key, like, minGram, maxGram } = query.search;
       const tok = new NgramTokenizer(minGram, maxGram);
+      const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const key = query.search.key;
-      const mps = await this.indexFile.seek(key as string, FieldType.Trigram);
-      const mp = mps[0];
-      const { fieldType: mpFieldType, width: mpFieldWidth } =
-        await readIndexMeta(await mp.metadata());
-      const bptree = new BPTree(
-        this.indexFile.getResolver(),
-        mp,
-        dfResolver,
-        format,
-        mpFieldType,
-        mpFieldWidth,
-      );
+      const ngramTable = new NgramTable();
+      let bptreeCache = new Map<FieldType, BPTree>();
 
-      const encoder = new TextEncoder();
-      const like = query.search.like;
-      const likeTrigrams = NgramTokenizer.shuffle(tok.tokens(like));
+      for (const token of likeToks) {
+        const { type: fieldType, valueBuf } = token;
+        let bptree = bptreeCache.get(fieldType);
 
-      const trigramTable = new NgramTable();
+        if (!bptree) {
+          const mps = await this.indexFile.seek(key as string, fieldType);
+          if (mps.length !== 1) {
+            throw new Error(
+              `Expected to find meta page for key: ${key as string} and type: ${fieldTypeToString(fieldType)}`,
+            );
+          }
+          const mp = mps[0];
+          const { fieldType: mpFieldType, width: mpFieldWidth } =
+            await readIndexMeta(await mp.metadata());
 
-      for (const tok of likeTrigrams) {
-        const { valueBuf } = tok;
+          const ngramTree = new BPTree(
+            this.indexFile.getResolver(),
+            mp,
+            dfResolver,
+            format,
+            mpFieldType,
+            mpFieldWidth,
+          );
+
+          bptreeCache.set(fieldType, ngramTree);
+
+          bptree = ngramTree;
+        }
+
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
@@ -157,11 +168,11 @@ export class Database<T extends Schema> {
             Number(mp.offset) + mp.length - 1,
           );
 
-          trigramTable.insert(data);
+          ngramTable.insert(data);
         }
       }
 
-      const data = trigramTable.get();
+      const data = ngramTable.get();
       if (!data) {
         throw new Error(`no trigrams were evaluated`);
       }
