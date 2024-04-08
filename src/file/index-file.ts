@@ -40,7 +40,7 @@ export interface VersionedIndexFile<T> {
 
   indexHeaders(): Promise<IndexHeader[]>;
 
-  seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]>;
+  seek(header: string, fieldTypes: Set<FieldType>): Promise<LinkedMetaPage[]>;
 
   fetchMetaPages(): Promise<void>;
 }
@@ -96,7 +96,10 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     };
   }
 
-  async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
+  async seek(
+    header: string,
+    fieldTypes: Set<FieldType>,
+  ): Promise<LinkedMetaPage[]> {
     if (this.linkedMetaPages.length === 0) {
       await this.fetchMetaPages();
     }
@@ -107,7 +110,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
       const mp = this.linkedMetaPages[idx];
       const indexMeta = await readIndexMeta(await mp.metadata());
       if (indexMeta.fieldName === header) {
-        if (fieldType === FieldType.Float64) {
+        if (fieldTypes.has(FieldType.Float64)) {
           // if key is a number or bigint, we cast it as a float64 type
           if (
             indexMeta.fieldType === FieldType.Float64 ||
@@ -117,7 +120,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
             headerMps.push(mp);
           }
         } else {
-          if (indexMeta.fieldType === fieldType) {
+          if (fieldTypes.has(indexMeta.fieldType)) {
             headerMps.push(mp);
           }
         }
