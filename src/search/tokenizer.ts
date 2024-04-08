@@ -10,7 +10,7 @@ export class NgramTokenizer {
   tokens(phrase: string): string[] {
     let ngrams: string[] = [];
 
-    let wordOffsets = [];
+    let wordOffsets: number[][] = [];
     let currentWordOffsets: number[] = [];
 
     Array.from(phrase).forEach((c, idx) => {
@@ -37,7 +37,7 @@ export class NgramTokenizer {
             str += phrase[word[jdx]];
           }
 
-          ngrams.push(str);
+          ngrams.push(str.toLowerCase());
         }
       });
     }

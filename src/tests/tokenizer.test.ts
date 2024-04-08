@@ -1,5 +1,64 @@
 import { NgramTable, NgramTokenizer } from "../search/tokenizer";
 
+describe("builds 12grams", () => {
+  let tok: NgramTokenizer;
+
+  beforeEach(() => {
+    tok = new NgramTokenizer(1, 2);
+  });
+
+  it("builds a basic 12gram", () => {
+    const phrase = "wakemeup";
+    const expected = [
+      "w",
+      "a",
+      "k",
+      "e",
+      "m",
+      "e",
+      "u",
+      "p",
+      "wa",
+      "ak",
+      "ke",
+      "em",
+      "me",
+      "eu",
+      "up",
+    ];
+
+    const trigrams = tok.tokens(phrase);
+    expect(trigrams).toEqual(expected);
+  });
+
+  it("builds a complex 12 gram", () => {
+    const phrase = "I can't wake up";
+    const expected = [
+      "i",
+      "c",
+      "a",
+      "n",
+      "t",
+      "w",
+      "a",
+      "k",
+      "e",
+      "u",
+      "p",
+      "ca",
+      "an",
+      "nt",
+      "wa",
+      "ak",
+      "ke",
+      "up",
+    ];
+
+    const trigrams = tok.tokens(phrase);
+    expect(trigrams).toEqual(expected);
+  });
+});
+
 describe("builds trigrams", () => {
   let tok: NgramTokenizer;
 

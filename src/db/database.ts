@@ -396,9 +396,9 @@ export class Database<T extends Schema> {
   search(
     key: keyof T,
     like: string,
-    config: { minGram: number; maxGram: number },
+    config?: { minGram: number; maxGram: number },
   ) {
-    let { minGram, maxGram } = config;
+    let { minGram = 1, maxGram = 2 } = config || {};
 
     const search: Search<T> = {
       key,
