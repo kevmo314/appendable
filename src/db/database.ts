@@ -119,7 +119,7 @@ export class Database<T extends Schema> {
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
       const ngramTable = new NgramTable();
-      let bptreeCache = new Map<FieldType, BPTree>();
+      const bptreeCache = new Map<FieldType, BPTree>();
 
       for (const token of likeToks) {
         const { type: fieldType, valueBuf } = token;
