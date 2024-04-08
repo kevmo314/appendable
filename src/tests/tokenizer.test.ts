@@ -1,7 +1,13 @@
 import { NgramTable, NgramTokenizer } from "../search/tokenizer";
+import { FieldType } from "../db/database";
 
 describe("builds 12grams", () => {
   let tok: NgramTokenizer;
+  let textEncoder: TextEncoder;
+
+  beforeAll(() => {
+    textEncoder = new TextEncoder();
+  });
 
   beforeEach(() => {
     tok = new NgramTokenizer(1, 2);
@@ -25,7 +31,11 @@ describe("builds 12grams", () => {
       "me",
       "eu",
       "up",
-    ];
+    ].map((s) => ({
+      value: s,
+      valueBuf: textEncoder.encode(s).buffer,
+      type: s.length === 1 ? FieldType.Unigram : FieldType.Bigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -52,7 +62,11 @@ describe("builds 12grams", () => {
       "ak",
       "ke",
       "up",
-    ];
+    ].map((s) => ({
+      value: s,
+      valueBuf: textEncoder.encode(s).buffer,
+      type: s.length === 1 ? FieldType.Unigram : FieldType.Bigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -61,6 +75,11 @@ describe("builds 12grams", () => {
 
 describe("builds trigrams", () => {
   let tok: NgramTokenizer;
+  let textEncoder: TextEncoder;
+
+  beforeAll(() => {
+    textEncoder = new TextEncoder();
+  });
 
   beforeEach(() => {
     tok = new NgramTokenizer(3, 3);
@@ -68,7 +87,11 @@ describe("builds trigrams", () => {
 
   it("builds a basic trigram", () => {
     const phrase = "wakemeup";
-    const expected = ["wak", "ake", "kem", "eme", "meu", "eup"];
+    const expected = ["wak", "ake", "kem", "eme", "meu", "eup"].map((s) => ({
+      value: s,
+      valueBuf: textEncoder.encode(s).buffer,
+      type: FieldType.Trigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
@@ -76,7 +99,11 @@ describe("builds trigrams", () => {
 
   it("builds a complex trigram", () => {
     const phrase = "I can't wake up";
-    const expected = ["can", "ant", "wak", "ake"];
+    const expected = ["can", "ant", "wak", "ake"].map((s) => ({
+      value: s,
+      valueBuf: textEncoder.encode(s).buffer,
+      type: FieldType.Trigram,
+    }));
 
     const trigrams = tok.tokens(phrase);
     expect(trigrams).toEqual(expected);
