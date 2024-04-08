@@ -13,8 +13,8 @@ import {
   processWhere,
   Search,
 } from "./query-lang";
-import { NgramTokenizer, NgramTable } from "../search/tokenizer";
-
+import { NgramTokenizer } from "../ngram/tokenizer";
+import { NgramTable } from "../ngram/table";
 export enum FieldType {
   String = 0,
   Int64 = 1,
@@ -135,7 +135,7 @@ export class Database<T extends Schema> {
       const like = query.search.like;
       const likeTrigrams = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const trigramTable = new NgramTable();
+      const table = new NgramTable<string>();
 
       for (const tok of likeTrigrams) {
         const { valueBuf } = tok;
@@ -157,15 +157,15 @@ export class Database<T extends Schema> {
             Number(mp.offset) + mp.length - 1,
           );
 
-          trigramTable.insert(data);
+          table.insert(data);
         }
       }
 
-      const data = trigramTable.get();
+      const data = table.top;
       if (!data) {
         throw new Error(`no trigrams were evaluated`);
       }
-      yield handleSelect(data, query.select);
+      yield handleSelect(data.key, query.select);
     } else {
       for (const { key, value, operation } of query.where ?? []) {
         const header = headers.find((header) => header.fieldName === key);
