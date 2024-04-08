@@ -1,4 +1,4 @@
-package trigram
+package ngram
 
 import (
 	"golang.org/x/text/unicode/norm"
@@ -9,13 +9,16 @@ import (
 	"unicode/utf8"
 )
 
-type Trigram struct {
+// NgramTokenizer generates the following tokens with the lengths: 1, 2, 3.
+// This is for two searching modes:
+// By default, we'll use the 12gram, that is the min-gram: 1 and max-gram: 2.
+// Also support trigrams, which have min-gram: 3, max-gram: 3.
+
+type Token struct {
 	Word   string
 	Offset uint64
 	Length uint32
 }
-
-const N = 3
 
 // BuildTrigram makes two passes
 //
@@ -47,21 +50,21 @@ func normalizeToAscii(s string) (string, map[int]int) {
 	return b.String(), ogOffsets
 }
 
-func combineHashes(trigrams []Trigram) int64 {
+func combineHashes(tokens []Token) int64 {
 	h := fnv.New32a()
-	for _, t := range trigrams {
+	for _, t := range tokens {
 		h.Write([]byte(t.Word))
 	}
 	return int64(h.Sum32())
 }
 
-func Shuffle(trigrams []Trigram) []Trigram {
-	soup := make([]Trigram, len(trigrams))
-	copy(soup, trigrams)
+func Shuffle(tokens []Token) []Token {
+	soup := make([]Token, len(tokens))
+	copy(soup, tokens)
 
-	seed := combineHashes(trigrams)
+	seed := combineHashes(tokens)
 	rand.Seed(seed)
-	for i := len(trigrams) - 1; i > 0; i-- {
+	for i := len(tokens) - 1; i > 0; i-- {
 		j := rand.Intn(i + 1)
 		soup[i], soup[j] = soup[j], soup[i]
 	}
@@ -69,8 +72,8 @@ func Shuffle(trigrams []Trigram) []Trigram {
 	return soup
 }
 
-func BuildTrigram(phrase string) []Trigram {
-	var trigrams []Trigram
+func BuildNgram(phrase string, gl int) []Token {
+	var ngramTokens []Token
 
 	var words [][]int
 	var currWord []int
@@ -84,30 +87,30 @@ func BuildTrigram(phrase string) []Trigram {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			currWord = append(currWord, i)
 		} else if unicode.IsSpace(r) {
-			if len(currWord) >= N {
+			if len(currWord) >= gl {
 				words = append(words, currWord)
 			}
 			currWord = []int{}
 		}
 	}
 
-	if len(currWord) >= N {
+	if len(currWord) >= gl {
 		words = append(words, currWord)
 	}
 
 	for _, wOffsets := range words {
-		for i := 0; i <= len(wOffsets)-N; i++ {
+		for i := 0; i <= len(wOffsets)-gl; i++ {
 
 			var str string
 
 			p := 0
-			for j := i; j < i+N; j++ {
+			for j := i; j < i+gl; j++ {
 				str += string(runes[wOffsets[j]])
 				p = j
 			}
 
 			q := ogOffsets[wOffsets[i]]
-			trigrams = append(trigrams, Trigram{
+			ngramTokens = append(ngramTokens, Token{
 				Word:   strings.ToLower(str),
 				Offset: uint64(q),
 				Length: uint32(ogOffsets[wOffsets[p]] - q + 1),
@@ -116,5 +119,5 @@ func BuildTrigram(phrase string) []Trigram {
 		}
 	}
 
-	return trigrams
+	return ngramTokens
 }
