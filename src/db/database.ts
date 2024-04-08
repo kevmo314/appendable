@@ -1,5 +1,5 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../file/multi";
+import { LinkedMetaPage, maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
@@ -119,36 +119,35 @@ export class Database<T extends Schema> {
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
       const ngramTable = new NgramTable();
-      const bptreeCache = new Map<FieldType, BPTree>();
+      const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
       for (const token of likeToks) {
         const { type: fieldType, valueBuf } = token;
-        let bptree = bptreeCache.get(fieldType);
+        let mp = metaPageCache.get(fieldType);
 
-        if (!bptree) {
+        if (!mp) {
           const mps = await this.indexFile.seek(key as string, fieldType);
           if (mps.length !== 1) {
             throw new Error(
               `Expected to find meta page for key: ${key as string} and type: ${fieldTypeToString(fieldType)}`,
             );
           }
-          const mp = mps[0];
-          const { fieldType: mpFieldType, width: mpFieldWidth } =
-            await readIndexMeta(await mp.metadata());
+          mp = mps[0];
 
-          const ngramTree = new BPTree(
-            this.indexFile.getResolver(),
-            mp,
-            dfResolver,
-            format,
-            mpFieldType,
-            mpFieldWidth,
-          );
-
-          bptreeCache.set(fieldType, ngramTree);
-
-          bptree = ngramTree;
+          metaPageCache.set(fieldType, mps[0]);
         }
+
+        const { fieldType: mpFieldType, width: mpFieldWidth } =
+          await readIndexMeta(await mp.metadata());
+
+        const bptree = new BPTree(
+          this.indexFile.getResolver(),
+          mp,
+          dfResolver,
+          format,
+          mpFieldType,
+          mpFieldWidth,
+        );
 
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
