@@ -1,7 +1,7 @@
 import { buildTrigram, shuffle } from "../db/search";
 
 describe("builds trigrams", () => {
-  it("builds a basic trigram", () => {
+  it("builds a basic ngram", () => {
     const phrase = "wakemeup";
     const expected = ["wak", "ake", "kem", "eme", "meu", "eup"];
 
@@ -9,7 +9,7 @@ describe("builds trigrams", () => {
     expect(trigrams).toEqual(expected);
   });
 
-  it("builds a complex trigram", () => {
+  it("builds a complex ngram", () => {
     const phrase = "I can't wake up";
     const expected = ["can", "ant", "wak", "ake"];
 

@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/ngram"
 	"github.com/kevmo314/appendable/pkg/pointer"
-	"github.com/kevmo314/appendable/pkg/trigram"
 	"log/slog"
 	"math"
 	"strings"
@@ -150,7 +150,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			fts := jsonTypeToFieldType(value)
 			if f.IsSearch(name) {
-				fts = append(fts, appendable.FieldTypeTrigram)
+				fts = append(fts, appendable.FieldTypeNgram)
 			}
 
 			for _, ft := range fts {
@@ -178,12 +178,12 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
-				case appendable.FieldTypeTrigram:
+				case appendable.FieldTypeNgram:
 					valueStr, ok := value.(string)
 					if !ok {
 						return fmt.Errorf("expected string")
 					}
-					trigrams := trigram.BuildTrigram(valueStr)
+					trigrams := ngram.BuildNgram(valueStr)
 
 					for _, tri := range trigrams {
 						valueBytes := []byte(tri.Word)

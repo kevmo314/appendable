@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/ngram"
 	"github.com/kevmo314/appendable/pkg/pointer"
-	"github.com/kevmo314/appendable/pkg/trigram"
 	"math"
 	"testing"
 
@@ -273,7 +273,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldTypeTrigram {
+			if im.FieldType != appendable.FieldTypeNgram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -372,7 +372,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldTypeTrigram {
+			if im.FieldType != appendable.FieldTypeNgram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -470,7 +470,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldTypeTrigram {
+			if im.FieldType != appendable.FieldTypeNgram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -567,7 +567,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldTypeTrigram {
+			if im.FieldType != appendable.FieldTypeNgram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -644,7 +644,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldTypeTrigram {
+			if im.FieldType != appendable.FieldTypeNgram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -842,7 +842,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType == appendable.FieldTypeTrigram {
+			if im.FieldType == appendable.FieldTypeNgram {
 				tripage = append(tripage, ms)
 			}
 		}
@@ -851,9 +851,9 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected length to be %v, got %v", 1, len(tripage))
 		}
 
-		bp := tripage[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
+		bp := tripage[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + ngram.MAX_GRAM)})
 
-		tris := trigram.BuildTrigram("howdy")
+		tris := ngram.BuildNgram("howdy")
 
 		for _, tri := range tris {
 			rv1, mp1, err := bp.Find(btree.ReferencedValue{Value: []byte(tri.Word)})
@@ -910,7 +910,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType == appendable.FieldTypeTrigram {
+			if im.FieldType == appendable.FieldTypeNgram {
 				tripages = append(tripages, ms)
 			}
 		}
@@ -919,8 +919,8 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected length to be %v, got %v", 1, len(tripages))
 		}
 
-		tree := tripages[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + trigram.N)})
-		tris := trigram.Shuffle(trigram.BuildTrigram("howdy"))
+		tree := tripages[0].BPTree(&btree.BPTree{Data: r1, DataParser: JSONLHandler{}, Width: uint16(1 + ngram.MAX_GRAM)})
+		tris := ngram.Shuffle(ngram.BuildNgram("howdy"))
 
 		trigramTable := make(map[uint64]int)
 

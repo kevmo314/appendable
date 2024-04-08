@@ -3,7 +3,7 @@ package appendable
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/trigram"
+	"github.com/kevmo314/appendable/pkg/ngram"
 	"strings"
 )
 
@@ -54,12 +54,12 @@ const (
 	FieldTypeArray
 	FieldTypeBoolean
 	FieldTypeNull
-	FieldTypeTrigram
+	FieldTypeNgram
 )
 
 func (t FieldType) TypescriptType() string {
 	components := []string{}
-	if t&FieldTypeString != 0 || t&FieldTypeTrigram != 0 {
+	if t&FieldTypeString != 0 || t&FieldTypeNgram != 0 {
 		components = append(components, "string")
 	}
 	if t&FieldTypeInt64 != 0 || t&FieldTypeFloat64 != 0 {
@@ -162,8 +162,8 @@ func DetermineType(ft FieldType) uint16 {
 		width = uint16(shift + 0)
 	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
 		width = uint16(shift + 8)
-	case FieldTypeTrigram:
-		width = uint16(shift + trigram.N)
+	case FieldTypeNgram:
+		width = uint16(shift + ngram.MAX_GRAM) // we'll bound all ngrams with the max len which is N = 3
 	}
 
 	return width
