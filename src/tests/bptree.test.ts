@@ -7,7 +7,7 @@ import { readBinaryFile } from "./test-util";
 import { maxUint64 } from "../file/multi";
 
 class testMetaPage implements MetaPage {
-  private rootMP: MemoryPointer;
+  private readonly rootMP: MemoryPointer;
 
   constructor(mp: MemoryPointer) {
     this.rootMP = mp;
@@ -24,7 +24,7 @@ describe("test btree", () => {
   let bptree: BPTree;
 
   beforeEach(() => {
-    mockDataFileResolver = async ([{ start, end }]) => {
+    mockDataFileResolver = async ([]) => {
       return [
         {
           data: new ArrayBuffer(0),
@@ -82,7 +82,7 @@ describe("test btree iterator count", () => {
   let bptree: BPTree;
 
   beforeEach(() => {
-    mockDataFileResolver = async ([{ start, end }]) => {
+    mockDataFileResolver = async ([]) => {
       return [
         {
           data: new ArrayBuffer(0),
