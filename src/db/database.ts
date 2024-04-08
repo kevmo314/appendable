@@ -25,6 +25,8 @@ export enum FieldType {
   Boolean = 6,
   Null = 7,
   Trigram = 8,
+  Bigram = 9,
+  Unigram = 10,
 }
 
 export function fieldTypeToString(f: FieldType): string {
@@ -62,6 +64,12 @@ export function fieldTypeToString(f: FieldType): string {
       break;
     case FieldType.Trigram:
       str = "Trigram";
+      break;
+    case FieldType.Bigram:
+      str = "Bigram";
+      break;
+    case FieldType.Unigram:
+      str = "Unigram";
       break;
   }
   return str;
@@ -132,8 +140,8 @@ export class Database<T extends Schema> {
 
       const trigramTable = new NgramTable();
 
-      for (const tri of likeTrigrams) {
-        const valueBuf = encoder.encode(tri).buffer;
+      for (const tok of likeTrigrams) {
+        const { valueBuf } = tok;
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
