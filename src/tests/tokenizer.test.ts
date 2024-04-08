@@ -1,4 +1,4 @@
-import { NgramTable, NgramTokenizer } from "../ngram/tokenizer";
+import { NgramTokenizer } from "../ngram/tokenizer";
 import { FieldType } from "../db/database";
 
 describe("builds 12grams", () => {
