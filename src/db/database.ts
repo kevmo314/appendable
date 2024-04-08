@@ -110,10 +110,7 @@ export class Database<T extends Schema> {
       const tok = new NgramTokenizer(minGram, maxGram);
 
       const key = query.search.key;
-      const mps = await this.indexFile.seek(
-        key as string,
-        new Set<FieldType>([FieldType.Trigram]),
-      );
+      const mps = await this.indexFile.seek(key as string, FieldType.Trigram);
       const mp = mps[0];
       const { fieldType: mpFieldType, width: mpFieldWidth } =
         await readIndexMeta(await mp.metadata());
@@ -174,10 +171,7 @@ export class Database<T extends Schema> {
         }
         const { fieldType, valueBuf } = res;
 
-        const mps = await this.indexFile.seek(
-          key as string,
-          new Set<FieldType>([fieldType]),
-        );
+        const mps = await this.indexFile.seek(key as string, fieldType);
         const mp = mps[0];
         const { fieldType: mpFieldType, width: mpFieldWidth } =
           await readIndexMeta(await mp.metadata());
