@@ -1,49 +1,33 @@
 package ngram
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
 
-func TestNgram(t *testing.T) {
-	t.Run("test basic ngram", func(t *testing.T) {
+func Test1gram(t *testing.T) {
+	t.Run("test basic 1", func(t *testing.T) {
 		p := "wef"
 
-		expected := [6]Token{
+		expected := [3]Token{
 			{
-				Word:   "  w",
+				Word:   "w",
 				Offset: 0,
 				Length: 1,
 			},
 			{
-				Word:   "  e",
+				Word:   "e",
 				Offset: 1,
 				Length: 1,
 			},
 			{
-				Word:   "  f",
+				Word:   "f",
 				Offset: 2,
 				Length: 1,
 			},
-			{
-				Word:   " we",
-				Offset: 0,
-				Length: 2,
-			},
-			{
-				Word:   " ef",
-				Offset: 1,
-				Length: 2,
-			},
-			{
-				Word:   "wef",
-				Offset: 0,
-				Length: 3,
-			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 1)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
@@ -51,116 +35,394 @@ func TestNgram(t *testing.T) {
 	})
 
 	t.Run("test compound words", func(t *testing.T) {
-		p := "how doe"
+		p := "h do"
 
-		expected := [12]Token{
+		expected := [3]Token{
 			{
-				Word:   "  h",
+				Word:   "h",
+				Offset: 0,
 				Length: 1,
 			},
 			{
-				Word:   "  o",
-				Offset: 1,
-				Length: 1,
-			},
-			{
-				Word:   "  w",
+				Word:   "d",
 				Offset: 2,
 				Length: 1,
 			},
 			{
-				Word:   "  d",
-				Offset: 4,
+				Word:   "o",
+				Offset: 3,
 				Length: 1,
-			},
-			{
-				Word:   "  o",
-				Offset: 5,
-				Length: 1,
-			},
-			{
-				Word:   "  e",
-				Offset: 6,
-				Length: 1,
-			},
-			{
-				Word:   " ho",
-				Offset: 0,
-				Length: 2,
-			},
-			{
-				Word:   " ow",
-				Offset: 1,
-				Length: 2,
-			},
-			{
-				Word:   " do",
-				Offset: 4,
-				Length: 2,
-			},
-			{
-				Word:   " oe",
-				Offset: 5,
-				Length: 2,
-			},
-			{
-				Word:   "how",
-				Offset: 0,
-				Length: 3,
-			},
-			{
-				Word:   "doe",
-				Offset: 4,
-				Length: 3,
 			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 1)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
 		}
 	})
 
-	t.Run("test special ngram", func(t *testing.T) {
-		p := "h∫owd*"
+	t.Run("test special 1gram", func(t *testing.T) {
+		p := "h∫owd*y)__do "
 
-		expected := [9]Token{
+		expected := [7]Token{
 			{
-				Word:   "  h",
+				Word:   "h",
 				Offset: 0,
 				Length: 1,
 			},
 			{
-				Word:   "  o",
+				Word:   "o",
 				Offset: 2,
 				Length: 1,
 			},
 			{
-				Word:   "  w",
+				Word:   "w",
 				Offset: 3,
 				Length: 1,
 			},
 			{
-				Word:   "  d",
+				Word:   "d",
 				Offset: 4,
 				Length: 1,
 			},
 			{
-				Word:   " ho",
-				Offset: 0,
-				Length: 3,
+				Word:   "y",
+				Offset: 6,
+				Length: 1,
 			},
 			{
-				Word:   " ow",
+				Word:   "d",
+				Offset: 10,
+				Length: 1,
+			},
+			{
+				Word:   "o",
+				Offset: 11,
+				Length: 1,
+			},
+		}
+
+		incoming := BuildNgram(p, 1)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test special case", func(t *testing.T) {
+		p := "café"
+		expected := [4]Token{
+			{
+				Word:   "c",
+				Offset: 0,
+				Length: 1,
+			},
+			{
+				Word:   "a",
+				Offset: 1,
+				Length: 1,
+			},
+			{
+				Word:   "f",
+				Offset: 2,
+				Length: 1,
+			},
+			{
+				Word:   "e",
+				Offset: 3,
+				Length: 1,
+			},
+		}
+
+		incoming := BuildNgram(p, 1)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test letter case", func(t *testing.T) {
+		p := "NEW kWm"
+
+		expected := [6]Token{
+			{
+				Word:   "n",
+				Offset: 0,
+				Length: 1,
+			},
+			{
+				Word:   "e",
+				Offset: 1,
+				Length: 1,
+			},
+			{
+				Word:   "w",
+				Offset: 2,
+				Length: 1,
+			},
+			{
+				Word:   "k",
+				Offset: 4,
+				Length: 1,
+			},
+			{
+				Word:   "w",
+				Offset: 5,
+				Length: 1,
+			},
+			{
+				Word:   "m",
+				Offset: 6,
+				Length: 1,
+			},
+		}
+
+		incoming := BuildNgram(p, 1)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nE: %v\nG: %v\n", expected, incoming)
+		}
+	})
+}
+
+func Test2gram(t *testing.T) {
+	t.Run("test basic", func(t *testing.T) {
+		p := "wef"
+
+		expected := [2]Token{
+			{
+				Word:   "we",
+				Offset: 0,
+				Length: 2,
+			},
+			{
+				Word:   "ef",
+				Offset: 1,
+				Length: 2,
+			},
+		}
+
+		incoming := BuildNgram(p, 2)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test compound words", func(t *testing.T) {
+		p := "howdy do"
+
+		expected := [5]Token{
+			{
+				Word:   "ho",
+				Offset: 0,
+				Length: 2,
+			},
+			{
+				Word:   "ow",
+				Offset: 1,
+				Length: 2,
+			},
+			{
+				Word:   "wd",
 				Offset: 2,
 				Length: 2,
 			},
 			{
-				Word:   " wd",
+				Word:   "dy",
 				Offset: 3,
 				Length: 2,
 			},
+			{
+				Word:   "do",
+				Offset: 6,
+				Length: 2,
+			},
+		}
+
+		incoming := BuildNgram(p, 2)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test special", func(t *testing.T) {
+		p := "h∫owd*y)__do "
+
+		expected := [6]Token{
+			{
+				Word:   "ho",
+				Offset: 0,
+				Length: 3,
+			},
+			{
+				Word:   "ow",
+				Offset: 2,
+				Length: 2,
+			},
+			{
+				Word:   "wd",
+				Offset: 3,
+				Length: 2,
+			},
+			{
+				Word:   "dy",
+				Offset: 4,
+				Length: 3,
+			},
+			{
+				Word:   "yd",
+				Offset: 6,
+				Length: 5,
+			},
+			{
+				Word:   "do",
+				Offset: 10,
+				Length: 2,
+			},
+		}
+
+		incoming := BuildNgram(p, 2)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nE: %v\nG: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test special case", func(t *testing.T) {
+		p := "café"
+		expected := [3]Token{
+			{
+				Word:   "ca",
+				Offset: 0,
+				Length: 2,
+			},
+			{
+				Word:   "af",
+				Offset: 1,
+				Length: 2,
+			},
+			{
+				Word:   "fe",
+				Offset: 2,
+				Length: 2,
+			},
+		}
+
+		incoming := BuildNgram(p, 2)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test letter case", func(t *testing.T) {
+		p := "NEW kWm"
+
+		expected := [4]Token{
+			{
+				Word:   "ne",
+				Offset: 0,
+				Length: 2,
+			},
+			{
+				Word:   "ew",
+				Offset: 1,
+				Length: 2,
+			},
+			{
+				Word:   "kw",
+				Offset: 4,
+				Length: 2,
+			},
+			{
+				Word:   "wm",
+				Offset: 5,
+				Length: 2,
+			},
+		}
+
+		incoming := BuildNgram(p, 2)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nE: %v\nG: %v\n", expected, incoming)
+		}
+	})
+}
+
+func Test3gram(t *testing.T) {
+	t.Run("test basic 3gram", func(t *testing.T) {
+		p := "howdydo"
+
+		expected := [5]Token{
+			{
+				Word:   "how",
+				Offset: 0,
+				Length: 3,
+			},
+			{
+				Word:   "owd",
+				Offset: 1,
+				Length: 3,
+			},
+			{
+				Word:   "wdy",
+				Offset: 2,
+				Length: 3,
+			},
+			{
+				Word:   "dyd",
+				Offset: 3,
+				Length: 3,
+			},
+			{
+				Word:   "ydo",
+				Offset: 4,
+				Length: 3,
+			},
+		}
+
+		incoming := BuildNgram(p, 3)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test compound words", func(t *testing.T) {
+		p := "howdy do"
+
+		expected := [3]Token{
+			{
+				Word:   "how",
+				Offset: 0,
+				Length: 3,
+			},
+			{
+				Word:   "owd",
+				Offset: 1,
+				Length: 3,
+			},
+			{
+				Word:   "wdy",
+				Offset: 2,
+				Length: 3,
+			},
+		}
+
+		incoming := BuildNgram(p, 3)
+
+		if !reflect.DeepEqual(incoming, expected[:]) {
+			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
+		}
+	})
+
+	t.Run("test special 3gram", func(t *testing.T) {
+		p := "h∫owd*y)__do "
+
+		expected := [5]Token{
 			{
 				Word:   "how",
 				Offset: 0,
@@ -171,135 +433,66 @@ func TestNgram(t *testing.T) {
 				Offset: 2,
 				Length: 3,
 			},
+			{
+				Word:   "wdy",
+				Offset: 3,
+				Length: 4,
+			},
+			{
+				Word:   "dyd",
+				Offset: 4,
+				Length: 7,
+			},
+			{
+				Word:   "ydo",
+				Offset: 6,
+				Length: 6,
+			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 3)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
 		}
 	})
 
-	t.Run("test special ngram", func(t *testing.T) {
-		p := "h∫ow dow"
+	t.Run("test special 3gram", func(t *testing.T) {
+		p := "h∫owd∫y dow "
 
-		expected := [12]Token{
-			{
-				Word:   "  h",
-				Offset: 0,
-				Length: 1,
-			},
-			{
-				Word:   "  o",
-				Offset: 2,
-				Length: 1,
-			},
-			{
-				Word:   "  w",
-				Offset: 3,
-				Length: 1,
-			},
-			{
-				Word:   "  d",
-				Offset: 5,
-				Length: 1,
-			},
-			{
-				Word:   "  o",
-				Offset: 6,
-				Length: 1,
-			},
-			{
-				Word:   "  w",
-				Offset: 7,
-				Length: 1,
-			},
-			{
-				Word:   " ho",
-				Offset: 0,
-				Length: 3,
-			},
-			{
-				Word:   " ow",
-				Offset: 2,
-				Length: 2,
-			},
-			{
-				Word:   " do",
-				Offset: 5,
-				Length: 2,
-			},
-			{
-				Word:   " ow",
-				Offset: 6,
-				Length: 2,
-			},
+		expected := [4]Token{
 			{
 				Word:   "how",
 				Offset: 0,
 				Length: 4,
 			},
 			{
+				Word:   "owd",
+				Offset: 2,
+				Length: 3,
+			},
+			{
+				Word:   "wdy",
+				Offset: 3,
+				Length: 4,
+			},
+			{
 				Word:   "dow",
-				Offset: 5,
+				Offset: 8,
 				Length: 3,
 			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 3)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
 		}
 	})
 
-	t.Run("cleans properly", func(t *testing.T) {
-		p := [2]string{"h∫owd∫y dow", "café"}
-
-		for _, str := range p {
-			clean, _ := normalizeToAscii(str)
-			fmt.Printf("clean: %v", clean)
-		}
-	})
-
 	t.Run("test special case", func(t *testing.T) {
 		p := "café"
-		expected := [9]Token{
-			{
-				Word:   "  c",
-				Offset: 0,
-				Length: 1,
-			},
-			{
-				Word:   "  a",
-				Offset: 1,
-				Length: 1,
-			},
-			{
-				Word:   "  f",
-				Offset: 2,
-				Length: 1,
-			},
-			{
-				Word:   "  e",
-				Offset: 3,
-				Length: 1,
-			},
-			{
-				Word:   " ca",
-				Offset: 0,
-				Length: 2,
-			},
-			{
-				Word:   " af",
-				Offset: 1,
-				Length: 2,
-			},
-			{
-				Word:   " fe",
-				Offset: 2,
-				Length: 2,
-			},
+		expected := [2]Token{
 			{
 				Word:   "caf",
 				Offset: 0,
@@ -312,7 +505,7 @@ func TestNgram(t *testing.T) {
 			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 3)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nExpected: %v\nGot: %v\n", expected, incoming)
@@ -320,72 +513,32 @@ func TestNgram(t *testing.T) {
 	})
 
 	t.Run("test letter case", func(t *testing.T) {
-		p := "NEW kWm"
+		p := "NEW ROOF kWm"
 
-		expected := [12]Token{
-			{
-				Word:   "  n",
-				Offset: 0,
-				Length: 1,
-			},
-			{
-				Word:   "  e",
-				Offset: 1,
-				Length: 1,
-			},
-			{
-				Word:   "  w",
-				Offset: 2,
-				Length: 1,
-			},
-			{
-				Word:   "  k",
-				Offset: 4,
-				Length: 1,
-			},
-			{
-				Word:   "  w",
-				Offset: 5,
-				Length: 1,
-			},
-			{
-				Word:   "  m",
-				Offset: 6,
-				Length: 1,
-			},
-			{
-				Word:   " ne",
-				Offset: 0,
-				Length: 2,
-			},
-			{
-				Word:   " ew",
-				Offset: 1,
-				Length: 2,
-			},
-			{
-				Word:   " kw",
-				Offset: 4,
-				Length: 2,
-			},
-			{
-				Word:   " wm",
-				Offset: 5,
-				Length: 2,
-			},
+		expected := [4]Token{
 			{
 				Word:   "new",
 				Offset: 0,
 				Length: 3,
 			},
 			{
-				Word:   "kwm",
+				Word:   "roo",
 				Offset: 4,
+				Length: 3,
+			},
+			{
+				Word:   "oof",
+				Offset: 5,
+				Length: 3,
+			},
+			{
+				Word:   "kwm",
+				Offset: 9,
 				Length: 3,
 			},
 		}
 
-		incoming := BuildNgram(p)
+		incoming := BuildNgram(p, 3)
 
 		if !reflect.DeepEqual(incoming, expected[:]) {
 			t.Fatalf("expected incoming and expected to be equal. \nE: %v\nG: %v\n", expected, incoming)

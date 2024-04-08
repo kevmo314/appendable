@@ -150,7 +150,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 
 			fts := jsonTypeToFieldType(value)
 			if f.IsSearch(name) {
-				fts = append(fts, appendable.FieldTypeNgram)
+				fts = append(fts, appendable.FieldType1gram, appendable.FieldType2gram, appendable.FieldType3gram)
 			}
 
 			for _, ft := range fts {
@@ -178,12 +178,12 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
-				case appendable.FieldTypeNgram:
+				case appendable.FieldType1gram, appendable.FieldType2gram, appendable.FieldType3gram:
 					valueStr, ok := value.(string)
 					if !ok {
 						return fmt.Errorf("expected string")
 					}
-					trigrams := ngram.BuildNgram(valueStr)
+					trigrams := ngram.BuildNgram(valueStr, int(width-1))
 
 					for _, tri := range trigrams {
 						valueBytes := []byte(tri.Word)

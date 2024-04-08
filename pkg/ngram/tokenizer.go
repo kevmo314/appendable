@@ -20,10 +20,6 @@ type Token struct {
 	Length uint32
 }
 
-const MIN_GRAM = 1
-
-const MAX_GRAM = 3
-
 // BuildTrigram makes two passes
 //
 //	1 - splits by white space and keeps track of the positions
@@ -76,7 +72,7 @@ func Shuffle(tokens []Token) []Token {
 	return soup
 }
 
-func BuildNgram(phrase string) []Token {
+func BuildNgram(phrase string, gl int) []Token {
 	var ngramTokens []Token
 
 	var words [][]int
@@ -91,45 +87,35 @@ func BuildNgram(phrase string) []Token {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			currWord = append(currWord, i)
 		} else if unicode.IsSpace(r) {
-			if len(currWord) >= MIN_GRAM {
+			if len(currWord) >= gl {
 				words = append(words, currWord)
 			}
 			currWord = []int{}
 		}
 	}
 
-	if len(currWord) >= MIN_GRAM {
+	if len(currWord) >= gl {
 		words = append(words, currWord)
 	}
 
-	for gl := MIN_GRAM; gl <= MAX_GRAM; gl++ {
+	for _, wOffsets := range words {
+		for i := 0; i <= len(wOffsets)-gl; i++ {
 
-		wsPadLen := MAX_GRAM - gl
+			var str string
 
-		for _, wOffsets := range words {
-			for i := 0; i <= len(wOffsets)-gl; i++ {
-
-				var str string
-
-				p := 0
-				for j := i; j < i+gl; j++ {
-					str += string(runes[wOffsets[j]])
-					p = j
-				}
-
-				if wsPadLen > 0 {
-					ws := strings.Repeat(" ", wsPadLen)
-					str = ws + str
-				}
-
-				q := ogOffsets[wOffsets[i]]
-				ngramTokens = append(ngramTokens, Token{
-					Word:   strings.ToLower(str),
-					Offset: uint64(q),
-					Length: uint32(ogOffsets[wOffsets[p]] - q + 1),
-				})
-
+			p := 0
+			for j := i; j < i+gl; j++ {
+				str += string(runes[wOffsets[j]])
+				p = j
 			}
+
+			q := ogOffsets[wOffsets[i]]
+			ngramTokens = append(ngramTokens, Token{
+				Word:   strings.ToLower(str),
+				Offset: uint64(q),
+				Length: uint32(ogOffsets[wOffsets[p]] - q + 1),
+			})
+
 		}
 	}
 
