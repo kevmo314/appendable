@@ -14,7 +14,7 @@ export class NgramTokenizer {
     let currentWordOffsets: number[] = [];
 
     Array.from(phrase).forEach((c, idx) => {
-      if (/[a-zA-Z]/.test(c) || /[0-9]/.test(c)) {
+      if (/[a-zA-Z0-9]/.test(c)) {
         currentWordOffsets.push(idx);
       } else if (/\s/.test(c)) {
         if (currentWordOffsets.length >= this.minGram) {
