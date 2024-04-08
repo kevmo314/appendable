@@ -13,6 +13,8 @@ export type WhereNode<T extends Schema, K extends keyof T = keyof T> = {
 export type Search<T extends Schema> = {
   key: keyof T;
   like: string;
+  minGram: number;
+  maxGram: number;
 };
 
 export type OrderBy<T extends Schema> = {

@@ -13,7 +13,7 @@ import {
   processWhere,
   Search,
 } from "./query-lang";
-import { buildTrigram, shuffle, TrigramTable } from "./search";
+import { NgramTokenizer, NgramTable } from "../search/tokenizer";
 
 export enum FieldType {
   String = 0,
@@ -106,6 +106,9 @@ export class Database<T extends Schema> {
     validateQuery(query, headers);
 
     if (query.search) {
+      const { minGram, maxGram } = query.search;
+      const tok = new NgramTokenizer(minGram, maxGram);
+
       const key = query.search.key;
       const mps = await this.indexFile.seek(key as string, FieldType.Trigram);
       const mp = mps[0];
@@ -122,9 +125,9 @@ export class Database<T extends Schema> {
 
       const encoder = new TextEncoder();
       const like = query.search.like;
-      const likeTrigrams = shuffle(buildTrigram(like));
+      const likeTrigrams = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const trigramTable = new TrigramTable();
+      const trigramTable = new NgramTable();
 
       for (const tri of likeTrigrams) {
         const valueBuf = encoder.encode(tri).buffer;
@@ -390,10 +393,18 @@ export class Database<T extends Schema> {
     return new QueryBuilder(this).where(key, operation, value);
   }
 
-  search(key: keyof T, like: string) {
+  search(
+    key: keyof T,
+    like: string,
+    config: { minGram: number; maxGram: number },
+  ) {
+    let { minGram, maxGram } = config;
+
     const search: Search<T> = {
       key,
       like,
+      minGram,
+      maxGram,
     };
 
     return this.query({
