@@ -45,11 +45,11 @@ export class NgramTokenizer {
     }
 
     for (let N = this.minGram; N <= this.maxGram; N++) {
-      let gType =
-        this.allGrams.get(N) ??
-        (() => {
-          throw new Error(`Unrecognized gram type for gram length: ${N}`);
-        })();
+      const gType = this.allGrams.get(N);
+
+      if (!gType) {
+        throw new Error(`Unrecognized gram type for gram length: ${N}`);
+      }
 
       wordOffsets.forEach((word) => {
         for (let idx = 0; idx <= word.length - N; idx++) {
