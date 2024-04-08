@@ -53,14 +53,16 @@ const (
 	FieldTypeArray
 	FieldTypeBoolean
 	FieldTypeNull
-	FieldType3gram
-	FieldType1gram
-	FieldType2gram
+
+	FieldTypeTrigram
+	FieldTypeBigram
+
+	FieldTypeUnigram
 )
 
 func (t FieldType) TypescriptType() string {
 	components := []string{}
-	if t&FieldTypeString != 0 || t&FieldType3gram != 0 || t&FieldType2gram != 0 || t&FieldType1gram != 0 {
+	if t&FieldTypeString != 0 || t&FieldTypeTrigram != 0 || t&FieldTypeBigram != 0 || t&FieldTypeUnigram != 0 {
 		components = append(components, "string")
 	}
 	if t&FieldTypeInt64 != 0 || t&FieldTypeFloat64 != 0 {
@@ -163,11 +165,11 @@ func DetermineType(ft FieldType) uint16 {
 		width = uint16(shift + 0)
 	case FieldTypeFloat64, FieldTypeInt64, FieldTypeUint64:
 		width = uint16(shift + 8)
-	case FieldType3gram:
+	case FieldTypeTrigram:
 		width = uint16(shift + 3)
-	case FieldType2gram:
+	case FieldTypeBigram:
 		width = uint16(shift + 2)
-	case FieldType1gram:
+	case FieldTypeUnigram:
 		width = uint16(shift + 1)
 	}
 

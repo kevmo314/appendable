@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-func Test1gram(t *testing.T) {
-	t.Run("test basic 1", func(t *testing.T) {
+func TestUnigram(t *testing.T) {
+	t.Run("test basic", func(t *testing.T) {
 		p := "wef"
 
 		expected := [3]Token{
@@ -62,7 +62,7 @@ func Test1gram(t *testing.T) {
 		}
 	})
 
-	t.Run("test special 1gram", func(t *testing.T) {
+	t.Run("test special", func(t *testing.T) {
 		p := "h∫owd*y)__do "
 
 		expected := [7]Token{
@@ -186,7 +186,7 @@ func Test1gram(t *testing.T) {
 	})
 }
 
-func Test2gram(t *testing.T) {
+func TestBigram(t *testing.T) {
 	t.Run("test basic", func(t *testing.T) {
 		p := "wef"
 
@@ -352,8 +352,8 @@ func Test2gram(t *testing.T) {
 	})
 }
 
-func Test3gram(t *testing.T) {
-	t.Run("test basic 3gram", func(t *testing.T) {
+func TestTrigram(t *testing.T) {
+	t.Run("test basic", func(t *testing.T) {
 		p := "howdydo"
 
 		expected := [5]Token{
@@ -419,7 +419,7 @@ func Test3gram(t *testing.T) {
 		}
 	})
 
-	t.Run("test special 3gram", func(t *testing.T) {
+	t.Run("test special", func(t *testing.T) {
 		p := "h∫owd*y)__do "
 
 		expected := [5]Token{
@@ -457,7 +457,7 @@ func Test3gram(t *testing.T) {
 		}
 	})
 
-	t.Run("test special 3gram", func(t *testing.T) {
+	t.Run("test special", func(t *testing.T) {
 		p := "h∫owd∫y dow "
 
 		expected := [4]Token{

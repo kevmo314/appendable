@@ -516,7 +516,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldType1gram && im.FieldType != appendable.FieldType2gram && im.FieldType != appendable.FieldType3gram {
+			if im.FieldType != appendable.FieldTypeUnigram && im.FieldType != appendable.FieldTypeBigram && im.FieldType != appendable.FieldTypeTrigram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -593,7 +593,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType != appendable.FieldType1gram && im.FieldType != appendable.FieldType2gram && im.FieldType != appendable.FieldType3gram {
+			if im.FieldType != appendable.FieldTypeUnigram && im.FieldType != appendable.FieldTypeBigram && im.FieldType != appendable.FieldTypeTrigram {
 				vanillaIndexes = append(vanillaIndexes, ms)
 			}
 		}
@@ -791,7 +791,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType == appendable.FieldType3gram {
+			if im.FieldType == appendable.FieldTypeTrigram {
 				tripage = append(tripage, ms)
 			}
 		}
@@ -859,7 +859,7 @@ func TestJSONL(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if im.FieldType == appendable.FieldType3gram {
+			if im.FieldType == appendable.FieldTypeTrigram {
 				tripages = append(tripages, ms)
 			}
 		}
