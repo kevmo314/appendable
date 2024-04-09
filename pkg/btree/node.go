@@ -78,9 +78,27 @@ func SizeVariant(v uint64) int {
 }
 
 func (n *BPTreeNode) Size() int64 {
-
 	size := 4 // number of keys
+
+	var prevValue []byte
+	repeats := uint8(0)
+
 	for _, k := range n.Keys {
+		if bytes.Equal(k.Value, prevValue) {
+			repeats++
+			if repeats == ^uint8(0) {
+				size++
+				repeats = 0
+			}
+			prevValue = k.Value
+			continue
+		}
+
+		if repeats > 0 {
+			size++
+			repeats = 0
+		}
+
 		o := SizeVariant(uint64(k.DataPointer.Offset))
 		l := SizeVariant(uint64(k.DataPointer.Length))
 		size += l + o
@@ -88,6 +106,8 @@ func (n *BPTreeNode) Size() int64 {
 		if n.Width != uint16(0) {
 			size += len(k.Value)
 		}
+
+		prevValue = k.Value
 	}
 	for _, n := range n.LeafPointers {
 		o := SizeVariant(uint64(n.Offset))
@@ -115,10 +135,35 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(size))
 	}
 	ct := 4
+
+	var prevValue []byte
+	repeats := uint8(0)
+
 	for _, k := range n.Keys {
+
+		if bytes.Equal(k.Value, prevValue) {
+			repeats++
+
+			if repeats == ^uint8(0) {
+				buf[ct] = repeats | 0x80
+				ct++
+				repeats = 0
+			}
+
+			prevValue = k.Value
+			continue
+		}
+
+		if repeats > 0 {
+			buf[ct] = repeats | 0x80
+			ct++
+			repeats = 0
+		}
+
 		on := binary.PutUvarint(buf[ct:], k.DataPointer.Offset)
 		ln := binary.PutUvarint(buf[ct+on:], uint64(k.DataPointer.Length))
 		ct += on + ln
+
 		if n.Width != uint16(0) {
 			m := copy(buf[ct:ct+len(k.Value)], k.Value)
 			if m != len(k.Value) {
@@ -126,6 +171,8 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 			}
 			ct += m
 		}
+
+		prevValue = k.Value
 	}
 	for _, p := range n.LeafPointers {
 		on := binary.PutUvarint(buf[ct:], p.Offset)
@@ -167,7 +214,16 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 
 	m := 4
+	var prevKey ReferencedValue
 	for i := range n.Keys {
+		if buf[m]&0x80 != 0 {
+			repeats := buf[m] & 0x7F
+			m++
+			for j := uint8(0); j < repeats; j++ {
+				n.Keys = append(n.Keys, prevKey)
+			}
+			continue
+		}
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])
 
@@ -184,6 +240,8 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			n.Keys[i].Value = buf[m : m+int(n.Width-1)]
 			m += int(n.Width - 1)
 		}
+
+		prevKey = n.Keys[i]
 	}
 	for i := range n.LeafPointers {
 
