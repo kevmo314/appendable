@@ -4,7 +4,7 @@ import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
 import { QueryBuilder } from "./query-builder";
-import { validateQuery } from "./query-validation";
+import { validateQuery, validateSearch } from "./query-validation";
 import {
   Query,
   Schema,
@@ -111,10 +111,10 @@ export class Database<T extends Schema> {
 
     const headers = await this.fields();
 
-    validateQuery(query, headers);
-
     if (query.search) {
-      const { key, like, minGram, maxGram } = query.search;
+      validateSearch(query.search, headers);
+      let { key, like, config } = query.search;
+      let { minGram, maxGram } = config!;
       const tok = new NgramTokenizer(minGram, maxGram);
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
@@ -166,7 +166,6 @@ export class Database<T extends Schema> {
             Number(mp.offset),
             Number(mp.offset) + mp.length - 1,
           );
-
           table.insert(data);
         }
       }
@@ -177,7 +176,9 @@ export class Database<T extends Schema> {
         throw new Error(`no trigrams were evaluated`);
       }
       yield handleSelect(data.key, query.select);
-    } else {
+    }
+
+    if (query.where) {
       for (const { key, value, operation } of query.where ?? []) {
         const header = headers.find((header) => header.fieldName === key);
         if (!header) {
@@ -422,8 +423,10 @@ export class Database<T extends Schema> {
     const search: Search<T> = {
       key,
       like,
-      minGram,
-      maxGram,
+      config: {
+        minGram,
+        maxGram,
+      },
     };
 
     return this.query({

@@ -1,8 +1,99 @@
 import { validateQuery } from "../db/query-validation";
 import { IndexHeader } from "../file/meta";
-import { Query } from "../db/query-lang";
+import { Query, Search } from "../db/query-lang";
+import { FieldType } from "../db/database";
 
-describe("test validate queries", () => {
+describe("validate search queries", () => {
+  interface MockSchema {
+    [key: string]: {};
+    Pollo: {};
+    Bife: {};
+    Cerdo: {};
+  }
+
+  const headers: IndexHeader[] = [
+    {
+      fieldName: "Pollo",
+      fieldTypes: [FieldType.Unigram, FieldType.Bigram, FieldType.Trigram],
+    },
+    {
+      fieldName: "Bife",
+      fieldTypes: [FieldType.Unigram, FieldType.Bigram, FieldType.Trigram],
+    },
+    {
+      fieldName: "Cerdo",
+      fieldTypes: [FieldType.Unigram, FieldType.Bigram, FieldType.Trigram],
+    },
+  ];
+
+  it("performs a simple search query", () => {
+    for (let minGram = 0; minGram <= 3; minGram++) {
+      for (let maxGram = minGram; maxGram <= 3; maxGram++) {
+        const search = {
+          key: "Pollo",
+          like: "wefhowdy",
+          minGram,
+          maxGram,
+        };
+        const q: Query<MockSchema> = { search };
+
+        expect(() => {
+          validateQuery(q, headers);
+        }).not.toThrow();
+      }
+    }
+  });
+
+  it("query a defaults to a 12gram", () => {
+    const search = {
+      key: "Cerdo",
+      like: "wefhowdy",
+    };
+
+    const q: Query<MockSchema> = { search };
+
+    expect(() => {
+      validateQuery(q, headers);
+    }).not.toThrow();
+
+    expect(q.search).not.toBeUndefined();
+    expect(q.search!.config).not.toBeUndefined();
+    expect(q.search!.config!.minGram).toEqual(1);
+    expect(q.search!.config!.maxGram).toEqual(2);
+  });
+
+  it("fails to validate query via unknown header", () => {
+    const search = {
+      key: "Atun",
+      like: "bacalao",
+    };
+
+    const q: Query<MockSchema> = { search };
+
+    expect(() => {
+      validateQuery(q, headers);
+    }).toThrow();
+  });
+
+  it("fails to validate query via invalid range", () => {
+    const search = {
+      key: "Pollo",
+      like: "bacalao",
+      config: {
+        minGram: 2,
+        maxGram: 1,
+      },
+    };
+
+    const q: Query<MockSchema> = { search };
+
+    expect(() => {
+      validateQuery(q, headers);
+    }).toThrow();
+  });
+});
+
+describe("validate filter queries", () => {
   interface MockSchema {
     [key: string]: {};
     VendorID: {};
@@ -83,8 +174,8 @@ describe("test validate queries", () => {
     },
   ];
 
-  validQueries.forEach((query) => {
-    it("test valid query", () => {
+  it("test valid query", () => {
+    validQueries.forEach((query) => {
       expect(() => {
         validateQuery(query, headers);
       }).not.toThrow();

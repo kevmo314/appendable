@@ -1,5 +1,5 @@
 import { IndexHeader } from "../file/meta";
-import { FieldType } from "./database";
+import { FieldType, fieldTypeToString } from "./database";
 import {
   OrderBy,
   Schema,
@@ -125,11 +125,11 @@ function validateSelect<T extends Schema>(
       throw new Error(`select clause is empty: ${select}`);
     }
 
-    let hset = new Set();
+    let hset = new Set<string>();
     headers.map((h) => hset.add(h.fieldName));
 
     select.map((s) => {
-      if (!hset.has(s)) {
+      if (!hset.has(s as string)) {
         throw new Error(
           `${s as string} is not included in the field name headers`,
         );
@@ -142,16 +142,49 @@ export function validateSearch<T extends Schema>(
   search: Search<T>,
   headers: IndexHeader[],
 ) {
-  if (search) {
-    const found = headers.find(
-      (header) =>
-        header.fieldName === search.key &&
-        header.fieldTypes.find((ft) => ft === FieldType.Trigram),
-    );
+  if (!search.config) {
+    search.config = {
+      minGram: 1,
+      maxGram: 2,
+    };
+  }
+  const { config } = search;
+  let { minGram, maxGram } = config;
 
-    if (!found) {
-      throw new Error(`${search.key as string} doesn't support searching`);
-    }
+  const fh = headers.find((h) => h.fieldName === search.key);
+
+  if (!fh) {
+    throw new Error(
+      `Unable to find index header for key: ${search.key as string}`,
+    );
+  }
+
+  let gset = new Set([FieldType.Unigram, FieldType.Bigram, FieldType.Trigram]);
+  const { fieldTypes } = fh;
+  fieldTypes.forEach((ft) => (gset.has(ft) ? gset.delete(ft) : {}));
+
+  if (gset.size != 0) {
+    throw new Error(
+      `Unable to find valid ngram field types: ${[...gset.keys()].map((f) => fieldTypeToString(f))} for index header: ${search.key as string}.`,
+    );
+  }
+
+  if (maxGram > 3 || minGram > 3) {
+    throw new Error(
+      `Invalid gram length configuration. ${config.minGram} and ${config.maxGram} cannot be greater than 3.`,
+    );
+  }
+
+  if (minGram < 1 || maxGram < 1) {
+    throw new Error(
+      `Invalid gram length configuration. ${config.minGram} and ${config.maxGram} cannot be less than 3.`,
+    );
+  }
+
+  if (minGram > maxGram) {
+    throw new Error(
+      `Invalid gram length configuration: minGram ${config.minGram} cannot be greater than maxGram ${config.maxGram}.`,
+    );
   }
 }
 
