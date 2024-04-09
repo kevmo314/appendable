@@ -118,7 +118,7 @@ export class Database<T extends Schema> {
       const tok = new NgramTokenizer(minGram, maxGram);
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const ngramTable = new NgramTable<string>();
+      const table = new NgramTable<string>();
       const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
       for (const token of likeToks) {
@@ -166,7 +166,7 @@ export class Database<T extends Schema> {
             Number(mp.offset),
             Number(mp.offset) + mp.length - 1,
           );
-          
+
           table.insert(data);
         }
       }
