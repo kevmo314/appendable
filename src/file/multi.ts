@@ -6,9 +6,9 @@ export const PAGE_SIZE_BYTES = 4096;
 export const maxUint64 = 2n ** 64n - 1n;
 
 export class LinkedMetaPage {
-  private resolver: RangeResolver;
-  private offset: bigint;
-  private metaPageData?: ArrayBuffer;
+  private readonly resolver: RangeResolver;
+  private readonly offset: bigint;
+  private readonly metaPageData?: ArrayBuffer;
   private metaPageDataPromise?: Promise<
     { data: ArrayBuffer; totalLength: number }[]
   >;
@@ -47,10 +47,6 @@ export class LinkedMetaPage {
     return pageData.slice(start, start + metadataLength);
   }
 
-  public setMetaPage(pageData: ArrayBuffer) {
-    this.metaPageData = pageData;
-  }
-
   private async getMetaPage(): Promise<ArrayBuffer> {
     if (this.metaPageData) {
       return this.metaPageData;
@@ -86,10 +82,6 @@ export class LinkedMetaPage {
     }
 
     return offsets;
-  }
-
-  getOffset(): bigint {
-    return this.offset;
   }
 }
 
