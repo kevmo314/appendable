@@ -1,5 +1,5 @@
 import { BPTree, ReferencedValue } from "../btree/bptree";
-import { maxUint64 } from "../file/multi";
+import { LinkedMetaPage, maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
@@ -114,31 +114,41 @@ export class Database<T extends Schema> {
     validateQuery(query, headers);
 
     if (query.search) {
-      const { minGram, maxGram } = query.search;
+      const { key, like, minGram, maxGram } = query.search;
       const tok = new NgramTokenizer(minGram, maxGram);
-
-      const key = query.search.key;
-      const mps = await this.indexFile.seek(key as string, FieldType.Trigram);
-      const mp = mps[0];
-      const { fieldType: mpFieldType, width: mpFieldWidth } =
-        await readIndexMeta(await mp.metadata());
-      const bptree = new BPTree(
-        this.indexFile.getResolver(),
-        mp,
-        dfResolver,
-        format,
-        mpFieldType,
-        mpFieldWidth,
-      );
-
-      const encoder = new TextEncoder();
-      const like = query.search.like;
-      const likeTrigrams = NgramTokenizer.shuffle(tok.tokens(like));
+      const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
       const table = new NgramTable<string>();
+      const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
-      for (const tok of likeTrigrams) {
-        const { valueBuf } = tok;
+      for (const token of likeToks) {
+        const { type: fieldType, valueBuf } = token;
+        let mp = metaPageCache.get(fieldType);
+
+        if (!mp) {
+          const mps = await this.indexFile.seek(key as string, fieldType);
+          if (mps.length !== 1) {
+            throw new Error(
+              `Expected to find meta page for key: ${key as string} and type: ${fieldTypeToString(fieldType)}`,
+            );
+          }
+          mp = mps[0];
+
+          metaPageCache.set(fieldType, mps[0]);
+        }
+
+        const { fieldType: mpFieldType, width: mpFieldWidth } =
+          await readIndexMeta(await mp.metadata());
+
+        const bptree = new BPTree(
+          this.indexFile.getResolver(),
+          mp,
+          dfResolver,
+          format,
+          mpFieldType,
+          mpFieldWidth,
+        );
+
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
@@ -162,6 +172,7 @@ export class Database<T extends Schema> {
       }
 
       const data = table.top;
+
       if (!data) {
         throw new Error(`no trigrams were evaluated`);
       }
