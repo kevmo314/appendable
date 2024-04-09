@@ -27,8 +27,8 @@ eta http-equiv="Content-type" content="text/html; c\r
 --3d6b6a416f9b5--`);
     const { readable, writable } = new TransformStream();
     const writer = writable.getWriter();
-    await writer.write(data);
-    await writer.close();
+    writer.write(data);
+    writer.close();
     const multipart = await collect(
       parseMultipartBody(
         "multipart/byteranges; boundary=3d6b6a416f9b5",
