@@ -80,17 +80,41 @@ func SizeVariant(v uint64) int {
 func (n *BPTreeNode) Size() int64 {
 
 	size := 4 // number of keys
-	for _, k := range n.Keys {
-		o := SizeVariant(uint64(k.DataPointer.Offset))
-		l := SizeVariant(uint64(k.DataPointer.Length))
-		size += l + o
+	var pk ReferencedValue
+	for i, ck := range n.Keys {
+		if i == 0 {
+			pk = ck
+		} else {
+			if !bytes.Equal(pk.Value, ck.Value) || i == len(n.Keys)-1 {
+				size++
 
-		if n.Width != uint16(0) {
-			size += len(k.Value)
+				o := SizeVariant(pk.DataPointer.Offset)
+				l := SizeVariant(uint64(pk.DataPointer.Length))
+				size += l + o
+
+				if n.Width != uint16(0) {
+					size += len(pk.Value)
+				}
+			}
+
+			if i == len(n.Keys)-1 && !bytes.Equal(pk.Value, ck.Value) {
+				size++
+
+				o := SizeVariant(ck.DataPointer.Offset)
+				l := SizeVariant(uint64(ck.DataPointer.Length))
+				size += l + o
+
+				if n.Width != uint16(0) {
+					size += len(ck.Value)
+				}
+			}
+
+			pk = ck
 		}
 	}
+
 	for _, n := range n.LeafPointers {
-		o := SizeVariant(uint64(n.Offset))
+		o := SizeVariant(n.Offset)
 		l := SizeVariant(uint64(n.Length))
 		size += o + l
 	}
@@ -98,15 +122,16 @@ func (n *BPTreeNode) Size() int64 {
 		o := len(binary.AppendUvarint([]byte{}, n))
 		size += o
 	}
+
 	return int64(size)
 }
 
 func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	size := int32(len(n.Keys))
-
 	if size == 0 {
 		panic("writing empty node")
 	}
+
 	buf := make([]byte, n.Size())
 	// set the first bit to 1 if it's a leaf
 	if n.Leaf() {
@@ -114,19 +139,64 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	} else {
 		binary.LittleEndian.PutUint32(buf[:4], uint32(size))
 	}
+
 	ct := 4
-	for _, k := range n.Keys {
-		on := binary.PutUvarint(buf[ct:], k.DataPointer.Offset)
-		ln := binary.PutUvarint(buf[ct+on:], uint64(k.DataPointer.Length))
-		ct += on + ln
-		if n.Width != uint16(0) {
-			m := copy(buf[ct:ct+len(k.Value)], k.Value)
-			if m != len(k.Value) {
-				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
+
+	var pk ReferencedValue
+	count := uint8(0)
+	for i, ck := range n.Keys {
+		if i == 0 {
+			pk = ck
+			count++
+		} else {
+			if bytes.Equal(pk.Value, ck.Value) {
+				count++
 			}
-			ct += m
+
+			// processing previous key (pk)
+			if !bytes.Equal(pk.Value, ck.Value) || i == len(n.Keys)-1 {
+				if count > 1 {
+					buf[ct] = count | 0x80
+				} else {
+					buf[ct] = 0x01 // single occurrence
+				}
+				ct++
+				on := binary.PutUvarint(buf[ct:], pk.DataPointer.Offset)
+				ln := binary.PutUvarint(buf[ct+on:], uint64(pk.DataPointer.Length))
+				ct += on + ln
+				if n.Width != uint16(0) {
+					m := copy(buf[ct:], pk.Value)
+					if m != len(pk.Value) {
+						return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
+					}
+					ct += m
+				}
+
+				count = 1
+			}
+
+			// processing current key (ck)
+			if i == len(n.Keys)-1 && !bytes.Equal(pk.Value, ck.Value) {
+				fmt.Printf("\nwriting key: %v at %v", ck.Value, i)
+				buf[ct] = 0x01
+				fmt.Printf("\nadding single occurence\n")
+				ct++
+				on := binary.PutUvarint(buf[ct:], ck.DataPointer.Offset)
+				ln := binary.PutUvarint(buf[ct+on:], uint64(ck.DataPointer.Length))
+				ct += on + ln
+				if n.Width != 0 {
+					m := copy(buf[ct:], ck.Value)
+					if m != len(ck.Value) {
+						return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
+					}
+					ct += m
+				}
+			}
+
+			pk = ck
 		}
 	}
+
 	for _, p := range n.LeafPointers {
 		on := binary.PutUvarint(buf[ct:], p.Offset)
 		ln := binary.PutUvarint(buf[ct+on:], uint64(p.Length))
@@ -154,37 +224,58 @@ func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 
 func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	size := int32(binary.LittleEndian.Uint32(buf[:4]))
-	leaf := size < 0
-	if leaf {
-		n.LeafPointers = make([]pointer.MemoryPointer, -size)
-		n.Keys = make([]ReferencedValue, -size)
-	} else {
-		n.InternalPointers = make([]uint64, size+1)
-		n.Keys = make([]ReferencedValue, size)
-	}
 	if size == 0 {
 		panic("empty node")
 	}
 
+	leaf := size < 0
+	if leaf {
+		n.LeafPointers = make([]pointer.MemoryPointer, -size)
+		size = -size
+	} else {
+		n.InternalPointers = make([]uint64, size+1)
+	}
+	n.Keys = make([]ReferencedValue, 0, size)
+
 	m := 4
-	for i := range n.Keys {
+
+	for m < len(buf) {
+		var numIter uint8 = 1
+		if buf[m]&0x80 != 0x00 {
+			numIter = buf[m] & 0x7F
+			fmt.Printf("multiple %v occ", numIter)
+			m++
+		} else if buf[m] == 0x01 {
+			numIter = 1
+			fmt.Printf("single occ\n")
+			m++
+		}
+
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])
-
-		n.Keys[i].DataPointer.Offset = o
-		n.Keys[i].DataPointer.Length = uint32(l)
-
 		m += on + ln
 
-		if n.Width == uint16(0) {
-			// read the key out of the memory pointer stored at this position
-			dp := n.Keys[i].DataPointer
-			n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
+		var keyValue []byte
+		if n.Width == 0 {
+			keyValue = n.DataParser.Parse(n.Data[o : o+l])
 		} else {
-			n.Keys[i].Value = buf[m : m+int(n.Width-1)]
+			keyValue = make([]byte, n.Width-1)
+			copy(keyValue, buf[m:m+int(n.Width-1)])
 			m += int(n.Width - 1)
 		}
+
+		for j := uint8(0); j < numIter; j++ {
+			n.Keys = append(n.Keys, ReferencedValue{
+				DataPointer: pointer.MemoryPointer{
+					Offset: o,
+					Length: uint32(l),
+				},
+				Value: keyValue,
+			})
+		}
+
 	}
+
 	for i := range n.LeafPointers {
 
 		o, on := binary.Uvarint(buf[m:])
