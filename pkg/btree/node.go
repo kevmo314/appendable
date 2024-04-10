@@ -80,36 +80,22 @@ func SizeVariant(v uint64) int {
 func (n *BPTreeNode) Size() int64 {
 
 	size := 4 // number of keys
-	var pk ReferencedValue
-	for i, ck := range n.Keys {
-		if i == 0 {
-			pk = ck
-		} else {
-			if !bytes.Equal(pk.Value, ck.Value) || i == len(n.Keys)-1 {
-				size++
+	for i, k := range n.Keys {
 
-				o := SizeVariant(pk.DataPointer.Offset)
-				l := SizeVariant(uint64(pk.DataPointer.Length))
-				size += l + o
+		shouldCopy := i > 0 && bytes.Equal(k.Value, n.Keys[i-1].Value)
 
-				if n.Width != uint16(0) {
-					size += len(pk.Value)
-				}
-			}
+		o := SizeVariant(k.DataPointer.Offset)
 
-			if i == len(n.Keys)-1 && !bytes.Equal(pk.Value, ck.Value) {
-				size++
+		dp := int64(k.DataPointer.Length)
+		if shouldCopy {
+			dp = -dp
+		}
 
-				o := SizeVariant(ck.DataPointer.Offset)
-				l := SizeVariant(uint64(ck.DataPointer.Length))
-				size += l + o
+		l := SizeVariant(uint64(dp))
+		size += l + o
 
-				if n.Width != uint16(0) {
-					size += len(ck.Value)
-				}
-			}
-
-			pk = ck
+		if n.Width != uint16(0) && !shouldCopy {
+			size += len(k.Value)
 		}
 	}
 
@@ -141,59 +127,23 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	}
 
 	ct := 4
+	for i, k := range n.Keys {
+		on := binary.PutUvarint(buf[ct:], k.DataPointer.Offset)
 
-	var pk ReferencedValue
-	count := uint8(0)
-	for i, ck := range n.Keys {
-		if i == 0 {
-			pk = ck
-			count++
-		} else {
-			if bytes.Equal(pk.Value, ck.Value) {
-				count++
+		shouldCopy := i > 0 && bytes.Equal(k.Value, n.Keys[i-1].Value)
+
+		dpl := int64(k.DataPointer.Length)
+		if shouldCopy {
+			dpl = -dpl
+		}
+		ln := binary.PutUvarint(buf[ct+on:], uint64(dpl))
+		ct += on + ln
+
+		if n.Width != uint16(0) && !shouldCopy {
+			m := copy(buf[ct:ct+len(k.Value)], k.Value)
+			if m != len(k.Value) {
+				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
 			}
-
-			// processing previous key (pk)
-			if !bytes.Equal(pk.Value, ck.Value) || i == len(n.Keys)-1 {
-				if count > 1 {
-					buf[ct] = count | 0x80
-				} else {
-					buf[ct] = 0x01 // single occurrence
-				}
-				ct++
-				on := binary.PutUvarint(buf[ct:], pk.DataPointer.Offset)
-				ln := binary.PutUvarint(buf[ct+on:], uint64(pk.DataPointer.Length))
-				ct += on + ln
-				if n.Width != uint16(0) {
-					m := copy(buf[ct:], pk.Value)
-					if m != len(pk.Value) {
-						return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
-					}
-					ct += m
-				}
-
-				count = 1
-			}
-
-			// processing current key (ck)
-			if i == len(n.Keys)-1 && !bytes.Equal(pk.Value, ck.Value) {
-				fmt.Printf("\nwriting key: %v at %v", ck.Value, i)
-				buf[ct] = 0x01
-				fmt.Printf("\nadding single occurence\n")
-				ct++
-				on := binary.PutUvarint(buf[ct:], ck.DataPointer.Offset)
-				ln := binary.PutUvarint(buf[ct+on:], uint64(ck.DataPointer.Length))
-				ct += on + ln
-				if n.Width != 0 {
-					m := copy(buf[ct:], ck.Value)
-					if m != len(ck.Value) {
-						return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
-					}
-					ct += m
-				}
-			}
-
-			pk = ck
 		}
 	}
 
@@ -239,45 +189,39 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 
 	m := 4
 
-	for m < len(buf) {
-		var numIter uint8 = 1
-		if buf[m]&0x80 != 0x00 {
-			numIter = buf[m] & 0x7F
-			fmt.Printf("multiple %v occ", numIter)
-			m++
-		} else if buf[m] == 0x01 {
-			numIter = 1
-			fmt.Printf("single occ\n")
-			m++
-		}
-
+	for i := range n.Keys {
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])
+
+		var dpl uint32
+		shouldCopy := false
+		if int64(l) < 0 {
+			dpl = uint32(-l)
+			shouldCopy = true
+		} else {
+			dpl = uint32(l)
+		}
+
+		n.Keys[i].DataPointer.Offset = o
+		n.Keys[i].DataPointer.Length = dpl
+
 		m += on + ln
 
-		var keyValue []byte
-		if n.Width == 0 {
-			keyValue = n.DataParser.Parse(n.Data[o : o+l])
+		if shouldCopy {
+			n.Keys[i].Value = n.Keys[i-1].Value
 		} else {
-			keyValue = make([]byte, n.Width-1)
-			copy(keyValue, buf[m:m+int(n.Width-1)])
-			m += int(n.Width - 1)
+			if n.Width == uint16(0) {
+				// read the key out of the memory pointer stored at this position
+				dp := n.Keys[i].DataPointer
+				n.Keys[i].Value = n.DataParser.Parse(n.Data[dp.Offset : dp.Offset+uint64(dp.Length)]) // resolving the data-file
+			} else {
+				n.Keys[i].Value = buf[m : m+int(n.Width-1)]
+				m += int(n.Width - 1)
+			}
 		}
-
-		for j := uint8(0); j < numIter; j++ {
-			n.Keys = append(n.Keys, ReferencedValue{
-				DataPointer: pointer.MemoryPointer{
-					Offset: o,
-					Length: uint32(l),
-				},
-				Value: keyValue,
-			})
-		}
-
 	}
 
 	for i := range n.LeafPointers {
-
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])
 

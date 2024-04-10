@@ -74,6 +74,65 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 	}
 }
 
+func TestBPTreeNode_Marshal(t *testing.T) {
+
+	nodes := [2]BPTreeNode{
+		{
+			LeafPointers: []pointer.MemoryPointer{
+				{Offset: 0, Length: 3},
+				{Offset: 3, Length: 3},
+				{Offset: 6, Length: 3},
+				{Offset: 7, Length: 3},
+			},
+			Keys: []ReferencedValue{
+				{Value: []byte{0, 1, 2}},
+				{Value: []byte{1, 2, 3}},
+				{
+					Value: []byte{3, 4, 5},
+					DataPointer: pointer.MemoryPointer{
+						Offset: 0,
+						Length: 3,
+					},
+				},
+				{
+					Value: []byte{3, 4, 5},
+					DataPointer: pointer.MemoryPointer{
+						Offset: 1,
+						Length: 3,
+					},
+				},
+			},
+			Width: uint16(4),
+		},
+		{
+			InternalPointers: []uint64{0, 1, 2, 3},
+			Keys: []ReferencedValue{
+				{Value: []byte{0, 1}},
+				{Value: []byte{1, 2}},
+				{Value: []byte{3, 4}},
+			},
+			Width: uint16(3),
+		},
+	}
+
+	for _, node1 := range nodes {
+		buf := &bytes.Buffer{}
+		if _, err := node1.WriteTo(buf); err != nil {
+			t.Fatal(err)
+		}
+
+		node2 := BPTreeNode{Width: node1.Width}
+		if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(node1, node2) {
+			t.Fatalf("\nEX: %#v\nGO: %#v", node1, node2)
+		}
+	}
+
+}
+
 func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 	rv := []ReferencedValue{
 		{
