@@ -715,17 +715,26 @@ func TestBPTree_Iteration_StartsAfterTree(t *testing.T) {
 
 	for i := 0; i < count; i++ {
 		buf := []byte{0x01}
-		if err := tree.Insert(ReferencedValue{Value: buf, DataPointer: pointer.MemoryPointer{Offset: uint64(i)}}, pointer.MemoryPointer{Offset: uint64(i), Length: uint32(len(buf))}); err != nil {
+		if err := tree.Insert(
+			ReferencedValue{
+				Value: buf,
+				DataPointer: pointer.MemoryPointer{
+					Offset: uint64(i),
+					Length: uint32(2),
+				},
+			},
+			pointer.MemoryPointer{
+				Offset: uint64(i),
+				Length: uint32(len(buf)),
+			},
+		); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	t.Run("finds nothing", func(t *testing.T) {
 		buf := []byte{0x02}
-		valueRef := ReferencedValue{
-			Value: buf,
-		}
-
+		valueRef := ReferencedValue{Value: buf}
 		iter, err := tree.Iter(valueRef)
 		if err != nil {
 			t.Fatal(err)

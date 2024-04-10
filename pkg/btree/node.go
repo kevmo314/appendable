@@ -78,13 +78,10 @@ func SizeVariant(v uint64) int {
 }
 
 func (n *BPTreeNode) Size() int64 {
-
 	size := 4 // number of keys
 	for i, k := range n.Keys {
-
 		shouldCopy := i > 0 && bytes.Equal(k.Value, n.Keys[i-1].Value)
-
-		o := SizeVariant(k.DataPointer.Offset)
+		o := SizeVariant(uint64(k.DataPointer.Offset))
 
 		dp := int64(k.DataPointer.Length)
 		if shouldCopy {
@@ -98,9 +95,8 @@ func (n *BPTreeNode) Size() int64 {
 			size += len(k.Value)
 		}
 	}
-
 	for _, n := range n.LeafPointers {
-		o := SizeVariant(n.Offset)
+		o := SizeVariant(uint64(n.Offset))
 		l := SizeVariant(uint64(n.Length))
 		size += o + l
 	}
@@ -108,7 +104,6 @@ func (n *BPTreeNode) Size() int64 {
 		o := len(binary.AppendUvarint([]byte{}, n))
 		size += o
 	}
-
 	return int64(size)
 }
 
@@ -144,6 +139,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 			if m != len(k.Value) {
 				return nil, fmt.Errorf("failed to copy key: %w", io.ErrShortWrite)
 			}
+			ct += m
 		}
 	}
 
@@ -174,27 +170,25 @@ func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 
 func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	size := int32(binary.LittleEndian.Uint32(buf[:4]))
+	leaf := size < 0
+	if leaf {
+		n.LeafPointers = make([]pointer.MemoryPointer, -size)
+		n.Keys = make([]ReferencedValue, -size)
+	} else {
+		n.InternalPointers = make([]uint64, size+1)
+		n.Keys = make([]ReferencedValue, size)
+	}
 	if size == 0 {
 		panic("empty node")
 	}
 
-	leaf := size < 0
-	if leaf {
-		n.LeafPointers = make([]pointer.MemoryPointer, -size)
-		size = -size
-	} else {
-		n.InternalPointers = make([]uint64, size+1)
-	}
-	n.Keys = make([]ReferencedValue, 0, size)
-
 	m := 4
-
 	for i := range n.Keys {
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])
 
-		var dpl uint32
 		shouldCopy := false
+		var dpl uint32
 		if int64(l) < 0 {
 			dpl = uint32(-l)
 			shouldCopy = true
@@ -220,7 +214,6 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 			}
 		}
 	}
-
 	for i := range n.LeafPointers {
 		o, on := binary.Uvarint(buf[m:])
 		l, ln := binary.Uvarint(buf[m+on:])

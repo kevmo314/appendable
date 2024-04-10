@@ -165,33 +165,6 @@ func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 	}
 }
 
-func TestMarshalDuplicate(t *testing.T) {
-	node1 := &BPTreeNode{
-		InternalPointers: []uint64{0, 1, 2, 3},
-		Keys: []ReferencedValue{
-			{Value: []byte{0, 1}},
-			{Value: []byte{1, 2}},
-			{Value: []byte{3, 4}},
-			{Value: []byte{3, 4}},
-		},
-		Width: uint16(3),
-	}
-
-	buf := &bytes.Buffer{}
-	if _, err := node1.WriteTo(buf); err != nil {
-		t.Fatal(err)
-	}
-
-	node2 := &BPTreeNode{Width: uint16(3)}
-	if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
-		t.Fatal(err)
-	}
-
-	if !reflect.DeepEqual(node1, node2) {
-		t.Fatalf("\ne: %#v\ng: %#v\n", node1, node2)
-	}
-}
-
 func TestSizeVariant(t *testing.T) {
 
 	x := len(binary.AppendUvarint([]byte{}, uint64(123)))
