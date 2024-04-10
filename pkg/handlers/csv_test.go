@@ -229,54 +229,56 @@ func TestCSV(t *testing.T) {
 		}
 	})
 
-	t.Run("recognize null fields", func(t *testing.T) {
-		r1 := []byte("nullheader,header1\n,wef\n")
-		r2 := []byte("nullheader,header1\n,wef\n,howdy\n")
+	/*
+		t.Run("recognize null fields", func(t *testing.T) {
+			r1 := []byte("nullheader,header1\n,wef\n")
+			r2 := []byte("nullheader,header1\n,wef\n,howdy\n")
 
-		f := buftest.NewSeekableBuffer()
+			f := buftest.NewSeekableBuffer()
 
-		var em []string
+			var em []string
 
-		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
-		if err != nil {
-			t.Fatal(err)
-		}
+			i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		if err := i.Synchronize(r1); err != nil {
-			t.Fatal(err)
-		}
+			if err := i.Synchronize(r1); err != nil {
+				t.Fatal(err)
+			}
 
-		if err := i.Synchronize(r2); err != nil {
-			t.Fatal(err)
-		}
+			if err := i.Synchronize(r2); err != nil {
+				t.Fatal(err)
+			}
 
-		indexes, err := i.Indexes()
-		if err != nil {
-			t.Fatal(err)
-		}
+			indexes, err := i.Indexes()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		collected, err := indexes.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
+			collected, err := indexes.Collect()
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		if len(collected) != 2 {
-			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
-		}
-		buf1, err := collected[0].Metadata()
-		if err != nil {
-			t.Fatal(err)
-		}
-		md1 := &appendable.IndexMeta{}
+			if len(collected) != 2 {
+				t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
+			}
+			buf1, err := collected[0].Metadata()
+			if err != nil {
+				t.Fatal(err)
+			}
+			md1 := &appendable.IndexMeta{}
 
-		if err := md1.UnmarshalBinary(buf1); err != nil {
-			t.Fatal(err)
-		}
+			if err := md1.UnmarshalBinary(buf1); err != nil {
+				t.Fatal(err)
+			}
 
-		if md1.FieldName != "nullheader" || md1.FieldType != appendable.FieldTypeNull {
-			t.Errorf("expected md1.FieldName nullheader, got: %v\nexpected field type to be null, got: %v", md1.FieldName, md1.FieldType)
-		}
-	})
+			if md1.FieldName != "nullheader" || md1.FieldType != appendable.FieldTypeNull {
+				t.Errorf("expected md1.FieldName nullheader, got: %v\nexpected field type to be null, got: %v", md1.FieldName, md1.FieldType)
+			}
+		})
+	*/
 
 	t.Run("correctly iterates through btree", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()

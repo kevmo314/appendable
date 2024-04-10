@@ -129,7 +129,7 @@ func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 
 		dpl := int64(k.DataPointer.Length)
 		if shouldCopy {
-			dpl = -dpl
+			dpl = -(dpl + 1)
 		}
 		ln := binary.PutUvarint(buf[ct+on:], uint64(dpl))
 		ct += on + ln
@@ -190,7 +190,7 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 		shouldCopy := false
 		var dpl uint32
 		if int64(l) < 0 {
-			dpl = uint32(-l)
+			dpl = uint32(-l - 1)
 			shouldCopy = true
 		} else {
 			dpl = uint32(l)

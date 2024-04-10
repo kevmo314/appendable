@@ -100,6 +100,14 @@ export class BPTreeNode {
       const { value: dpLength, bytesRead: lBytes } = decodeUvarint(
         buffer.slice(m + oBytes),
       );
+
+      let shouldCopy = false;
+      let dpl = dpLength;
+      if (dpl < 0) {
+        dpl = -dpl - 1;
+        shouldCopy = true;
+      }
+
       m += oBytes + lBytes;
 
       this.keys[idx].setDataPointer({
@@ -107,20 +115,24 @@ export class BPTreeNode {
         length: dpLength,
       });
 
-      if (pageFieldWidth === 0) {
-        const dp = this.keys[idx].dataPointer;
-
-        dpRanges.push({
-          start: Number(dp.offset),
-          end: Number(dp.offset) + dp.length - 1,
-        });
-
-        dpIndexes.push(idx);
+      if (shouldCopy) {
+        this.keys[idx].setValue(this.keys[idx - 1].value);
       } else {
-        // we are storing the values directly in the referenced value
-        const value = buffer.slice(m, m + pageFieldWidth - 1);
-        this.keys[idx].setValue(value);
-        m += value.byteLength;
+        if (pageFieldWidth === 0) {
+          const dp = this.keys[idx].dataPointer;
+
+          dpRanges.push({
+            start: Number(dp.offset),
+            end: Number(dp.offset) + dp.length - 1,
+          });
+
+          dpIndexes.push(idx);
+        } else {
+          // we are storing the values directly in the referenced value
+          const value = buffer.slice(m, m + pageFieldWidth - 1);
+          this.keys[idx].setValue(value);
+          m += value.byteLength;
+        }
       }
     }
 
