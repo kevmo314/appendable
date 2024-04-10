@@ -2,12 +2,12 @@ import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
 import { decodeUvarint } from "../util/uvarint";
-import { ReferencedValue } from "./bptree";
+import { ReferencedValue } from "./btree";
 
 export const pageSizeBytes = 4096;
 
 export type MemoryPointer = { offset: bigint; length: number };
-export class BPTreeNode {
+export class BTreeNode {
   public keys: ReferencedValue[];
   public leafPointers: MemoryPointer[];
   public internalPointers: bigint[];
@@ -205,7 +205,7 @@ export class BPTreeNode {
     fileFormat: FileFormat,
     pageFieldType: FieldType,
     pageFieldWidth: number,
-  ): Promise<{ node: BPTreeNode; bytesRead: number }> {
+  ): Promise<{ node: BTreeNode; bytesRead: number }> {
     const res = await resolver([
       {
         start: Number(mp.offset),
@@ -213,7 +213,7 @@ export class BPTreeNode {
       },
     ]);
     const { data: bufferData } = res[0];
-    const node = new BPTreeNode(
+    const node = new BTreeNode(
       [],
       [],
       [],

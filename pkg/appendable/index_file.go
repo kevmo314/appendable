@@ -35,7 +35,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
 
-	tree, err := metapage.NewMultiBPTree(pf, 0)
+	tree, err := metapage.NewMultiBTree(pf, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}

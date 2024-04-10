@@ -8,14 +8,14 @@ import (
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
-func TestMultiBPTree(t *testing.T) {
+func TestMultiBTree(t *testing.T) {
 	t.Run("empty tree", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -34,7 +34,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -60,7 +60,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +102,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -128,7 +128,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -151,7 +151,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -177,7 +177,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -195,7 +195,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +236,7 @@ func TestMultiBPTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -260,7 +260,7 @@ func TestMultiBPTree(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree, err := NewMultiBPTree(p, 0)
+		tree, err := NewMultiBTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

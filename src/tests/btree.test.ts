@@ -1,4 +1,4 @@
-import { BPTree, MetaPage, ReferencedValue } from "../btree/bptree";
+import { BTree, MetaPage, ReferencedValue } from "../btree/btree";
 import { MemoryPointer } from "../btree/node";
 import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
@@ -18,10 +18,10 @@ class testMetaPage implements MetaPage {
   }
 }
 
-describe("test btree", () => {
+describe("test BTree", () => {
   let mockRangeResolver: RangeResolver;
   let mockDataFileResolver: RangeResolver;
-  let bptree: BPTree;
+  let btree: BTree;
 
   beforeEach(() => {
     mockDataFileResolver = async ([]) => {
@@ -34,7 +34,7 @@ describe("test btree", () => {
     };
 
     mockRangeResolver = async ([{ start, end }]) => {
-      const indexFile = await readBinaryFile("bptree_1.bin");
+      const indexFile = await readBinaryFile("btree_1.bin");
       const slicedPart = indexFile.slice(start, end + 1);
 
       const arrayBuffer = slicedPart.buffer.slice(
@@ -51,7 +51,7 @@ describe("test btree", () => {
     };
 
     const page = new testMetaPage({ offset: 8192n, length: 88 });
-    bptree = new BPTree(
+    btree = new BTree(
       mockRangeResolver,
       page,
       mockDataFileResolver,
@@ -61,13 +61,13 @@ describe("test btree", () => {
     );
   });
 
-  it("should read a bptree and find items", async () => {
+  it("should read a btree and find items", async () => {
     let idx = 1;
     for (const value of ["hello", "world", "moooo", "cooow"]) {
       const keyBuf = new TextEncoder().encode(value).buffer;
       const key = new ReferencedValue({ offset: 0n, length: 0 }, keyBuf);
 
-      const [rv, mp] = await bptree.find(key);
+      const [rv, mp] = await btree.find(key);
 
       expect(value).toEqual(new TextDecoder().decode(rv.value));
       expect(mp.offset).toEqual(BigInt(idx));
@@ -76,10 +76,10 @@ describe("test btree", () => {
   });
 });
 
-describe("test btree iterator count", () => {
+describe("test BTree iterator count", () => {
   let mockRangeResolver: RangeResolver;
   let mockDataFileResolver: RangeResolver;
-  let bptree: BPTree;
+  let btree: BTree;
 
   beforeEach(() => {
     mockDataFileResolver = async ([]) => {
@@ -92,7 +92,7 @@ describe("test btree iterator count", () => {
     };
 
     mockRangeResolver = async ([{ start, end }]) => {
-      const indexFile = await readBinaryFile("bptree_1023.bin");
+      const indexFile = await readBinaryFile("btree_1023.bin");
       const slicedPart = indexFile.slice(start, end + 1);
 
       const arrayBuffer = slicedPart.buffer.slice(
@@ -109,7 +109,7 @@ describe("test btree iterator count", () => {
     };
 
     const page = new testMetaPage({ offset: 8192n, length: 88 });
-    bptree = new BPTree(
+    btree = new BTree(
       mockRangeResolver,
       page,
       mockDataFileResolver,
@@ -125,7 +125,7 @@ describe("test btree iterator count", () => {
 
     const valueRef = new ReferencedValue({ offset: 0n, length: 0 }, valueBuf);
 
-    const iter = bptree.iter(valueRef);
+    const iter = btree.iter(valueRef);
 
     let count = 0;
 
@@ -148,7 +148,7 @@ describe("test btree iterator count", () => {
       valueBuf,
     );
 
-    const iter = bptree.iter(valueRef);
+    const iter = btree.iter(valueRef);
     let count = 0;
 
     while (await iter.prev()) {

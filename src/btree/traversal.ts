@@ -1,18 +1,18 @@
-import { BPTree, ReferencedValue } from "./bptree";
-import { BPTreeNode, MemoryPointer } from "./node";
+import { BTree, ReferencedValue } from "./btree";
+import { BTreeNode, MemoryPointer } from "./node";
 
 export type TraversalRecord = {
-  node: BPTreeNode;
+  node: BTreeNode;
   index: number;
   pointer: MemoryPointer;
 };
 
 export class TraversalIterator {
-  private tree: BPTree;
+  private tree: BTree;
   private readonly key: ReferencedValue;
   private records: TraversalRecord[];
 
-  constructor(tree: BPTree, key: ReferencedValue) {
+  constructor(tree: BTree, key: ReferencedValue) {
     this.tree = tree;
     this.key = key;
     this.records = []; // note this works iff all records are non-empty
