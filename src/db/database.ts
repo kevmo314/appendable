@@ -210,6 +210,8 @@ export class Database<T extends Schema> {
           mpFieldWidth,
         );
 
+        const cursor = btree.cursor();
+
         if (operation === ">") {
           if (ord === "ASC") {
             const valueRef = new ReferencedValue(
@@ -229,7 +231,7 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const lastKey = await btree.last();
+            const lastKey = await cursor.last();
             const iter = btree.iter(lastKey);
 
             while (await iter.prev()) {
@@ -269,7 +271,7 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const lastKey = await btree.last();
+            const lastKey = await cursor.last();
             const iter = btree.iter(lastKey);
 
             while (await iter.prev()) {
@@ -338,7 +340,7 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const firstKey = await btree.first();
+            const firstKey = await cursor.first();
             const iter = btree.iter(firstKey);
 
             while (await iter.next()) {
@@ -378,7 +380,7 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const firstKey = await btree.first();
+            const firstKey = await cursor.first();
             const iter = btree.iter(firstKey);
 
             while (await iter.next()) {

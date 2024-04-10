@@ -3,6 +3,7 @@ import { RangeResolver } from "../resolver/resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
 import { FileFormat } from "../file/meta";
 import { FieldType } from "../db/database";
+import { BTreeCursor } from "./cursor";
 
 export interface MetaPage {
   root(): Promise<MemoryPointer>;
@@ -61,7 +62,7 @@ export class BTree {
     };
   }
 
-  async readNode(ptr: MemoryPointer): Promise<BTreeNode> {
+  public async readNode(ptr: MemoryPointer): Promise<BTreeNode> {
     try {
       const { node, bytesRead } = await BTreeNode.fromMemoryPointer(
         ptr,
@@ -86,38 +87,8 @@ export class BTree {
     return new TraversalIterator(this, key);
   }
 
-  async first(): Promise<ReferencedValue> {
-    let { rootNode } = await this.root();
-    if (!rootNode) {
-      throw new Error("unable to get root node");
-    }
-
-    let currNode = await this.readNode(rootNode.pointer(0));
-
-    while (!currNode.leaf()) {
-      const childPointer = currNode.pointer(0);
-      currNode = await this.readNode(childPointer);
-    }
-
-    return currNode.keys[0];
-  }
-
-  async last(): Promise<ReferencedValue> {
-    let { rootNode } = await this.root();
-    if (!rootNode) {
-      throw new Error("unable to get root node");
-    }
-
-    let currNode = await this.readNode(
-      rootNode.pointer(rootNode.numPointers() - 1),
-    );
-
-    while (!currNode.leaf()) {
-      const childPointer = currNode.pointer(currNode.numPointers() - 1);
-      currNode = await this.readNode(childPointer);
-    }
-
-    return currNode.keys[currNode.keys.length - 1];
+  public cursor(): BTreeCursor {
+    return new BTreeCursor(this);
   }
 
   async traverse(
