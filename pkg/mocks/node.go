@@ -18,8 +18,8 @@ func writeBufferToFile(buf *bytes.Buffer, filename string) error {
 }
 
 func generateLeafNode() {
-	// Create a test BPTreeNode
-	node1 := &btree.BPTreeNode{
+	// Create a test BTreeNode
+	node1 := &btree.BTreeNode{
 		LeafPointers: []pointer.MemoryPointer{
 			{Offset: 0, Length: 3},
 			{Offset: 3, Length: 3},
@@ -42,8 +42,8 @@ func generateLeafNode() {
 }
 
 func generateInternalNode() {
-	// Create a test BPTreeNode
-	node1 := &btree.BPTreeNode{
+	// Create a test BTreeNode
+	node1 := &btree.BTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
 		Keys: []btree.ReferencedValue{
 			{Value: []byte{0, 1}},

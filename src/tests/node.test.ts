@@ -1,5 +1,5 @@
-import { ReferencedValue, binarySearchReferencedValues } from "../btree/bptree";
-import { BPTreeNode } from "../btree/node";
+import { ReferencedValue, binarySearchReferencedValues } from "../btree/btree";
+import { BTreeNode } from "../btree/node";
 import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
@@ -115,7 +115,7 @@ describe("node functionality", () => {
     };
   });
 
-  it("should read a leaf bptree node", async () => {
+  it("should read a leaf BTree node", async () => {
     mockRangeResolver = async ([{ start, end }]) => {
       const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
       view.set(mockLeafNodeData, 0);
@@ -129,7 +129,7 @@ describe("node functionality", () => {
       ];
     };
 
-    const { node: leafNode, bytesRead } = await BPTreeNode.fromMemoryPointer(
+    const { node: leafNode, bytesRead } = await BTreeNode.fromMemoryPointer(
       { offset: 0n, length: 3 },
       mockRangeResolver,
       mockDataResolver,
@@ -177,7 +177,7 @@ describe("node functionality", () => {
     }
   });
 
-  it("should read a internal bptree node", async () => {
+  it("should read a internal BTree node", async () => {
     mockRangeResolver = async ([{ start, end }]) => {
       const view = new Uint8Array(new ArrayBuffer(PAGE_SIZE_BYTES));
       view.set(mockInternalNodeData, 0);
@@ -191,7 +191,7 @@ describe("node functionality", () => {
       ];
     };
 
-    const { node: internalNode } = await BPTreeNode.fromMemoryPointer(
+    const { node: internalNode } = await BTreeNode.fromMemoryPointer(
       { offset: 0n, length: 1 },
       mockRangeResolver,
       mockDataResolver,

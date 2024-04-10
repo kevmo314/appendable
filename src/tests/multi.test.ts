@@ -1,6 +1,6 @@
 import { RangeResolver } from "../resolver/resolver";
 import { arrayBufferToString, readBinaryFile } from "./test-util";
-import { ReadMultiBPTree } from "../file/multi";
+import { ReadMultiBTree } from "../file/multi";
 
 describe("test metadata", () => {
   let mockMetadata: Uint8Array;
@@ -19,7 +19,7 @@ describe("test metadata", () => {
       ];
     };
 
-    const tree = ReadMultiBPTree(mockRangeResolver, 0);
+    const tree = ReadMultiBTree(mockRangeResolver, 0);
     const metadata = await tree.metadata();
 
     expect("hello").toEqual(arrayBufferToString(metadata));

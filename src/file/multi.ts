@@ -85,7 +85,7 @@ export class LinkedMetaPage {
   }
 }
 
-export function ReadMultiBPTree(
+export function ReadMultiBTree(
   resolver: RangeResolver,
   idx: number,
 ): LinkedMetaPage {

@@ -44,13 +44,13 @@ func (m *LinkedMetaPage) SetRoot(mp pointer.MemoryPointer) error {
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
-// btree.BPTree returns a B+ tree that uses this meta page as the root
+// btree.BTree returns a B+ tree that uses this meta page as the root
 // of the tree. If data is not nil, then it will be used as the
 // data source for the tree.
 //
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
-func (m *LinkedMetaPage) BPTree(t *btree.BPTree) *btree.BPTree {
+func (m *LinkedMetaPage) BTree(t *btree.BTree) *btree.BTree {
 	t.PageFile = m.rws
 	t.MetaPage = m
 	return t
@@ -242,7 +242,7 @@ func (m *LinkedMetaPage) String() string {
 	return fmt.Sprintf("LinkedMetaPage{offset: %x,\tnext: %x,\troot: %x}", m.offset, nm.offset, root.Offset)
 }
 
-func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
+func NewMultiBTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err

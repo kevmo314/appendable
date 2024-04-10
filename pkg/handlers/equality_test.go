@@ -190,7 +190,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 		if i == 0 {
 
 			for _, val := range h1 {
-				rv1, mp1, err := collected1.BPTree(&btree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
+				rv1, mp1, err := collected1.BTree(&btree.BTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -199,7 +199,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
-				rv2, mp2, err := collected2.BPTree(&btree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
+				rv2, mp2, err := collected2.BTree(&btree.BTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -219,7 +219,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 
 				v2 := make([]byte, 8)
 				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
-				rv1, mp1, err := collected1.BPTree(&btree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: v2})
+				rv1, mp1, err := collected1.BTree(&btree.BTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
@@ -228,7 +228,7 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				rv2, mp2, err := collected2.BPTree(&btree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: v2})
+				rv2, mp2, err := collected2.BTree(&btree.BTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)

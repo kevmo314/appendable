@@ -83,7 +83,7 @@ func main() {
 			// this is a linked meta page
 			lmps = lmps[1:]
 
-			metaPage, err := metapage.NewMultiBPTree(pf, int(i))
+			metaPage, err := metapage.NewMultiBTree(pf, int(i))
 			if err != nil {
 				panic(err)
 			}
@@ -116,7 +116,7 @@ func main() {
 			fmt.Printf("</details></li>")
 		} else {
 			// try to read the page as a btree node
-			node := &btree.BPTreeNode{}
+			node := &btree.BTreeNode{}
 			node.Data = mmdf.Bytes()
 			node.DataParser = &handlers.JSONLHandler{}
 

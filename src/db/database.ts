@@ -1,4 +1,4 @@
-import { BPTree, ReferencedValue } from "../btree/bptree";
+import { BTree, ReferencedValue } from "../btree/btree";
 import { LinkedMetaPage, maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
@@ -140,7 +140,7 @@ export class Database<T extends Schema> {
         const { fieldType: mpFieldType, width: mpFieldWidth } =
           await readIndexMeta(await mp.metadata());
 
-        const bptree = new BPTree(
+        const btree = new BTree(
           this.indexFile.getResolver(),
           mp,
           dfResolver,
@@ -153,7 +153,7 @@ export class Database<T extends Schema> {
           { offset: 0n, length: 0 },
           valueBuf,
         );
-        const iter = bptree.iter(valueRef);
+        const iter = btree.iter(valueRef);
 
         while (await iter.next()) {
           const currentKey = iter.getKey();
@@ -201,7 +201,7 @@ export class Database<T extends Schema> {
           ord = query.orderBy[0].direction;
         }
 
-        const bptree = new BPTree(
+        const btree = new BTree(
           this.indexFile.getResolver(),
           mp,
           dfResolver,
@@ -216,7 +216,7 @@ export class Database<T extends Schema> {
               { offset: maxUint64, length: 0 },
               valueBuf,
             );
-            const iter = bptree.iter(valueRef);
+            const iter = btree.iter(valueRef);
 
             while (await iter.next()) {
               const mp = iter.getPointer();
@@ -229,8 +229,8 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const lastKey = await bptree.last();
-            const iter = bptree.iter(lastKey);
+            const lastKey = await btree.last();
+            const iter = btree.iter(lastKey);
 
             while (await iter.prev()) {
               const currentKey = iter.getKey();
@@ -256,7 +256,7 @@ export class Database<T extends Schema> {
               { offset: 0n, length: 0 },
               valueBuf,
             );
-            const iter = bptree.iter(valueRef);
+            const iter = btree.iter(valueRef);
 
             while (await iter.next()) {
               const mp = iter.getPointer();
@@ -269,8 +269,8 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const lastKey = await bptree.last();
-            const iter = bptree.iter(lastKey);
+            const lastKey = await btree.last();
+            const iter = btree.iter(lastKey);
 
             while (await iter.prev()) {
               const currentKey = iter.getKey();
@@ -296,7 +296,7 @@ export class Database<T extends Schema> {
             { offset: 0n, length: 0 },
             valueBuf,
           );
-          const iter = bptree.iter(valueRef);
+          const iter = btree.iter(valueRef);
 
           while (await iter.next()) {
             const currentKey = iter.getKey();
@@ -326,7 +326,7 @@ export class Database<T extends Schema> {
               { offset: maxUint64, length: 0 },
               valueBuf,
             );
-            const iter = bptree.iter(valueRef);
+            const iter = btree.iter(valueRef);
             while (await iter.prev()) {
               const mp = iter.getPointer();
 
@@ -338,8 +338,8 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const firstKey = await bptree.first();
-            const iter = bptree.iter(firstKey);
+            const firstKey = await btree.first();
+            const iter = btree.iter(firstKey);
 
             while (await iter.next()) {
               const currentKey = iter.getKey();
@@ -366,7 +366,7 @@ export class Database<T extends Schema> {
               { offset: 0n, length: 0 },
               valueBuf,
             );
-            const iter = bptree.iter(valueRef);
+            const iter = btree.iter(valueRef);
             while (await iter.prev()) {
               const mp = iter.getPointer();
 
@@ -378,8 +378,8 @@ export class Database<T extends Schema> {
               yield handleSelect(data, query.select);
             }
           } else {
-            const firstKey = await bptree.first();
-            const iter = bptree.iter(firstKey);
+            const firstKey = await btree.first();
+            const iter = btree.iter(firstKey);
 
             while (await iter.next()) {
               const currentKey = iter.getKey();
