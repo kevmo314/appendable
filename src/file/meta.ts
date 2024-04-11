@@ -32,7 +32,6 @@ export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
 
   const { value: entries } = decodeUvarint(buffer.slice(10));
 
-  console.log("entries: ", entries);
   return {
     version,
     format,
