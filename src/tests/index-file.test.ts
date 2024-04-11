@@ -24,5 +24,6 @@ describe("test file parsing", () => {
     expect(indexMeta.width).toEqual(2);
     expect(indexMeta.fieldName).toEqual("howdydo");
     expect(indexMeta.fieldType).toEqual(FieldType.Boolean);
+    expect(indexMeta.totalLength).toEqual(773424601);
   });
 });

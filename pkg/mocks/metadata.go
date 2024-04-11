@@ -58,6 +58,7 @@ func generateIndexMeta() {
 	im.FieldName = "howdydo"
 	im.FieldType = appendable.FieldTypeBoolean
 	im.Width = appendable.DetermineType(appendable.FieldTypeBoolean)
+	im.TotalFieldValueLength = 773424601
 
 	b, err := im.MarshalBinary()
 	if err != nil {

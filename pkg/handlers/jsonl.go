@@ -180,6 +180,8 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					}, data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
+
+					meta.TotalFieldValueLength += uint64(mp.Length)
 				case appendable.FieldTypeUnigram, appendable.FieldTypeBigram, appendable.FieldTypeTrigram:
 					valueStr, ok := value.(string)
 					if !ok {
@@ -199,6 +201,8 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						}, data); err != nil {
 							return fmt.Errorf("failed to insert into b+tree: %w", err)
 						}
+
+						meta.TotalFieldValueLength += uint64(tri.Length)
 					}
 				case appendable.FieldTypeNull:
 					// nil values are a bit of a degenerate case, we are essentially using the btree
@@ -229,6 +233,9 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						data); err != nil {
 						return fmt.Errorf("failed to insert into b+tree: %w", err)
 					}
+
+					meta.TotalFieldValueLength += uint64(mp.Length)
+
 				case appendable.FieldTypeBoolean:
 					valueBool, ok := value.(bool)
 					if !ok {
@@ -249,6 +256,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 							return fmt.Errorf("failed to insert into b+tree: %w", err)
 						}
 					}
+					meta.TotalFieldValueLength += uint64(1)
 				case appendable.FieldTypeArray, appendable.FieldTypeObject:
 					switch value := value.(type) {
 					case json.Token:
@@ -291,8 +299,16 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					return fmt.Errorf("unrecognized type: %T: %v", ft, ft)
 				}
 
+				buf, err := meta.MarshalBinary()
+				if err != nil {
+					return err
+				}
+				if err := page.SetMetadata(buf); err != nil {
+					return err
+				}
 			}
 		}
 	}
+
 	return nil
 }

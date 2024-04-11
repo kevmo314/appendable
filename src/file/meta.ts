@@ -44,6 +44,7 @@ export type IndexMeta = {
   fieldName: string;
   fieldType: number;
   width: number;
+  totalLength: number;
 };
 
 export type IndexHeader = {
@@ -68,10 +69,13 @@ export async function readIndexMeta(buffer: ArrayBuffer): Promise<IndexMeta> {
   const fieldNameBuffer = buffer.slice(6, 6 + nameLength);
   const fieldName = new TextDecoder("utf-8").decode(fieldNameBuffer);
 
+  const { value: totalLength } = decodeUvarint(buffer.slice(6 + nameLength));
+
   return {
     fieldName,
     fieldType,
     width,
+    totalLength,
   };
 }
 

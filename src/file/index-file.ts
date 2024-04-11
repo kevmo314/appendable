@@ -1,7 +1,6 @@
 import { LinkedMetaPage, PAGE_SIZE_BYTES, ReadMultiBTree } from "./multi";
 import { RangeResolver } from "../resolver/resolver";
 import {
-  FileFormat,
   IndexHeader,
   IndexMeta,
   collectIndexMetas,
