@@ -6,6 +6,7 @@ import {
   collectIndexMetas,
   readIndexMeta,
   readFileMeta,
+  FileMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
 import { Config } from "..";
@@ -24,12 +25,6 @@ export class IndexFile {
     return new IndexFileV1<T>(resolver);
   }
 }
-
-export type FileMeta = {
-  version: number;
-  format: number;
-  readOffset: bigint;
-};
 
 export interface VersionedIndexFile<T> {
   getResolver(): RangeResolver;
