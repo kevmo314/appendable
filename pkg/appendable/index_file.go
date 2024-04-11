@@ -192,10 +192,11 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapa
 	metadata.FieldType = fieldType
 	metadata.Width = DetermineType(fieldType)
 	metadata.TotalLength = uint64(0)
+	buf, err := metadata.MarshalBinary()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal metadata: %w", err)
 	}
-	return next, metadata, nil
+	return next, metadata, next.SetMetadata(buf)
 }
 
 // Synchronize will synchronize the index file with the data file.

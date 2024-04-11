@@ -306,7 +306,6 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				if err := page.SetMetadata(buf); err != nil {
 					return err
 				}
-
 			}
 		}
 	}
