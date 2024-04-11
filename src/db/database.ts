@@ -14,7 +14,7 @@ import {
   Search,
 } from "./query-lang";
 import { NgramTokenizer } from "../ngram/tokenizer";
-import { NgramTable } from "../ngram/table";
+import { PriorityTable } from "../ngram/table";
 export enum FieldType {
   String = 0,
   Int64 = 1,
@@ -75,6 +75,11 @@ export function fieldTypeToString(f: FieldType): string {
   return str;
 }
 
+type DataPointer = {
+  start: number;
+  end: number;
+};
+
 export class Database<T extends Schema> {
   private indexHeadersPromise?: Promise<IndexHeader[]>;
 
@@ -103,7 +108,7 @@ export class Database<T extends Schema> {
       throw new Error("composite indexes not supported... yet");
     }
 
-    const { format } = await this.indexFile.metadata();
+    const { format, entries } = await this.indexFile.metadata();
     const dfResolver = this.dataFile.getResolver();
     if (!dfResolver) {
       throw new Error("data file is undefined");
@@ -113,12 +118,13 @@ export class Database<T extends Schema> {
 
     if (query.search) {
       validateSearch(query.search, headers);
-      let { key, like, config } = query.search;
+      let { key: fieldName, like, config } = query.search;
       let { minGram, maxGram } = config!;
+
       const tok = new NgramTokenizer(minGram, maxGram);
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const table = new NgramTable<string>();
+      const table = new PriorityTable<string>();
       const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
       for (const token of likeToks) {
@@ -126,10 +132,10 @@ export class Database<T extends Schema> {
         let mp = metaPageCache.get(fieldType);
 
         if (!mp) {
-          const mps = await this.indexFile.seek(key as string, fieldType);
+          const mps = await this.indexFile.seek(fieldName as string, fieldType);
           if (mps.length !== 1) {
             throw new Error(
-              `Expected to find meta page for key: ${key as string} and type: ${fieldTypeToString(fieldType)}`,
+              `Expected to find meta page for key: ${fieldName as string} and type: ${fieldTypeToString(fieldType)}`,
             );
           }
           mp = mps[0];
@@ -137,8 +143,11 @@ export class Database<T extends Schema> {
           metaPageCache.set(fieldType, mps[0]);
         }
 
-        const { fieldType: mpFieldType, width: mpFieldWidth } =
-          await readIndexMeta(await mp.metadata());
+        const {
+          fieldType: mpFieldType,
+          width: mpFieldWidth,
+          totalFieldValueLength,
+        } = await readIndexMeta(await mp.metadata());
 
         const btree = new BTree(
           this.indexFile.getResolver(),
@@ -149,12 +158,18 @@ export class Database<T extends Schema> {
           mpFieldWidth,
         );
 
+        // calculate the IDF for every token
+        // N = total # of documents
+        // nt = # of documents containing the term
+
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
         );
         const iter = btree.iter(valueRef);
 
+        // for a given document, the number of times this specific token appears
+        let tfMap = new Map<DataPointer, number>();
         while (await iter.next()) {
           const currentKey = iter.getKey();
 
@@ -162,20 +177,52 @@ export class Database<T extends Schema> {
             break;
           }
           const mp = iter.getPointer();
-          const data = await this.dataFile.get(
-            Number(mp.offset),
-            Number(mp.offset) + mp.length - 1,
-          );
-          table.insert(data);
+
+          const dp: DataPointer = {
+            start: Number(mp.offset),
+            end: Number(mp.offset) + mp.length - 1,
+          };
+
+          tfMap.set(dp, (tfMap.get(dp) ?? 0) + 1);
+        }
+
+        const n = entries;
+        const nt = tfMap.size;
+        // The inverse document frequency (IDF) involves # of documents (N) and the # of documents containing the token term
+        const idf = Math.log(1 + (n - nt + 0.5) / nt + 0.5);
+
+        // a parameter used to limit how much a single query term can affect the score for document D.
+        const K1 = 1.2;
+
+        // a parameter used to control the effect of the field length of field t compared to the average field length.
+        const B = 0.75;
+        for (const [key, tf] of tfMap.entries()) {
+          const { start, end } = key;
+          const data = await this.dataFile.get(start, end);
+          const dataRecord = JSON.parse(data);
+          const valueLength = dataRecord[fieldName].length;
+
+          const num = tf * (K1 + 1);
+          const den =
+            tf +
+            K1 *
+              (1 -
+                B +
+                (B * valueLength) /
+                  (valueLength / (totalFieldValueLength / entries)));
+
+          const score = idf * (num / den);
+
+          table.insert(data, score);
         }
       }
 
-      const data = table.top;
-
-      if (!data) {
-        throw new Error(`no trigrams were evaluated`);
+      const pq = table.iter();
+      let next = pq.next();
+      while (!next.done) {
+        const { key, score } = next.value;
+        yield { key: JSON.parse(key), score };
       }
-      yield handleSelect(data.key, query.select);
     }
 
     if (query.where) {
