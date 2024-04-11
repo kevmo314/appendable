@@ -4,7 +4,7 @@ import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
 import { IndexHeader, readIndexMeta } from "../file/meta";
 import { QueryBuilder } from "./query-builder";
-import { validateQuery, validateSearch } from "./query-validation";
+import { validateSearch } from "./query-validation";
 import {
   Query,
   Schema,
@@ -222,6 +222,7 @@ export class Database<T extends Schema> {
       while (!next.done) {
         const { key, score } = next.value;
         yield { key: JSON.parse(key), score };
+        next = pq.next();
       }
     }
 

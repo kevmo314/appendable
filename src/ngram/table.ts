@@ -15,4 +15,11 @@ export class PriorityTable<K> {
       yield { key, score };
     }
   }
+  get size(): number {
+    return this.map.size;
+  }
+
+  clear(): void {
+    this.map = new Map<K, number>();
+  }
 }

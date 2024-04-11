@@ -80,7 +80,7 @@
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
 
-          const { key, score } = result.value;
+          const { key } = result.value;
           resultDiv.textContent = JSON.stringify(key);
           resultsElement.appendChild(resultDiv);
         }
