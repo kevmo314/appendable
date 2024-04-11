@@ -134,19 +134,22 @@ func (m *FileMeta) UnmarshalBinary(buf []byte) error {
 }
 
 type IndexMeta struct {
-	FieldName   string
-	FieldType   FieldType
-	Width       uint16
-	TotalLength uint64
+	FieldName string
+	FieldType FieldType
+	Width     uint16
+
+	// TotalFieldValueLength represents the cumulative sum of the lengths of the entries
+	// within this index, used for computing the average length.
+	TotalFieldValueLength uint64
 }
 
 func (m *IndexMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 2+2+len(m.FieldName)+2+encoding.SizeVarint(m.TotalLength))
+	buf := make([]byte, 2+2+len(m.FieldName)+2+encoding.SizeVarint(m.TotalFieldValueLength))
 	binary.LittleEndian.PutUint16(buf[0:], uint16(m.FieldType))
 	binary.LittleEndian.PutUint16(buf[2:], m.Width)
 	binary.LittleEndian.PutUint16(buf[4:], uint16(len(m.FieldName)))
 	copy(buf[6:], m.FieldName)
-	binary.PutUvarint(buf[6+len(m.FieldName):], m.TotalLength)
+	binary.PutUvarint(buf[6+len(m.FieldName):], m.TotalFieldValueLength)
 	return buf, nil
 }
 
@@ -162,7 +165,7 @@ func (m *IndexMeta) UnmarshalBinary(buf []byte) error {
 	}
 	m.FieldName = string(buf[6 : 6+nameLength])
 	tl, _ := binary.Uvarint(buf[6+nameLength:])
-	m.TotalLength = tl
+	m.TotalFieldValueLength = tl
 	return nil
 }
 

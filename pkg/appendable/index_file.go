@@ -191,7 +191,7 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapa
 	metadata.FieldName = name
 	metadata.FieldType = fieldType
 	metadata.Width = DetermineType(fieldType)
-	metadata.TotalLength = uint64(0)
+	metadata.TotalFieldValueLength = uint64(0)
 	buf, err := metadata.MarshalBinary()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal metadata: %w", err)
