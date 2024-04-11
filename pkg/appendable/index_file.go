@@ -27,6 +27,7 @@ type IndexFile struct {
 	BenchmarkCallback func(int)
 
 	searchHeaders []string
+	lastPages     map[*metapage.LinkedMetaPage]struct{}
 }
 
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders []string) (*IndexFile, error) {
@@ -78,7 +79,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 			if metadata.Format != dataHandler.Format() {
 				return nil, fmt.Errorf("unsupported format: %x", metadata.Format)
 			}
-			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf, searchHeaders: searchHeaders}, nil
+			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf, searchHeaders: searchHeaders, lastPages: make(map[*metapage.LinkedMetaPage]struct{})}, nil
 		}
 	}
 }
@@ -191,11 +192,11 @@ func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapa
 	metadata.FieldName = name
 	metadata.FieldType = fieldType
 	metadata.Width = DetermineType(fieldType)
-	buf, err := metadata.MarshalBinary()
+	metadata.TotalLength = uint64(0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to marshal metadata: %w", err)
 	}
-	return next, metadata, next.SetMetadata(buf)
+	return next, metadata, nil
 }
 
 // Synchronize will synchronize the index file with the data file.

@@ -1,7 +1,6 @@
 import { LinkedMetaPage, PAGE_SIZE_BYTES, ReadMultiBTree } from "./multi";
 import { RangeResolver } from "../resolver/resolver";
 import {
-  FileFormat,
   IndexHeader,
   IndexMeta,
   collectIndexMetas,
@@ -137,6 +136,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
     let indexMetas: IndexMeta[] = [];
     for (const mp of this.linkedMetaPages) {
       const im = await readIndexMeta(await mp.metadata());
+      console.log("total Length for ", im.fieldName, im.totalLength);
       indexMetas.push(im);
     }
 
