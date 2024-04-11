@@ -138,8 +138,7 @@ type IndexMeta struct {
 	FieldType FieldType
 	Width     uint16
 
-	// TotalFieldValueLength represents the cumulative sum of the lengths of the entries
-	// within this index, used for computing the average length.
+	// TotalFieldValueLength represents the cumulative sum of the lengths of the entries within this index, used for computing the average length.
 	TotalFieldValueLength uint64
 }
 
