@@ -41,6 +41,7 @@ func generateFileMeta() {
 	fm.Format = 1
 	fm.Version = 1
 	fm.ReadOffset = 4096
+	fm.Entries = 34
 
 	b, err := fm.MarshalBinary()
 	if err != nil {

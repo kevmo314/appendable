@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
-	"math/bits"
 )
 
 type ReferencedValue struct {
@@ -73,16 +73,12 @@ func (n *BTreeNode) NumPointers() int {
 	return len(n.InternalPointers) + len(n.LeafPointers)
 }
 
-func SizeVariant(v uint64) int {
-	return int(9*uint32(bits.Len64(v))+64) / 64
-}
-
 func (n *BTreeNode) Size() int64 {
 
 	size := 4 // number of keys
 	for _, k := range n.Keys {
-		o := SizeVariant(uint64(k.DataPointer.Offset))
-		l := SizeVariant(uint64(k.DataPointer.Length))
+		o := encoding.SizeVarint(uint64(k.DataPointer.Offset))
+		l := encoding.SizeVarint(uint64(k.DataPointer.Length))
 		size += l + o
 
 		if n.Width != uint16(0) {
@@ -90,8 +86,8 @@ func (n *BTreeNode) Size() int64 {
 		}
 	}
 	for _, n := range n.LeafPointers {
-		o := SizeVariant(uint64(n.Offset))
-		l := SizeVariant(uint64(n.Length))
+		o := encoding.SizeVarint(uint64(n.Offset))
+		l := encoding.SizeVarint(uint64(n.Length))
 		size += o + l
 	}
 	for _, n := range n.InternalPointers {

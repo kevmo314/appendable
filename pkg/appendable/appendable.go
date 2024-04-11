@@ -3,6 +3,7 @@ package appendable
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/encoding"
 	"strings"
 )
 
@@ -95,13 +96,15 @@ type FileMeta struct {
 	// For example, in JSONL, this is the number of bytes read
 	// and indexed so far.
 	ReadOffset uint64
+	Entries    uint64
 }
 
 func (m *FileMeta) MarshalBinary() ([]byte, error) {
-	buf := make([]byte, 10)
+	buf := make([]byte, 10+encoding.SizeVarint(m.Entries))
 	buf[0] = byte(m.Version)
 	buf[1] = byte(m.Format)
 	binary.LittleEndian.PutUint64(buf[2:], m.ReadOffset)
+	binary.PutUvarint(buf[10:], m.Entries)
 	return buf, nil
 }
 
@@ -123,6 +126,10 @@ func (m *FileMeta) UnmarshalBinary(buf []byte) error {
 	}
 
 	m.ReadOffset = binary.LittleEndian.Uint64(buf[2:])
+
+	e, _ := binary.Uvarint(buf[10:])
+	m.Entries = e
+
 	return nil
 }
 
