@@ -27,7 +27,6 @@ type IndexFile struct {
 	BenchmarkCallback func(int)
 
 	searchHeaders []string
-	lastPages     map[*metapage.LinkedMetaPage]struct{}
 }
 
 func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders []string) (*IndexFile, error) {
@@ -79,7 +78,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 			if metadata.Format != dataHandler.Format() {
 				return nil, fmt.Errorf("unsupported format: %x", metadata.Format)
 			}
-			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf, searchHeaders: searchHeaders, lastPages: make(map[*metapage.LinkedMetaPage]struct{})}, nil
+			return &IndexFile{tree: tree, dataHandler: dataHandler, pf: pf, searchHeaders: searchHeaders}, nil
 		}
 	}
 }
