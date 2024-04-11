@@ -1,3 +1,5 @@
+import { decodeUvarint } from "../util/uvarint";
+
 export enum FileFormat {
   JSONL = 0,
   CSV = 1,
@@ -7,30 +9,35 @@ export type FileMeta = {
   version: number;
   format: FileFormat;
   readOffset: bigint;
+  entries: number;
 };
 
 export async function readFileMeta(buffer: ArrayBuffer): Promise<FileMeta> {
-  if (buffer.byteLength !== 10) {
+  // unmarshall binary for FileMeta
+  if (buffer.byteLength <= 10) {
     throw new Error(
       `incorrect byte length! Want: 10, got ${buffer.byteLength}`,
     );
   }
 
   const dataView = new DataView(buffer);
-
   const version = dataView.getUint8(0);
-  const formatByte = dataView.getUint8(1);
+  const format = dataView.getUint8(1);
 
-  if (Object.values(FileFormat).indexOf(formatByte) === -1) {
-    throw new Error(`unexpected file format. Got: ${formatByte}`);
+  if (Object.values(FileFormat).indexOf(format) === -1) {
+    throw new Error(`unexpected file format. Got: ${format}`);
   }
 
   const readOffset = dataView.getBigUint64(2, true);
 
+  const { value: entries } = decodeUvarint(buffer.slice(10));
+
+  console.log("entries: ", entries);
   return {
     version,
-    format: formatByte,
+    format,
     readOffset,
+    entries,
   };
 }
 

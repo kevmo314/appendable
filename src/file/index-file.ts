@@ -6,6 +6,7 @@ import {
   IndexMeta,
   collectIndexMetas,
   readIndexMeta,
+  readFileMeta,
 } from "./meta";
 import { FieldType } from "../db/database";
 import { Config } from "..";
@@ -69,31 +70,8 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
   async metadata(): Promise<FileMeta> {
     const tree = await this.tree();
-
     const buffer = await tree.metadata();
-
-    // unmarshall binary for FileMeta
-    if (buffer.byteLength < 10) {
-      throw new Error(
-        `incorrect byte length! Want: 10, got ${buffer.byteLength}`,
-      );
-    }
-
-    const dataView = new DataView(buffer);
-    const version = dataView.getUint8(0);
-    const formatByte = dataView.getUint8(1);
-
-    if (Object.values(FileFormat).indexOf(formatByte) === -1) {
-      throw new Error(`unexpected file format. Got: ${formatByte}`);
-    }
-
-    const readOffset = dataView.getBigUint64(2, true);
-
-    return {
-      version: version,
-      format: formatByte,
-      readOffset: readOffset,
-    };
+    return readFileMeta(buffer);
   }
 
   async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {

@@ -60,6 +60,8 @@ func (j JSONLHandler) Synchronize(f *appendable.IndexFile, df []byte) error {
 		if f.BenchmarkCallback != nil {
 			f.BenchmarkCallback(int(metadata.ReadOffset))
 		}
+
+		metadata.Entries++
 	}
 
 	// update the metadata
