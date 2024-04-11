@@ -16,6 +16,7 @@ describe("test file parsing", () => {
     expect(fileMeta.format).toEqual(FileFormat.CSV);
     expect(fileMeta.version).toEqual(1);
     expect(fileMeta.readOffset).toEqual(4096n);
+    expect(fileMeta.entries).toEqual(34);
   });
 
   it("should read the index meta", async () => {
