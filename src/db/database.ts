@@ -207,7 +207,7 @@ export class Database<T extends Schema> {
         }
       }
 
-      yield table.top();
+      yield* table.top();
     }
 
     if (query.where) {

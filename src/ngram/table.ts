@@ -8,7 +8,7 @@ export class PriorityTable<K> {
     this.map.set(key, prevScore + score);
   }
 
-  top(): Entry<K>[] {
+  top() {
     return Array.from(this.map, ([key, score]) => ({ key, score })).sort(
       (m, n) => n.score - m.score,
     );
