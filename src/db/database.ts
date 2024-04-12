@@ -158,10 +158,6 @@ export class Database<T extends Schema> {
           mpFieldWidth,
         );
 
-        // calculate the IDF for every token
-        // N = total # of documents
-        // nt = # of documents containing the term
-
         const valueRef = new ReferencedValue(
           { offset: 0n, length: 0 },
           valueBuf,
@@ -186,16 +182,17 @@ export class Database<T extends Schema> {
           tfMap.set(dp, (tfMap.get(dp) ?? 0) + 1);
         }
 
-        const n = entries;
-        const nt = tfMap.size;
-        // The inverse document frequency (IDF) involves # of documents (N) and the # of documents containing the token term
-        const idf = Math.log(1 + (n - nt + 0.5) / nt + 0.5);
+        // BM25 Algorithm
+        // https://docs.vespa.ai/en/reference/bm25.html#:~:text=The%20bm25%20rank%20feature%20implements,over%20an%20indexed%20string%20field.
+        const n = entries; // total number of documents
+        const nt = tfMap.size; // number of documents containing this token
+        const idf = Math.log((n - nt + 0.5) / (nt + 0.5)); // inverse document frequency formula
 
-        // a parameter used to limit how much a single query term can affect the score for document D.
+        // BM25 constants
         const K1 = 1.2;
-
-        // a parameter used to control the effect of the field length of field t compared to the average field length.
         const B = 0.75;
+        const avgdl = totalFieldValueLength / entries; // Average document length
+
         for (const [key, tf] of tfMap.entries()) {
           const { start, end } = key;
           const data = await this.dataFile.get(start, end);
@@ -203,27 +200,14 @@ export class Database<T extends Schema> {
           const valueLength = dataRecord[fieldName].length;
 
           const num = tf * (K1 + 1);
-          const den =
-            tf +
-            K1 *
-              (1 -
-                B +
-                (B * valueLength) /
-                  (valueLength / (totalFieldValueLength / entries)));
-
+          const den = tf + K1 * (1 - B + (B * valueLength) / avgdl);
           const score = idf * (num / den);
 
           table.insert(data, score);
         }
       }
 
-      const pq = table.iter();
-      let next = pq.next();
-      while (!next.done) {
-        const { key, score } = next.value;
-        yield { key: JSON.parse(key), score };
-        next = pq.next();
-      }
+      yield table.top();
     }
 
     if (query.where) {

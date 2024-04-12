@@ -7,15 +7,16 @@ describe("tests ngram table", () => {
     table.insert("do", 3);
     table.insert("howdy", 2);
 
-    const pq = table.iter();
-    const value = pq.next().value;
-    expect(value).toEqual({ key: "howdy", score: 5 });
+    const pq = table.top();
+    expect(pq.length).toEqual(2);
+    expect(pq[0]).toEqual({ key: "howdy", score: 5 });
+    expect(pq[1]).toEqual({ key: "do", score: 3 });
   });
 
   it("should return null for top", () => {
     const table = new PriorityTable<string>();
-    const pq = table.iter();
-    expect(pq.next().done).toBeTruthy();
+    const pq = table.top();
+    expect(pq.length).toEqual(0);
   });
 
   it("should correctly clear all entries", () => {
@@ -27,8 +28,8 @@ describe("tests ngram table", () => {
     expect(table.size).toEqual(2);
     table.clear();
 
-    const pq = table.iter();
-    expect(pq.next().done).toBeTruthy();
+    const pq = table.top();
+    expect(pq.length).toEqual(0);
     expect(table.size).toEqual(0);
   });
 
@@ -45,19 +46,12 @@ describe("tests ngram table", () => {
       entries.set(randomKey, (entries.get(randomKey) || 0) + idx);
     }
 
-    const sorted = Array.from(entries).sort((m, n) => n[1] - m[1]);
-    let queue = table.iter();
+    const sorted = Array.from(entries, ([key, score]) => ({
+      key,
+      score,
+    })).sort((m, n) => n.score - m.score);
+    let queue = table.top();
 
-    let idx = 0;
-
-    let next = queue.next();
-    while (!next.done) {
-      const { key } = next.value;
-
-      expect(key).toEqual(sorted[idx][0]);
-      idx++;
-
-      next = queue.next();
-    }
+    expect(sorted).toEqual(queue);
   });
 });

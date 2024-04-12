@@ -8,18 +8,16 @@ export class PriorityTable<K> {
     this.map.set(key, prevScore + score);
   }
 
-  *iter(): IterableIterator<Entry<K>> {
-    const sorted = Array.from(this.map.entries()).sort((m, n) => n[1] - m[1]);
-
-    for (const [key, score] of sorted) {
-      yield { key, score };
-    }
+  top(): Entry<K>[] {
+    return Array.from(this.map, ([key, score]) => ({ key, score })).sort(
+      (m, n) => n.score - m.score,
+    );
   }
   get size(): number {
     return this.map.size;
   }
 
   clear(): void {
-    this.map = new Map<K, number>();
+    this.map.clear();
   }
 }
