@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="font-roboto h-screen p-4 text-altaPurple">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -9,10 +9,13 @@
         theme: {
           extend: {
             colors: {
-              blu: "#1a73e8",
+              altaBlue: "#1a73e8",
+              altaYellow: "#fcc760",
+              altaPurple: "#090b78",
             },
             fontFamily: {
-              times: ["Times New Roman", "Times", "serif"],
+              roman: ["Times New Roman", "Times", "serif"],
+              roboto: ["Roboto", "sans-serif"],
             },
           },
         },
@@ -20,28 +23,30 @@
     </script>
     <script src="appendable.min.js"></script>
   </head>
-
-  <body class="h-screen w-full flex justify-center">
-    <div class="flex flex-col items-center w-10/12 space-y-8">
-      <nav
-        class="h-12 w-full items-center p-4 font-times text-xl space-x-8 flex"
-      >
-        <p class="">Appendable</p>
-        <p class="">Source Code</p>
-      </nav>
-
-      <input
-        type="text"
-        id="searchbar"
-        name="searchbar"
-        placeholder="Search"
-        required
-        class="w-full px-4 py-2 text-xl focus:outline-none shadow-xl rounded-xl border-2 border-gray-300 focus:border-gray-800 transition ease-in duration-300"
-        oninput="updateSearchBarState(this.value)"
-      />
-
-      <pre id="results"></pre>
+  <nav class="w-full flex flex-col items-center font-semibold">
+    <div class="h-40 w-10/12 flex flex-col">
+      <div class="flex space-x-8 bg-altaBlue text-white">
+        <a href="https://github.com/kevmo314/appendable" target="_blank">
+          <p>Appendable</p>
+        </a>
+        <a href="https://github.com/kevmo314/appendable" target="_blank">
+          <p>Source Code</p>
+        </a>
+      </div>
+      <form class="bg-altaYellow flex-1 p-4" onsubmit="submitQuery(event)">
+        <input
+          type="text"
+          id="searchbar"
+          name="searchbar"
+          required
+          class="w-full px-4 py-2 text-lg border-black border outline-none"
+        />
+        <button type="submit">Submit</button>
+      </form>
     </div>
+  </nav>
+  <body class="flex-1 w-10/12 flex flex-col">
+    <pre class="w-full" id="results"></pre>
 
     <script>
       let dbInstance = null;
@@ -51,9 +56,15 @@
       }).then(async (db) => {
         dbInstance = db;
       });
-      async function updateSearchBarState(value) {
+
+      async function submitQuery(event) {
         document.getElementById("results").innerHTML = "";
+        event.preventDefault();
+        const searchBar = document.getElementById("searchbar");
+        const value = searchBar.value;
+
         if (value.length >= 3 && dbInstance != null) {
+          console.log(`firing query`);
           const query = await dbInstance.query({
             search: {
               key: "description",
@@ -69,23 +80,48 @@
         }
       }
       async function bindQuery(query) {
+        console.log(`bindQuery called`);
         const resultsElement = document.getElementById("results");
 
+        // returns false when there is no more result to append to.
         async function appendResult() {
           const result = await query.next();
           if (result.done) {
-            return;
+            console.log(`done`);
+            return false;
           }
+
+          console.log(`more`);
 
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
 
-          const { key } = result.value;
-          resultDiv.textContent = JSON.stringify(key);
-          resultsElement.appendChild(resultDiv);
+          const { key, score } = result.value;
+          console.log(score, key);
+          try {
+            const keyObj = JSON.parse(key);
+
+            if ("description" in keyObj) {
+              resultDiv.textContent = JSON.stringify(keyObj.description);
+              resultsElement.appendChild(resultDiv);
+
+              return true;
+            }
+          } catch (e) {
+            throw new Error(`Error firing search query: ${e}`);
+          }
+
+          return false;
         }
 
-        await appendResult();
+        let res = appendResult();
+        console.log(`init res: ${res}`);
+        if (!res) {
+          console.error(`init res is null`);
+        }
+        while (res) {
+          res = await appendResult();
+        }
       }
     </script>
   </body>
