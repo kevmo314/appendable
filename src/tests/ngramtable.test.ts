@@ -1,35 +1,40 @@
-import { NgramTable } from "../ngram/table";
+import { PriorityTable } from "../ngram/table";
 
 describe("tests ngram table", () => {
   it("correctly tracks the count", () => {
-    const table = new NgramTable<string>();
-    table.insert("howdy");
-    table.insert("do");
-    table.insert("howdy");
+    const table = new PriorityTable<string>();
+    table.insert("howdy", 3);
+    table.insert("do", 3);
+    table.insert("howdy", 2);
 
-    expect(table.top).toEqual({ key: "howdy", count: 2 });
+    const pq = table.top();
+    expect(pq.length).toEqual(2);
+    expect(pq[0]).toEqual({ key: "howdy", score: 5 });
+    expect(pq[1]).toEqual({ key: "do", score: 3 });
   });
 
   it("should return null for top", () => {
-    const table = new NgramTable<string>();
-    expect(table.top).toBeNull();
+    const table = new PriorityTable<string>();
+    const pq = table.top();
+    expect(pq.length).toEqual(0);
   });
 
   it("should correctly clear all entries", () => {
-    const table = new NgramTable<string>();
-    table.insert("wef");
-    table.insert("wef");
-    table.insert("wef");
-    table.insert("ty");
+    const table = new PriorityTable<string>();
+    table.insert("wef", 4);
+    table.insert("wef", 3);
+    table.insert("wef", 2);
+    table.insert("ty", 1);
     expect(table.size).toEqual(2);
     table.clear();
 
-    expect(table.top).toBeNull();
+    const pq = table.top();
+    expect(pq.length).toEqual(0);
     expect(table.size).toEqual(0);
   });
 
   it("handles a large number of varied inserts", () => {
-    const table = new NgramTable<string>();
+    const table = new PriorityTable<string>();
     const entries = new Map<string, number>();
     const itemCount = 1000;
     const possibleEntries = ["wef", "wef a", "beef", "tarikoplata", "omoplata"];
@@ -37,20 +42,16 @@ describe("tests ngram table", () => {
     for (let idx = 0; idx < itemCount; idx++) {
       const randomKey =
         possibleEntries[Math.floor(Math.random() * possibleEntries.length)];
-      table.insert(randomKey);
-      entries.set(randomKey, (entries.get(randomKey) || 0) + 1);
+      table.insert(randomKey, idx);
+      entries.set(randomKey, (entries.get(randomKey) || 0) + idx);
     }
 
-    while (table.size > 0) {
-      let expectedTop = { key: "", count: 0 };
-      for (const [key, count] of entries) {
-        if (count > expectedTop.count) {
-          expectedTop = { key, count };
-        }
-      }
+    const sorted = Array.from(entries, ([key, score]) => ({
+      key,
+      score,
+    })).sort((m, n) => n.score - m.score);
+    let queue = table.top();
 
-      expect(table.top).toEqual(expectedTop);
-      entries.delete(expectedTop.key);
-    }
+    expect(sorted).toEqual(queue);
   });
 });

@@ -52,11 +52,16 @@
         dbInstance = db;
       });
       async function updateSearchBarState(value) {
+        document.getElementById("results").innerHTML = "";
         if (value.length >= 3 && dbInstance != null) {
           const query = await dbInstance.query({
             search: {
               key: "description",
               like: value,
+              config: {
+                minGram: 3,
+                maxGram: 3,
+              },
             },
           });
 
@@ -74,7 +79,9 @@
 
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
-          resultDiv.textContent = JSON.stringify(result.value);
+
+          const { key } = result.value;
+          resultDiv.textContent = JSON.stringify(key);
           resultsElement.appendChild(resultDiv);
         }
 
