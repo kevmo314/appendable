@@ -80,14 +80,12 @@
         }
       }
       async function bindQuery(query) {
-        console.log(`bindQuery called`);
         const resultsElement = document.getElementById("results");
 
         // returns false when there is no more result to append to.
         async function appendResult() {
           const result = await query.next();
           if (result.done) {
-            console.log(`done`);
             return false;
           }
 
@@ -96,10 +94,9 @@
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
 
-          const { key, score } = result.value;
-          console.log(score, key);
+          const { data, score } = result.value;
           try {
-            const keyObj = JSON.parse(key);
+            const keyObj = JSON.parse(data);
 
             if ("description" in keyObj) {
               resultDiv.textContent = JSON.stringify(keyObj.description);
@@ -114,13 +111,12 @@
           return false;
         }
 
-        let res = appendResult();
-        console.log(`init res: ${res}`);
-        if (!res) {
-          console.error(`init res is null`);
-        }
-        while (res) {
-          res = await appendResult();
+
+        for (let idx = 0; idx <= 9; idx++) {
+          const res = await appendResult();
+          if (!res) {
+            break;
+          }
         }
       }
     </script>
