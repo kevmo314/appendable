@@ -15,6 +15,7 @@ import {
 } from "./query-lang";
 import { NgramTokenizer } from "../ngram/tokenizer";
 import { PriorityTable } from "../ngram/table";
+import { DataPointer } from "../btree/node";
 export enum FieldType {
   String = 0,
   Int64 = 1,
@@ -74,11 +75,6 @@ export function fieldTypeToString(f: FieldType): string {
   }
   return str;
 }
-
-type DataPointer = {
-  start: number;
-  end: number;
-};
 
 export class Database<T extends Schema> {
   private indexHeadersPromise?: Promise<IndexHeader[]>;
@@ -156,31 +152,12 @@ export class Database<T extends Schema> {
           format,
           mpFieldType,
           mpFieldWidth,
+          entries,
         );
 
-        const valueRef = new ReferencedValue(
-          { offset: 0n, length: 0 },
-          valueBuf,
+        const tfMap = await btree.termFrequency(
+          new ReferencedValue({ offset: 0n, length: 0 }, valueBuf),
         );
-        const iter = btree.iter(valueRef);
-
-        // for a given document, the number of times this specific token appears
-        let tfMap = new Map<DataPointer, number>();
-        while (await iter.next()) {
-          const currentKey = iter.getKey();
-
-          if (ReferencedValue.compareBytes(currentKey.value, valueBuf) !== 0) {
-            break;
-          }
-          const mp = iter.getPointer();
-
-          const dp: DataPointer = {
-            start: Number(mp.offset),
-            end: Number(mp.offset) + mp.length - 1,
-          };
-
-          tfMap.set(dp, (tfMap.get(dp) ?? 0) + 1);
-        }
 
         // BM25 Algorithm
         // https://docs.vespa.ai/en/reference/bm25.html#:~:text=The%20bm25%20rank%20feature%20implements,over%20an%20indexed%20string%20field.
@@ -240,6 +217,7 @@ export class Database<T extends Schema> {
           format,
           mpFieldType,
           mpFieldWidth,
+          entries,
         );
 
         if (operation === ">") {

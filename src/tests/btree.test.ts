@@ -58,6 +58,7 @@ describe("test BTree", () => {
       FileFormat.CSV,
       FieldType.String,
       6,
+      4,
     );
   });
 
@@ -116,6 +117,7 @@ describe("test BTree iterator count", () => {
       FileFormat.CSV,
       FieldType.String,
       9,
+      10,
     );
   });
 

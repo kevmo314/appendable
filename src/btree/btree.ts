@@ -1,4 +1,4 @@
-import { BTreeNode, MemoryPointer } from "./node";
+import { BTreeNode, DataPointer, MemoryPointer } from "./node";
 import { RangeResolver } from "../resolver/resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
 import { FileFormat } from "../file/meta";
@@ -21,6 +21,14 @@ export class BTree {
   private readonly pageFieldType: FieldType;
   private readonly pageFieldWidth: number;
 
+  // insight attributes below
+
+  private readonly entries: number;
+  private readonly tfMap: Map<DataPointer, number> = new Map<
+    DataPointer,
+    number
+  >();
+
   constructor(
     tree: RangeResolver,
     meta: MetaPage,
@@ -28,6 +36,7 @@ export class BTree {
     fileFormat: FileFormat,
     pageFieldType: FieldType,
     pageFieldWidth: number,
+    entries: number,
   ) {
     this.tree = tree;
     this.meta = meta;
@@ -35,6 +44,7 @@ export class BTree {
     this.fileFormat = fileFormat;
     this.pageFieldType = pageFieldType;
     this.pageFieldWidth = pageFieldWidth;
+    this.entries = entries;
   }
 
   async root(): Promise<RootResponse> {
@@ -157,6 +167,29 @@ export class BTree {
     }
 
     return [p.getKey(), p.getPointer()];
+  }
+
+  // these traverse through the iterator
+  public async termFrequency(key: ReferencedValue) {
+    const p = await this.iter(key);
+
+    while (await p.next()) {
+      const currentKey = p.getKey();
+
+      if (ReferencedValue.compareBytes(currentKey.value, key.value) !== 0) {
+        break;
+      }
+      const mp = p.getPointer();
+
+      const dp: DataPointer = {
+        start: Number(mp.offset),
+        end: Number(mp.offset) + mp.length - 1,
+      };
+
+      this.tfMap.set(dp, (this.tfMap.get(dp) ?? 0) + 1);
+    }
+
+    return this.tfMap;
   }
 }
 

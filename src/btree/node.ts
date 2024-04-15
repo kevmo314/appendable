@@ -7,6 +7,12 @@ import { ReferencedValue } from "./btree";
 export const pageSizeBytes = 4096;
 
 export type MemoryPointer = { offset: bigint; length: number };
+
+export type DataPointer = {
+  start: number;
+  end: number;
+};
+
 export class BTreeNode {
   public keys: ReferencedValue[];
   public leafPointers: MemoryPointer[];
