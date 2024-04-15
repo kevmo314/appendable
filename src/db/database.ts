@@ -120,7 +120,7 @@ export class Database<T extends Schema> {
       const tok = new NgramTokenizer(minGram, maxGram);
       const likeToks = NgramTokenizer.shuffle(tok.tokens(like));
 
-      const table = new PriorityTable<string>();
+      const table = new PriorityTable<DataPointer>();
       const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
       for (const token of likeToks) {
@@ -159,32 +159,26 @@ export class Database<T extends Schema> {
           new ReferencedValue({ offset: 0n, length: 0 }, valueBuf),
         );
 
-        // BM25 Algorithm
-        // https://docs.vespa.ai/en/reference/bm25.html#:~:text=The%20bm25%20rank%20feature%20implements,over%20an%20indexed%20string%20field.
         const n = entries; // total number of documents
         const nt = tfMap.size; // number of documents containing this token
         const idf = Math.log((n - nt + 0.5) / (nt + 0.5)); // inverse document frequency formula
 
-        // BM25 constants
         const K1 = 1.2;
-        const B = 0.75;
-        const avgdl = totalFieldValueLength / entries; // Average document length
 
         for (const [key, tf] of tfMap.entries()) {
-          const { start, end } = key;
-          const data = await this.dataFile.get(start, end);
-          const dataRecord = JSON.parse(data);
-          const valueLength = dataRecord[fieldName].length;
-
           const num = tf * (K1 + 1);
-          const den = tf + K1 * (1 - B + (B * valueLength) / avgdl);
+          const den = tf + K1;
           const score = idf * (num / den);
 
-          table.insert(data, score);
+          table.insert(key, score);
         }
       }
 
-      yield* table.top();
+      for (const { key, score } of table.top()) {
+        const { start, end } = key;
+        const data = await this.dataFile.get(start, end);
+        yield { data, score };
+      }
     }
 
     if (query.where) {
