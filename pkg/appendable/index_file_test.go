@@ -1,7 +1,6 @@
 package appendable
 
 import (
-	"log"
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/buftest"
@@ -34,8 +33,6 @@ func TestIndexFile(t *testing.T) {
 		); err != nil {
 			t.Fatal(err)
 		}
-
-		log.Printf("trying to recreate")
 
 		// try creating a new index file with a different format
 		if _, err := NewIndexFile(f, &FormatHandler{ReturnsFormat: Format(2)}, em); err == nil {
