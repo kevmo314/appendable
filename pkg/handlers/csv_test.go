@@ -3,11 +3,12 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/kevmo314/appendable/pkg/pointer"
 	"log/slog"
 	"math"
 	"os"
 	"testing"
+
+	"github.com/kevmo314/appendable/pkg/pointer"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
@@ -36,20 +37,6 @@ func TestCSV(t *testing.T) {
 		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
-		}
-
-		indexes1, err := i.Indexes()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		collected1, err := indexes1.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(collected1) != 0 {
-			t.Errorf("got len(i.Indexes) = %d, want 0", len(collected1))
 		}
 
 		if err := i.Synchronize(g); err != nil {

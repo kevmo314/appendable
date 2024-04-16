@@ -3,11 +3,12 @@ package handlers
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
+	"testing"
+
 	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/ngram"
 	"github.com/kevmo314/appendable/pkg/pointer"
-	"math"
-	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/btree"
@@ -24,21 +25,6 @@ func TestJSONL(t *testing.T) {
 		i, err := appendable.NewIndexFile(f, JSONLHandler{}, em)
 		if err != nil {
 			t.Fatal(err)
-		}
-
-		// check that the index file now has the additional data ranges but same number of indices
-		indexes1, err := i.Indexes()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		collected1, err := indexes1.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if len(collected1) != 0 {
-			t.Errorf("got len(i.Indexes) = %d, want 0", len(collected1))
 		}
 
 		if err := i.Synchronize(g); err != nil {

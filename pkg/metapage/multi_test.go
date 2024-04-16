@@ -6,6 +6,7 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/pagefile"
+	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
 func TestMultiBTree(t *testing.T) {
@@ -19,12 +20,12 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		exists, err := tree.Exists()
+		pages, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if exists {
-			t.Fatalf("expected not found, got page %v", tree)
+		if len(pages) > 0 {
+			t.Fatal("expected not found")
 		}
 	})
 
@@ -38,19 +39,15 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
+		if _, err := tree.AddNext(); err != nil {
 			t.Fatal(err)
 		}
-		exists, err := tree.Exists()
+		pages, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !exists {
-			t.Fatal("expected found")
-		}
-		mp := tree.MemoryPointer()
-		if mp.Length != 24 {
-			t.Fatalf("expected length 24, got %d", mp.Length)
+		if len(pages) != 1 {
+			t.Fatalf("expected to find %d pages, got %d", 1, len(pages))
 		}
 	})
 
@@ -64,35 +61,34 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
-			t.Fatal(err)
-		}
+
 		next1, err := tree.AddNext()
 		if err != nil {
 			t.Fatal(err)
-		}
-		if next1.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next1)
 		}
 		next2, err := next1.AddNext()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if next2.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next2)
+
+		if reflect.DeepEqual(next1, next2) {
+			t.Fatalf("expected different pages, got %v", next1)
 		}
 
-		if next1.MemoryPointer().Offset == next2.MemoryPointer().Offset {
-			t.Fatalf("expected different offsets, got %d", next1.MemoryPointer().Offset)
-		}
-
-		// check the first page
-		m1, err := tree.Next()
+		pages, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(m1.MemoryPointer(), next1.MemoryPointer()) {
-			t.Fatalf("got %v want %v", m1.MemoryPointer(), next1.MemoryPointer())
+		if len(pages) != 2 {
+			t.Fatalf("expected to find %d pages, got %d", 2, len(pages))
+		}
+
+		// check the first page
+		if !reflect.DeepEqual(pages[0], next1) {
+			t.Fatalf("got %v, want %v", pages[0], next1)
+		}
+		if !reflect.DeepEqual(pages[1], next2) {
+			t.Fatalf("got %v, want %v", pages[1], next2)
 		}
 	})
 
@@ -106,23 +102,17 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
+
+		if _, err := tree.AddNext(); err != nil {
 			t.Fatal(err)
 		}
-		next1, err := tree.AddNext()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if next1.MemoryPointer().Length != 24 {
-			t.Fatalf("expected length 24, got %d", next1)
-		}
-		_, err = tree.AddNext()
-		if err == nil {
+
+		if _, err := tree.AddNext(); err == nil {
 			t.Fatal("expected error")
 		}
 	})
 
-	t.Run("starts with empty metadata", func(t *testing.T) {
+	t.Run("can't store metadata on a tree", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -132,16 +122,29 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
-			t.Fatal(err)
+		if err := tree.SetMetadata([]byte("hello")); err != errNotAPage {
+			t.Fatal("expected error")
 		}
-		metadata, err := tree.Metadata()
+		if _, err := tree.Metadata(); err != errNotAPage {
+			t.Fatal("expected error")
+		}
+	})
 
+	t.Run("can't store root on a tree", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(metadata) != 0 {
-			t.Fatalf("expected empty metadata, got %v", metadata)
+		tree, err := NewMultiBTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.SetRoot(pointer.MemoryPointer{}); err != errNotAPage {
+			t.Fatal("expected error")
+		}
+		if _, err := tree.Root(); err != errNotAPage {
+			t.Fatal("expected error")
 		}
 	})
 
@@ -155,14 +158,14 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
+		node, err := tree.AddNext()
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.SetMetadata([]byte("hello")); err != nil {
+		if err := node.SetMetadata([]byte("hello")); err != nil {
 			t.Fatal(err)
 		}
-		metadata, err := tree.Metadata()
-
+		metadata, err := node.Metadata()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -181,15 +184,19 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
+		node, err := tree.AddNext()
+		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.SetMetadata(make([]byte, 4096)); err == nil {
+		if err := node.SetMetadata(make([]byte, 256)); err != nil {
+			t.Fatal(err)
+		}
+		if err := node.SetMetadata(make([]byte, 257)); err == nil {
 			t.Fatal("expected error")
 		}
 	})
 
-	t.Run("collect pages", func(t *testing.T) {
+	t.Run("creating at least 15 pages works", func(t *testing.T) {
 		b := buftest.NewSeekableBuffer()
 		p, err := pagefile.NewPageFile(b)
 		if err != nil {
@@ -199,78 +206,22 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := tree.Reset(); err != nil {
-			t.Fatal(err)
+
+		node := tree
+		for i := 0; i < 16; i++ {
+			next, err := node.AddNext()
+			if err != nil {
+				t.Fatal(err)
+			}
+			node = next
 		}
 
-		// Create a linked list of LinkedMetaPages
-		page1, err := tree.AddNext()
+		pages, err := tree.Collect()
 		if err != nil {
 			t.Fatal(err)
 		}
-		page2, err := page1.AddNext()
-		if err != nil {
-			t.Fatal(err)
-		}
-		page3, err := page2.AddNext()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Collect the pages
-		collectedPages, err := page1.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		// Verify the collected pages
-		expectedPages := []*LinkedMetaPage{page1, page2, page3}
-		if !reflect.DeepEqual(collectedPages, expectedPages) {
-			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
+		if len(pages) != 16 {
+			t.Fatalf("expected to find %d pages, got %d", 16, len(pages))
 		}
 	})
-
-	t.Run("singular list", func(t *testing.T) {
-		b := buftest.NewSeekableBuffer()
-		p, err := pagefile.NewPageFile(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tree, err := NewMultiBTree(p, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := tree.Reset(); err != nil {
-			t.Fatal(err)
-		}
-		collectedPages, err := tree.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
-		expectedPages := []*LinkedMetaPage{tree}
-		if !reflect.DeepEqual(collectedPages, expectedPages) {
-			t.Fatalf("got %v, want %v", collectedPages, expectedPages)
-		}
-	})
-
-	t.Run("empty list", func(t *testing.T) {
-		b := buftest.NewSeekableBuffer()
-		p, err := pagefile.NewPageFile(b)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		tree, err := NewMultiBTree(p, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		collectedPages, err := tree.Collect()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if collectedPages != nil {
-			t.Fatalf("got %v, want nil", collectedPages)
-		}
-	})
-
 }
