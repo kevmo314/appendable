@@ -1,12 +1,13 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
-	"log"
-	"os"
 )
 
 func generateFilledMetadata() {
@@ -19,10 +20,11 @@ func generateFilledMetadata() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := tree.Reset(); err != nil {
+	node, err := tree.AddNext()
+	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	if err := tree.SetMetadata([]byte("hello")); err != nil {
+	if err := node.SetMetadata([]byte("hello")); err != nil {
 		log.Fatalf("%v", err)
 	}
 

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/metapage"
 	"io"
 	"os"
 	"slices"
@@ -83,37 +82,37 @@ func main() {
 			// this is a linked meta page
 			lmps = lmps[1:]
 
-			metaPage, err := metapage.NewMultiBTree(pf, int(i))
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("<li id='#%d'><details><summary>Linked Meta Page</summary>", offset)
+			// metaPage, err := metapage.NewMultiBTree(pf, int(i))
+			// if err != nil {
+			// 	panic(err)
+			// }
+			fmt.Printf("<li id='#%d'><summary>Linked Meta Page (TODO)</summary></li>", offset)
 
-			root, err := metaPage.Root()
-			if err != nil {
-				panic(err)
-			}
-			next, err := metaPage.Next()
-			if err != nil {
-				panic(err)
-			}
-			exists, err := next.Exists()
-			if err != nil {
-				panic(err)
-			}
-			if exists {
-				fmt.Printf("<p><a href='#%d'>Root (%x)</a> - <a href='#%d'>Next (%x)</a></p>", root.Offset, root.Offset, next.MemoryPointer().Offset, next.MemoryPointer().Offset)
-				lmps = append(lmps, int64(next.MemoryPointer().Offset))
-			} else {
-				fmt.Printf("<p><a href='#%d'>Root (%x)</a> - <span>Next (nil)</span></p>", root.Offset, root.Offset)
-			}
-			fmt.Printf("<p>Metadata</p>")
-			md, err := metaPage.Metadata()
-			if err != nil {
-				panic(err)
-			}
-			fmt.Printf("<pre>%x</pre>", md)
-			fmt.Printf("</details></li>")
+			// root, err := metaPage.Root()
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// next, err := metaPage.Next()
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// exists, err := next.Exists()
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// if exists {
+			// 	fmt.Printf("<p><a href='#%d'>Root (%x)</a> - <a href='#%d'>Next (%x)</a></p>", root.Offset, root.Offset, next.MemoryPointer().Offset, next.MemoryPointer().Offset)
+			// 	lmps = append(lmps, int64(next.MemoryPointer().Offset))
+			// } else {
+			// 	fmt.Printf("<p><a href='#%d'>Root (%x)</a> - <span>Next (nil)</span></p>", root.Offset, root.Offset)
+			// }
+			// fmt.Printf("<p>Metadata</p>")
+			// md, err := metaPage.Metadata()
+			// if err != nil {
+			// 	panic(err)
+			// }
+			// fmt.Printf("<pre>%x</pre>", md)
+			// fmt.Printf("</details></li>")
 		} else {
 			// try to read the page as a btree node
 			node := &btree.BTreeNode{}
