@@ -134,7 +134,7 @@ func (m *LinkedMetaPage) count() (uint8, error) {
 }
 
 func (m *LinkedMetaPage) rootMemoryPointerPageOffset() uint64 {
-	return m.offset + 9 + uint64(m.index)*268
+	return m.offset + 12 + 1 + uint64(m.index)*(256+12)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
