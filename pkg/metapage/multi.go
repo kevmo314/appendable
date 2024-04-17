@@ -12,7 +12,6 @@ import (
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
-
 var errNotAPage = errors.New("this is not a page, did you forget to call .Next() on a tree?")
 
 /**

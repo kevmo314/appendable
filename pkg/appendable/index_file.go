@@ -193,63 +193,6 @@ func (i *IndexFile) Synchronize(df []byte) error {
 	return i.dataHandler.Synchronize(i, df)
 }
 
-func (i *IndexFile) UpdateOffsets() error {
-	// first pass to collect all offsets
-	mp := i.tree
-	var offsets []uint64
-
-	for {
-		next, err := mp.Next()
-		if err != nil {
-			return fmt.Errorf("failed to get next meta page: %w", err)
-		}
-		exists, err := next.Exists()
-		if err != nil {
-			return fmt.Errorf("failed to check if meta page exists: %w", err)
-		}
-
-		if !exists {
-			offsets = append(offsets, ^uint64(0))
-			break
-		}
-
-		offsets = append(offsets, next.MemoryPointer().Offset)
-
-		mp = next
-	}
-
-	mp = i.tree
-
-	for idx := 0; ; idx++ {
-		exists, err := mp.Exists()
-		if err != nil {
-			return fmt.Errorf("failed to check if meta page exists: %w", err)
-		}
-
-		if !exists {
-			break
-		}
-
-		upperBound := idx + metapage.N
-		if upperBound > len(offsets) {
-			upperBound = len(offsets)
-		}
-
-		if err = mp.SetNextNOffsets(offsets[idx:upperBound]); err != nil {
-			return fmt.Errorf("failed to set next N offsets: %w", err)
-		}
-
-		next, err := mp.Next()
-		if err != nil {
-			return fmt.Errorf("failed to get next meta page: %w", err)
-		}
-
-		mp = next
-	}
-
-	return nil
-}
-
 func (i *IndexFile) SetBenchmarkFile(f io.Writer) {
 	t0 := time.Now()
 	i.BenchmarkCallback = func(n int) {
