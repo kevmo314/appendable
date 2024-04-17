@@ -69,15 +69,12 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
-    if (this.linkedMetaPages.length === 0) {
-      await this.fetchMetaPages();
-    }
+    let currMp = await this.tree();
 
     let headerMps = [];
 
-    for (let idx = 0; idx <= this.linkedMetaPages.length - 1; idx++) {
-      const mp = this.linkedMetaPages[idx];
-      const indexMeta = await readIndexMeta(await mp.metadata());
+    while (true) {
+      const indexMeta = readIndexMeta(await currMp.metadata());
       if (indexMeta.fieldName === header) {
         if (fieldType === FieldType.Float64) {
           // if key is a number or bigint, we cast it as a float64 type
@@ -86,14 +83,20 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
             indexMeta.fieldType === FieldType.Int64 ||
             indexMeta.fieldType === FieldType.Uint64
           ) {
-            headerMps.push(mp);
+            headerMps.push(currMp);
           }
         } else {
           if (fieldType === indexMeta.fieldType) {
-            headerMps.push(mp);
+            headerMps.push(currMp);
           }
         }
       }
+
+      const nextMp = await currMp.next();
+      if (!nextMp) {
+        break;
+      }
+      currMp = nextMp;
     }
 
     return headerMps;
@@ -101,37 +104,30 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
 
   async fetchMetaPages(): Promise<void> {
     let currMp = await this.tree();
-    let offsets = await currMp.nextNOffsets();
 
-    while (offsets.length > 0) {
-      let ranges = offsets.map((o) => ({
-        start: Number(o),
-        end: Number(o) + PAGE_SIZE_BYTES - 1,
-      }));
+    while (true) {
+      this.linkedMetaPages.push(currMp);
 
-      let res = await this.resolver(ranges);
-      let idx = 0;
-      for (const { data } of res) {
-        this.linkedMetaPages.push(
-          new LinkedMetaPage(this.resolver, offsets[idx], data),
-        );
-        idx++;
+      const nextMp = await currMp.next();
+      if (!nextMp) {
+        break;
       }
-
-      currMp = this.linkedMetaPages[this.linkedMetaPages.length - 1];
-      offsets = await currMp.nextNOffsets();
+      currMp = nextMp;
     }
   }
 
   async indexHeaders(): Promise<IndexHeader[]> {
-    if (this.linkedMetaPages.length === 0) {
-      await this.fetchMetaPages();
-    }
+    let currMp = await this.tree();
 
     let indexMetas: IndexMeta[] = [];
-    for (const mp of this.linkedMetaPages) {
-      const im = await readIndexMeta(await mp.metadata());
+    while (true) {
+      const im = readIndexMeta(await currMp.metadata());
       indexMetas.push(im);
+      const nextMp = await currMp.next();
+      if (!nextMp) {
+        break;
+      }
+      currMp = nextMp;
     }
 
     return collectIndexMetas(indexMetas);
