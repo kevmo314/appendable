@@ -74,7 +74,7 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset())+24, io.SeekStart); err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 4+256)
+	buf := make([]byte, 4+m.rws.SlotSize())
 	if _, err := m.rws.Read(buf); err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 	if m.index == ^uint8(0) {
 		return errNotAPage
 	}
-	if len(data) > 256 {
+	if len(data) > m.rws.SlotSize() {
 		return errors.New("metadata too large")
 	}
 	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset())+24, io.SeekStart); err != nil {
@@ -134,7 +134,9 @@ func (m *LinkedMetaPage) count() (uint8, error) {
 }
 
 func (m *LinkedMetaPage) rootMemoryPointerPageOffset() uint64 {
-	return m.offset + 12 + 1 + uint64(m.index)*(256+12)
+	nextPtrBytes := uint64(12)
+	countBytes := uint64(1)
+	return m.offset + nextPtrBytes + countBytes + uint64(m.index)*(uint64(m.rws.SlotSize())+12)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
