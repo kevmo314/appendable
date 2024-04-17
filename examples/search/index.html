@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" class="font-roboto h-screen p-4 text-altaPurple">
+<html lang="en" class="font-roboto text-altaPurple">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -23,9 +23,9 @@
     </script>
     <script src="appendable.min.js"></script>
   </head>
-  <nav class="w-full flex flex-col items-center font-semibold">
-    <div class="h-40 w-10/12 flex flex-col">
-      <div class="flex space-x-8 bg-altaBlue text-white">
+  <body class="h-screen flex flex-col">
+    <div class="h-32 flex flex-col shadow-lg rounded-b-lg">
+      <div class="px-4 flex space-x-8 py-2 bg-altaBlue text-white font-semibold italic">
         <a href="https://github.com/kevmo314/appendable" target="_blank">
           <p>Appendable</p>
         </a>
@@ -33,22 +33,37 @@
           <p>Source Code</p>
         </a>
       </div>
-      <form class="bg-altaYellow flex-1 p-4" onsubmit="submitQuery(event)">
+      <form class="flex-1 w-full  flex items-center px-4" onsubmit="submitQuery(event)">
+        <button type="submit">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 15.75-2.489-2.489m0 0a3.375 3.375 0 1 0-4.773-4.773 3.375 3.375 0 0 0 4.774 4.774ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+        </svg>
+        </button>
+
         <input
-          type="text"
-          id="searchbar"
-          name="searchbar"
-          required
-          class="w-full px-4 py-2 text-lg border-black border outline-none"
+            type="text"
+            id="searchbar"
+            name="searchbar"
+            placeholder="search for permits"
+            required
+            class="w-full px-4 py-2 text-2xl outline-none"
         />
         <button type="submit">Submit</button>
       </form>
     </div>
-  </nav>
-  <body class="flex-1 w-10/12 flex flex-col">
-    <pre class="w-full" id="results"></pre>
-
+    <div id="results-header" class="flex-1 overflow-y-scroll w-full grid grid-cols-2 gap-x-8">
+      <pre class="space-y-8" id="results"></pre>
+    </div>
     <script>
+      const goodKeywords = [
+              "hydronic",
+              "like-for-like",
+              "commercial building",
+              "heat pump water",
+              "single family",
+
+      ]
+
       let dbInstance = null;
 
       Appendable.init("palo-alto.jsonl", "palo-alto.index", {
@@ -56,6 +71,54 @@
       }).then(async (db) => {
         dbInstance = db;
       });
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const searchBar = document.getElementById('searchbar');
+        const resultsElement = document.getElementById('results');
+        const resultsHeaderElement = document.getElementById("results-header")
+
+        function checkInput() {
+          if(searchBar.value.length === 0) {
+            resultsHeaderElement.classList.remove('grid-cols-2')
+            resultsElement.classList.add('w-full', 'flex', 'flex-col', 'justify-center', 'items-center')
+            resultsElement.innerHTML = `
+            <div class="w-[60em] p-4 mt-[-20em] flex flex-col items-center">
+                <p>Appendable indexes your data which you can query and search all on the client side. </p>
+                <br>
+                <p class="text-center font-semibold">Search for permits in Palo Alto.</p>
+                <br>
+                <p class="text-center">Unsure what to search? Here are some good terms:</p>
+                <div id="keywords" class="grid grid-cols-3 w-[30em] text-sm">
+                </div>
+            </div>`;
+
+            const keywordsElement = document.getElementById('keywords');
+            goodKeywords.forEach(keyword => {
+              const keywordButton = document.createElement('button');
+              keywordButton.className = 'p-2 text-center m-1';
+              keywordButton.textContent = keyword;
+              // keywordButton.onclick = function() {
+              //   searchBar.value = keyword;
+              //   submitQuery(new Event('submit'));
+              // };
+              keywordsElement.appendChild(keywordButton);
+            });
+
+          } else {
+            resultsElement.innerHTML = ''
+            resultsHeaderElement.classList.add('grid-cols-2')
+            resultsElement.classList.remove('w-full', 'flex', 'flex-col', 'justify-center', 'items-center')
+          }
+        }
+
+        searchBar.addEventListener('input', checkInput);
+
+        checkInput()
+
+        const form = document.querySelector('form');
+        form.addEventListener('submit', submitQuery);
+      });
+
 
       async function submitQuery(event) {
         document.getElementById("results").innerHTML = "";
@@ -89,7 +152,6 @@
             return false;
           }
 
-          console.log(`more`);
 
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
@@ -99,7 +161,20 @@
             const keyObj = JSON.parse(data);
 
             if ("description" in keyObj) {
-              resultDiv.textContent = JSON.stringify(keyObj.description);
+              const scoreP = document.createElement('p');
+              scoreP.textContent= `Score: ${score}`;
+              scoreP.className = "font-semibold"
+              resultDiv.appendChild(scoreP)
+
+              const titleP = document.createElement('p');
+              titleP.textContent = `Title: ${keyObj.permitNumber}`;
+              resultDiv.appendChild(titleP)
+
+              const descP = document.createElement('p');
+              descP.className = "text-wrap"
+              descP.textContent = `Description: ${keyObj.description}`;
+              resultDiv.appendChild(descP)
+
               resultsElement.appendChild(resultDiv);
 
               return true;

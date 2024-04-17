@@ -5,13 +5,13 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"io"
-
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/pointer"
+	"io"
 
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
+
 
 var errNotAPage = errors.New("this is not a page, did you forget to call .Next() on a tree?")
 
@@ -68,6 +68,7 @@ func (m *LinkedMetaPage) BTree(t *btree.BTree) *btree.BTree {
 }
 
 func (m *LinkedMetaPage) Metadata() ([]byte, error) {
+
 	if m.index == ^uint8(0) {
 		return nil, errNotAPage
 	}

@@ -1,0 +1,4 @@
+[workspace]
+members = ["scripts/jsonl2json"]
+
+resolver = "2"
