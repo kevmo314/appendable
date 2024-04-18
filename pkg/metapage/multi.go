@@ -5,9 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/kevmo314/appendable/pkg/btree"
 	"github.com/kevmo314/appendable/pkg/pointer"
-	"io"
 
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
