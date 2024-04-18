@@ -34,6 +34,37 @@ type LinkedMetaPage struct {
 	index uint8
 }
 
+/**
+
+Each page is structured:
++-------------------------+--------------+
+| 12 bytes - Next pointer | 1 byte count | // this count is special. See below
++-------------------------+--------------+
+... <count> slots ...
+
+
++-------------------------+------------------+-----------------------+
+| 12 bytes - root pointer | 1 byte of length | 256 bytes of metadata | // we consider this one linked meta slot.
++-------------------------+------------------+-----------------------+
+       ...
++-------------------------+------------------+-----------------------+
+| 12 bytes - root pointer | 1 byte of length | 256 bytes of metadata |
++-------------------------+------------------+-----------------------+
+
+Since width = root pointer + 1 byte of length + metadata,
+The SLOT_WIDTH is 12 + 1 + 256 for a given slot.
+
+12 + 1 + (index) * (12 + 1 + 256) = 4048 bytes for count 15
+
+0th index slot => 12 + 1
+ith index slot => 12 + 1 + <width of the ith slot> => 12 + 1 + i * SLOT_WIDTH
+i+1th index slot = > 12 + 1 + <width of the i+1th slot> => 12 + 1 + (i + 1) + SLOT_WIDTH);
+NewBTree( page num ) => LinkedMetaPage
+*/
+
+var pointerBytes = uint64(12)
+var countByte = uint64(1)
+
 func (m *LinkedMetaPage) Root() (pointer.MemoryPointer, error) {
 	if m.index == ^uint8(0) {
 		return pointer.MemoryPointer{}, errNotAPage
@@ -68,7 +99,6 @@ func (m *LinkedMetaPage) BTree(t *btree.BTree) *btree.BTree {
 }
 
 func (m *LinkedMetaPage) Metadata() ([]byte, error) {
-
 	if m.index == ^uint8(0) {
 		return nil, errNotAPage
 	}
@@ -127,7 +157,7 @@ func (m *LinkedMetaPage) nextPageOffset() (uint64, error) {
 }
 
 func (m *LinkedMetaPage) count() (uint8, error) {
-	if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
+	if _, err := m.rws.Seek(int64(m.offset)+int64(pointerBytes), io.SeekStart); err != nil {
 		return 0, err
 	}
 	var count uint8
@@ -135,9 +165,7 @@ func (m *LinkedMetaPage) count() (uint8, error) {
 }
 
 func (m *LinkedMetaPage) rootMemoryPointerPageOffset() uint64 {
-	nextPtrBytes := uint64(12)
-	countBytes := uint64(1)
-	return m.offset + nextPtrBytes + countBytes + uint64(m.index)*(uint64(m.rws.SlotSize())+12)
+	return m.offset + pointerBytes + countByte + uint64(m.index)*(uint64(m.rws.SlotSize())+pointerBytes+countByte)
 }
 
 func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
