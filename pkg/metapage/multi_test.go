@@ -188,10 +188,10 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := node.SetMetadata(make([]byte, 256)); err != nil {
+		if err := node.SetMetadata(make([]byte, 255)); err != nil {
 			t.Fatal(err)
 		}
-		if err := node.SetMetadata(make([]byte, 257)); err == nil {
+		if err := node.SetMetadata(make([]byte, 256)); err == nil {
 			t.Fatal("expected error")
 		}
 	})
