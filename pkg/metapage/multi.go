@@ -105,7 +105,7 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset())+24, io.SeekStart); err != nil {
 		return nil, err
 	}
-	buf := make([]byte, 4+m.rws.SlotSize())
+	buf := make([]byte, 1+m.rws.SlotSize())
 	if _, err := m.rws.Read(buf); err != nil {
 		return nil, err
 	}
