@@ -188,10 +188,10 @@ func TestMultiBTree(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err := node.SetMetadata(make([]byte, 256)); err != nil {
+		if err := node.SetMetadata(make([]byte, 255)); err != nil {
 			t.Fatal(err)
 		}
-		if err := node.SetMetadata(make([]byte, 257)); err == nil {
+		if err := node.SetMetadata(make([]byte, 256)); err == nil {
 			t.Fatal("expected error")
 		}
 	})
@@ -222,6 +222,105 @@ func TestMultiBTree(t *testing.T) {
 		}
 		if len(pages) != 16 {
 			t.Fatalf("expected to find %d pages, got %d", 16, len(pages))
+		}
+	})
+
+	t.Run("track offset for given slots in a page", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewMultiBTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		node := tree
+
+		n := 15
+		for i := 0; i < n; i++ {
+			next, err := node.AddNext()
+			if err != nil {
+				t.Fatal(err)
+			}
+			node = next
+		}
+
+		pages, err := tree.Collect()
+
+		prevOffset := uint64(0)
+
+		for i, slot := range pages {
+			if i == 0 {
+				if slot.offset != 4096 && slot.rootMemoryPointerPageOffset() != 4096+13 {
+					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
+				}
+
+				prevOffset = slot.rootMemoryPointerPageOffset()
+				continue
+			}
+
+			slotDiff := slot.rootMemoryPointerPageOffset() - prevOffset
+			if slotDiff != pointerBytes+countByte+256 {
+				t.Fatalf("expected the slot difference at %v to be %v, got %v", i, pointerBytes+countByte+256, slotDiff)
+			}
+
+			prevOffset = slot.rootMemoryPointerPageOffset()
+		}
+	})
+
+	t.Run("track offset for given slots in two pages", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree, err := NewMultiBTree(p, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		node := tree
+
+		n := 20
+		for i := 0; i < n; i++ {
+			next, err := node.AddNext()
+			if err != nil {
+				t.Fatal(err)
+			}
+			node = next
+		}
+
+		pages, err := tree.Collect()
+
+		prevOffset := uint64(0)
+
+		for i, slot := range pages {
+			if i == 0 {
+				if slot.offset != 4096 && slot.rootMemoryPointerPageOffset() != 4096+13 {
+					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
+				}
+
+				prevOffset = slot.rootMemoryPointerPageOffset()
+				continue
+			}
+
+			if i == 15 {
+				if slot.offset != 4096*2 && slot.rootMemoryPointerPageOffset() != 4096*2+13 {
+					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
+				}
+
+				prevOffset = slot.rootMemoryPointerPageOffset()
+				continue
+			}
+
+			slotDiff := slot.rootMemoryPointerPageOffset() - prevOffset
+			if slotDiff != pointerBytes+countByte+256 {
+				t.Fatalf("expected the slot difference at %v to be %v, got %v", i, pointerBytes+countByte+256, slotDiff)
+			}
+
+			prevOffset = slot.rootMemoryPointerPageOffset()
 		}
 	})
 }
