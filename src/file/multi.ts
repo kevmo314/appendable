@@ -2,7 +2,10 @@ import { RangeResolver } from "../resolver/resolver";
 import { MemoryPointer } from "../btree/node";
 
 export const PAGE_SIZE_BYTES = 4096;
+export const SLOT_SIZE_BYTES = 256;
 export const maxUint64 = 2n ** 64n - 1n;
+const POINTER_BYTES = 12;
+const COUNT_BYTE = 1;
 
 export class LinkedMetaPage {
   private metaPageDataPromise?: Promise<
@@ -37,9 +40,7 @@ export class LinkedMetaPage {
 
     const metadataView = new DataView(
       pageData,
-      12 /* next pointer */ +
-        1 /* count */ +
-        this.index * (12 /* root mp */ + 1 /* length */ + 256) /* data */,
+      this.rootMemoryPointerPageOffset(),
     );
 
     const metadataLength = metadataView.getUint8(12);
@@ -88,6 +89,14 @@ export class LinkedMetaPage {
     }
 
     return new LinkedMetaPage(this.resolver, nextOffset, this.index + 1);
+  }
+
+  private rootMemoryPointerPageOffset(): number {
+    return (
+      POINTER_BYTES +
+      COUNT_BYTE +
+      this.index * (POINTER_BYTES + COUNT_BYTE + SLOT_SIZE_BYTES)
+    );
   }
 }
 
