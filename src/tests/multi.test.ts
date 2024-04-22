@@ -21,7 +21,6 @@ describe("test metadata", () => {
 
     const tree = ReadMultiBTree(mockRangeResolver, 0);
     const metadata = await tree.metadata();
-
     expect("hello").toEqual(arrayBufferToString(metadata));
   });
 });

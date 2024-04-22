@@ -9,7 +9,5 @@ export async function readBinaryFile(filename: string): Promise<Uint8Array> {
 
 export function arrayBufferToString(arrayBuffer: ArrayBuffer): string {
   const decoder = new TextDecoder("utf-8");
-  const uint8Array = new Uint8Array(arrayBuffer);
-
-  return decoder.decode(uint8Array);
+  return decoder.decode(new Uint8Array(arrayBuffer));
 }

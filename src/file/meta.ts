@@ -52,7 +52,7 @@ export type IndexHeader = {
   fieldTypes: number[];
 };
 
-export async function readIndexMeta(buffer: ArrayBuffer): Promise<IndexMeta> {
+export function readIndexMeta(buffer: ArrayBuffer): IndexMeta {
   if (buffer.byteLength < 6) {
     throw new Error(`invalid metadata size ${buffer.byteLength}`);
   }
