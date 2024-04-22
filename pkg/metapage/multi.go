@@ -62,6 +62,16 @@ i+1th index slot = > 12 + 1 + <width of the i+1th slot> => 12 + 1 + (i + 1) + SL
 NewBTree( page num ) => LinkedMetaPage
 */
 
+type memoryLayout struct {
+	nextPointer uint64
+	count       uint8
+	slots       [15]struct {
+		rootPointer    uint64
+		metadataLength uint8
+		metadata       [256]byte
+	}
+}
+
 var pointerBytes = uint64(12)
 var countByte = uint64(1)
 
