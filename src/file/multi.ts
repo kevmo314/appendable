@@ -4,7 +4,8 @@ import { MemoryPointer } from "../btree/node";
 export const PAGE_SIZE_BYTES = 4096;
 export const SLOT_SIZE_BYTES = 256;
 export const maxUint64 = 2n ** 64n - 1n;
-const POINTER_BYTES = 12;
+const POINTER_BYTES = 8;
+const LENGTH_BYTES = 4;
 const COUNT_BYTE = 1;
 
 export class LinkedMetaPage {
@@ -37,14 +38,14 @@ export class LinkedMetaPage {
 
   async metadata(): Promise<ArrayBuffer> {
     const pageData = await this.getMetaPage();
-
-    const metadataView = new DataView(
-      pageData,
-      this.rootMemoryPointerPageOffset(),
+    const rootPointer = POINTER_BYTES + LENGTH_BYTES;
+    const metadata = pageData.slice(
+      this.rootMemoryPointerPageOffset() + rootPointer,
     );
-
-    const metadataLength = metadataView.getUint8(12);
-    return metadataView.buffer.slice(13, 13 + metadataLength);
+    const metadataView = new DataView(metadata);
+    // we need to seek past the root pointer
+    const metadataLength = metadataView.getUint8(0);
+    return metadataView.buffer.slice(1, 1 + metadataLength);
   }
 
   private async getMetaPage(): Promise<ArrayBuffer> {
