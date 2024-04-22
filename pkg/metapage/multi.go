@@ -62,8 +62,22 @@ i+1th index slot = > 12 + 1 + <width of the i+1th slot> => 12 + 1 + (i + 1) + SL
 NewBTree( page num ) => LinkedMetaPage
 */
 
-var pointerBytes = uint64(12)
-var countByte = uint64(1)
+const numSlots = 15
+
+type memoryLayout struct {
+	header struct {
+		nextPointer uint64
+		count       uint8
+	}
+	slots [numSlots]struct {
+		rootPointer    uint64
+		metadataLength uint8
+		metadata       [256]byte
+	}
+}
+
+var pointerBytes = uint64(binary.Size(uint64(0)))
+var countByte = uint64(binary.Size(uint8(1)))
 
 func (m *LinkedMetaPage) Root() (pointer.MemoryPointer, error) {
 	if m.index == ^uint8(0) {
@@ -102,7 +116,7 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	if m.index == ^uint8(0) {
 		return nil, errNotAPage
 	}
-	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset())+24, io.SeekStart); err != nil {
+	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset()+pointerBytes+4), io.SeekStart); err != nil {
 		return nil, err
 	}
 	buf := make([]byte, 4+m.rws.SlotSize())
@@ -129,7 +143,7 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 	if len(data) > m.rws.SlotSize() || len(data) > 255 {
 		return errors.New("metadata too large")
 	}
-	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset())+24, io.SeekStart); err != nil {
+	if _, err := m.rws.Seek(int64(m.rootMemoryPointerPageOffset()+pointerBytes+4), io.SeekStart); err != nil {
 		return err
 	}
 	buf := append(make([]byte, 1), data...)
@@ -186,7 +200,7 @@ func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
 		// we've reached the end of the linked list
 		return nil, io.EOF
 	}
-	return &LinkedMetaPage{rws: m.rws, offset: uint64(nextOffset)}, nil
+	return &LinkedMetaPage{rws: m.rws, offset: nextOffset}, nil
 }
 
 func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
@@ -197,9 +211,9 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	if m.index+1 < count {
 		return nil, errors.New("next pointer already exists")
 	}
-	if count != 15 {
+	if count != numSlots {
 		// increment the count
-		if _, err := m.rws.Seek(int64(m.offset)+12, io.SeekStart); err != nil {
+		if _, err := m.rws.Seek(int64(m.offset+pointerBytes), io.SeekStart); err != nil {
 			return nil, err
 		}
 		if err := binary.Write(m.rws, binary.LittleEndian, count+1); err != nil {
