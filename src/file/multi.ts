@@ -89,7 +89,7 @@ export class LinkedMetaPage {
       return null;
     }
 
-    return new LinkedMetaPage(this.resolver, nextOffset, this.index + 1);
+    return new LinkedMetaPage(this.resolver, nextOffset, 0);
   }
 
   private rootMemoryPointerPageOffset(): number {
