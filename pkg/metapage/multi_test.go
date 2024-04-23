@@ -294,6 +294,10 @@ func TestMultiBTree(t *testing.T) {
 
 		pages, err := tree.Collect()
 
+		if len(pages) != n {
+			t.Fatalf("expected num pages to be %v, got %v", n, len(pages))
+		}
+
 		prevOffset := uint64(0)
 
 		for i, slot := range pages {
