@@ -253,7 +253,7 @@ func TestMultiBTree(t *testing.T) {
 
 		for i, slot := range pages {
 			if i == 0 {
-				if slot.offset != 4096 && slot.rootMemoryPointerPageOffset() != 4096+13 {
+				if slot.offset != 4096 || slot.rootMemoryPointerPageOffset() != 4096+pointerBytes+countByte {
 					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
 				}
 
@@ -294,11 +294,15 @@ func TestMultiBTree(t *testing.T) {
 
 		pages, err := tree.Collect()
 
+		if len(pages) != n {
+			t.Fatalf("expected num pages to be %v, got %v", n, len(pages))
+		}
+
 		prevOffset := uint64(0)
 
 		for i, slot := range pages {
 			if i == 0 {
-				if slot.offset != 4096 && slot.rootMemoryPointerPageOffset() != 4096+13 {
+				if slot.offset != 4096 || slot.rootMemoryPointerPageOffset() != 4096+pointerBytes+countByte {
 					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
 				}
 
@@ -307,7 +311,7 @@ func TestMultiBTree(t *testing.T) {
 			}
 
 			if i == 15 {
-				if slot.offset != 4096*2 && slot.rootMemoryPointerPageOffset() != 4096*2+13 {
+				if slot.offset != 4096*2 || slot.rootMemoryPointerPageOffset() != 4096*2+pointerBytes+countByte {
 					t.Fatalf("expected initial slot offset to start at 4096, got: %v", slot.rootMemoryPointerPageOffset())
 				}
 
