@@ -40,7 +40,7 @@ export async function requestRanges(
   }
 
   for (const { start, end } of ranges) {
-    if (end - start === 0) {
+    if (end - start <= 0) {
       throw new Error(
         `Invalid range: The start (${start}) and end (${end}) of a range are equal, indicating a zero-length range.`,
       );
