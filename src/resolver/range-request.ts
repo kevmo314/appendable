@@ -39,6 +39,14 @@ export async function requestRanges(
     return await resolveIndividualPromises(url, ranges);
   }
 
+  for (const { start, end } of ranges) {
+    if (end - start <= 0) {
+      throw new Error(
+        `Invalid range: The start (${start}) and end (${end}) of a range are equal, indicating a zero-length range.`,
+      );
+    }
+  }
+
   const rangesHeader = ranges
     .map(({ start, end }) => `${start}-${end}`)
     .join(",");
