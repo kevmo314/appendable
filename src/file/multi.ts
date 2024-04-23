@@ -24,7 +24,7 @@ export class LinkedMetaPage {
     const pageData = await this.getMetaPage();
 
     // we seek by 12 bytes since offset is 8 bytes, length is 4 bytes
-    const data = pageData.slice(0, 12);
+    const data = pageData.slice(0, POINTER_BYTES + LENGTH_BYTES);
     const view = new DataView(data);
 
     const pointerOffset = view.getBigUint64(0, true);
@@ -72,7 +72,7 @@ export class LinkedMetaPage {
     const pageData = await this.getMetaPage();
     const view = new DataView(pageData);
 
-    const count = view.getUint8(12);
+    const count = view.getUint8(POINTER_BYTES);
 
     if (this.index < count - 1) {
       return new LinkedMetaPage(
