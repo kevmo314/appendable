@@ -196,8 +196,9 @@ export class Database<T extends Schema> {
 
         const mps = await this.indexFile.seek(key as string, fieldType);
         const mp = mps[0];
-        const { fieldType: mpFieldType, width: mpFieldWidth } =
-          await readIndexMeta(await mp.metadata());
+        const { fieldType: mpFieldType, width: mpFieldWidth } = readIndexMeta(
+          await mp.metadata(),
+        );
 
         let ord: "ASC" | "DESC" = "ASC";
         if (query.orderBy && query.orderBy[0]) {

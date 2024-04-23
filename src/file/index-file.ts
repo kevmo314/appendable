@@ -69,7 +69,12 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async seek(header: string, fieldType: FieldType): Promise<LinkedMetaPage[]> {
-    let currMp = await this.tree();
+    const tree = await this.tree();
+    let currMp = await tree.next();
+
+    if (!currMp) {
+      throw new Error(`failed to fetch meta pages`);
+    }
 
     let headerMps = [];
 
@@ -103,7 +108,12 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async fetchMetaPages(): Promise<void> {
-    let currMp = await this.tree();
+    const tree = await this.tree();
+    let currMp = await tree.next();
+
+    if (!currMp) {
+      throw new Error(`failed to fetch meta pages`);
+    }
 
     while (true) {
       this.linkedMetaPages.push(currMp);
@@ -117,17 +127,19 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   }
 
   async indexHeaders(): Promise<IndexHeader[]> {
-    let currMp = await this.tree();
+    if (this.linkedMetaPages.length === 0) {
+      await this.fetchMetaPages();
+    }
 
     let indexMetas: IndexMeta[] = [];
-    while (true) {
+    for (let idx = 0; idx <= this.linkedMetaPages.length - 1; idx++) {
+      const currMp = this.linkedMetaPages[idx];
       const im = readIndexMeta(await currMp.metadata());
       indexMetas.push(im);
       const nextMp = await currMp.next();
       if (!nextMp) {
         break;
       }
-      currMp = nextMp;
     }
 
     return collectIndexMetas(indexMetas);
