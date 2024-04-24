@@ -234,24 +234,17 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 			return nil, err
 		}
 		next := &LinkedMetaPage{rws: m.rws, offset: uint64(offset)}
-		if err := next.reset(1); err != nil {
-			return nil, err
-		}
-		// save the next pointer
-		if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
-			return nil, err
-		}
-		if err := binary.Write(m.rws, binary.LittleEndian, next.offset); err != nil {
+		if err := next.reset(1, next.offset); err != nil {
 			return nil, err
 		}
 		return next, nil
 	}
 }
 
-func (m *LinkedMetaPage) reset(count uint8) error {
+func (m *LinkedMetaPage) reset(count uint8, next uint64) error {
 	// write a full page of zeros
 	emptyPage := make([]byte, m.rws.PageSize())
-	binary.LittleEndian.PutUint64(emptyPage[0:pointerBytes], ^uint64(0))
+	binary.LittleEndian.PutUint64(emptyPage[0:pointerBytes], next)
 	emptyPage[8] = count
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err
@@ -308,7 +301,7 @@ func NewMultiBTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, er
 	if _, err := t.Read(make([]byte, t.PageSize())); err != nil {
 		if err == io.EOF {
 			// the page doesn't exist, so we need to create it
-			if err := lmp.reset(0); err != nil {
+			if err := lmp.reset(0, ^uint64(0)); err != nil {
 				return nil, err
 			}
 		} else {
