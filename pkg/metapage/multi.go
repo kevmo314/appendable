@@ -251,7 +251,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 func (m *LinkedMetaPage) reset(count uint8) error {
 	// write a full page of zeros
 	emptyPage := make([]byte, m.rws.PageSize())
-	binary.LittleEndian.PutUint64(emptyPage[0:8], ^uint64(0))
+	binary.LittleEndian.PutUint64(emptyPage[0:pointerBytes], ^uint64(0))
 	emptyPage[8] = count
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return err

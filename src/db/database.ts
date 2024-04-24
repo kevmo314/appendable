@@ -271,6 +271,11 @@ export class Database<T extends Schema> {
                 Number(mp.offset) + mp.length - 1,
               );
 
+              // console.log(
+              //   `ranges`,
+              //   Number(mp.offset),
+              //   Number(mp.offset) + mp.length - 1,
+              // );
               yield handleSelect(data, query.select);
             }
           } else {

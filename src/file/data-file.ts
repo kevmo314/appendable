@@ -26,6 +26,10 @@ export class DataFile {
   }
 
   async get(start: number, end: number) {
+    if (end <= start) {
+      throw new Error(`Invalid range for start: ${start} and end: ${end}`);
+    }
+
     const res = await this.resolver([{ start, end }]);
     return new TextDecoder().decode(res[0].data);
   }
