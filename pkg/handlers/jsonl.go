@@ -195,7 +195,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						if err := page.BTree(&btree.BTree{Data: r, DataParser: j, Width: width}).Insert(btree.ReferencedValue{
 							DataPointer: pointer.MemoryPointer{
 								Offset: mp.Offset + tri.Offset,
-								Length: tri.Length,
+								Length: uint32(len(valueStr)), // this is a degenerate case - for ngrams, we store the entire length of the valueStr. This is to help us with the ranking heuristic.
 							},
 							Value: valueBytes,
 						}, data); err != nil {
