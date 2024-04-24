@@ -24,11 +24,21 @@ export class LinkedMetaPage {
     const pageData = await this.getMetaPage();
 
     // we seek by 12 bytes since offset is 8 bytes, length is 4 bytes
-    const data = pageData.slice(0, POINTER_BYTES + LENGTH_BYTES);
+    const data = pageData.slice(
+      this.rootMemoryPointerPageOffset(),
+      this.rootMemoryPointerPageOffset() + POINTER_BYTES + LENGTH_BYTES,
+    );
+
+    if (data.byteLength != POINTER_BYTES + LENGTH_BYTES) {
+      throw new Error(
+        `failed to properly fetch root node. Got ${data.byteLength}`,
+      );
+    }
+
     const view = new DataView(data);
 
     const pointerOffset = view.getBigUint64(0, true);
-    const lengthOffset = view.getUint32(8, true);
+    const lengthOffset = view.getUint32(POINTER_BYTES, true);
 
     return {
       offset: pointerOffset,
