@@ -38,7 +38,7 @@ export class LinkedMetaPage {
     const view = new DataView(data);
 
     const pointerOffset = view.getBigUint64(0, true);
-    const lengthOffset = view.getUint32(8, true);
+    const lengthOffset = view.getUint32(POINTER_BYTES, true);
 
     return {
       offset: pointerOffset,
