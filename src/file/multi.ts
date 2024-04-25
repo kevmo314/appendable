@@ -17,7 +17,6 @@ export class LinkedMetaPage {
     private readonly resolver: RangeResolver,
     private readonly offset: bigint,
     private readonly index: number,
-    private readonly metaPageData?: ArrayBuffer,
   ) {}
 
   async root(): Promise<MemoryPointer> {
@@ -59,10 +58,6 @@ export class LinkedMetaPage {
   }
 
   private async getMetaPage(): Promise<ArrayBuffer> {
-    if (this.metaPageData) {
-      return this.metaPageData;
-    }
-
     if (!this.metaPageDataPromise) {
       this.metaPageDataPromise = this.resolver([
         {
@@ -85,12 +80,7 @@ export class LinkedMetaPage {
     const count = view.getUint8(POINTER_BYTES);
 
     if (this.index < count - 1) {
-      return new LinkedMetaPage(
-        this.resolver,
-        this.offset,
-        this.index + 1,
-        this.metaPageData,
-      );
+      return new LinkedMetaPage(this.resolver, this.offset, this.index + 1);
     }
 
     const nextOffset = view.getBigUint64(0, true);
