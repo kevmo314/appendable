@@ -9,15 +9,13 @@ const LENGTH_BYTES = 4;
 const COUNT_BYTE = 1;
 
 export class LinkedMetaPage {
-  private metaPageDataPromise?: Promise<
-    { data: ArrayBuffer; totalLength: number }[]
-  >;
-
   constructor(
     private readonly resolver: RangeResolver,
     private readonly offset: bigint,
     private readonly index: number,
-    private readonly metaPageData?: ArrayBuffer,
+    private metaPageDataPromise?: Promise<
+      { data: ArrayBuffer; totalLength: number }[]
+    >,
   ) {}
 
   async root(): Promise<MemoryPointer> {
@@ -59,10 +57,6 @@ export class LinkedMetaPage {
   }
 
   private async getMetaPage(): Promise<ArrayBuffer> {
-    if (this.metaPageData) {
-      return this.metaPageData;
-    }
-
     if (!this.metaPageDataPromise) {
       this.metaPageDataPromise = this.resolver([
         {
@@ -89,7 +83,7 @@ export class LinkedMetaPage {
         this.resolver,
         this.offset,
         this.index + 1,
-        this.metaPageData,
+        this.metaPageDataPromise,
       );
     }
 
