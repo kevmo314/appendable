@@ -4,6 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/algoliasearch@4.23.3/dist/algoliasearch-lite.umd.js"
+      integrity="sha256-1QNshz86RqXe/qsCBldsUu13eAX6n/O98uubKQs87UI="
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://cdn.jsdelivr.net/npm/instantsearch.js@4.67.0/dist/instantsearch.production.min.js"
+      integrity="sha256-TW7D3X/i/W+RUgEeDppEnFT2ixv5lzplKH0c58D92dY="
+      crossorigin="anonymous"
+    ></script>
     <script>
       tailwind.config = {
         theme: {
@@ -25,7 +35,9 @@
   </head>
   <body class="h-screen flex flex-col">
     <div class="h-32 flex flex-col shadow-lg rounded-b-lg">
-      <div class="px-4 flex space-x-8 py-2 bg-altaBlue text-white font-semibold italic">
+      <div
+        class="px-4 flex space-x-8 py-2 bg-altaBlue text-white font-semibold italic"
+      >
         <a href="https://github.com/kevmo314/appendable" target="_blank">
           <p>Appendable</p>
         </a>
@@ -33,36 +45,57 @@
           <p>Source Code</p>
         </a>
       </div>
-      <form class="flex-1 w-full  flex items-center px-4" onsubmit="submitQuery(event)">
+      <form
+        class="flex-1 w-full flex items-center px-4"
+        onsubmit="submitQuery(event)"
+      >
         <button type="submit">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-          <path stroke-linecap="round" stroke-linejoin="round" d="m15.75 15.75-2.489-2.489m0 0a3.375 3.375 0 1 0-4.773-4.773 3.375 3.375 0 0 0 4.774 4.774ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+            class="w-8 h-8"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="m15.75 15.75-2.489-2.489m0 0a3.375 3.375 0 1 0-4.773-4.773 3.375 3.375 0 0 0 4.774 4.774ZM21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+            />
+          </svg>
         </button>
 
         <input
-            type="text"
-            id="searchbar"
-            name="searchbar"
-            placeholder="search for permits"
-            required
-            class="w-full px-4 py-2 text-2xl outline-none"
+          type="text"
+          id="search"
+          name="search"
+          autocapitalize="none"
+          autocorrect="off"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="search for permits"
+          required
+          class="w-full px-4 py-2 text-2xl outline-none"
         />
         <button type="submit">Submit</button>
       </form>
     </div>
-    <div id="results-header" class="flex-1 overflow-y-scroll w-full grid grid-cols-2 gap-x-8">
-      <pre class="space-y-8" id="results"></pre>
+    <div
+      id="results-header"
+      class="flex-1 overflow-y-scroll w-full grid grid-cols-2 gap-x-8"
+    >
+      <pre class="space-y-8 p-4" id="results"></pre>
+      <div id="hits" class="hits-container"></div>
     </div>
     <script>
       const goodKeywords = [
-              "hydronic",
-              "like-for-like",
-              "commercial building",
-              "heat pump water",
-              "single family",
-
-      ]
+        "hydronic",
+        "like-for-like",
+        "commercial building",
+        "heat pump water",
+        "single family",
+      ];
 
       let dbInstance = null;
 
@@ -72,15 +105,46 @@
         dbInstance = db;
       });
 
-      document.addEventListener('DOMContentLoaded', function() {
-        const searchBar = document.getElementById('searchbar');
-        const resultsElement = document.getElementById('results');
-        const resultsHeaderElement = document.getElementById("results-header")
+      document.addEventListener("DOMContentLoaded", function () {
+        const searchBar = document.getElementById("search");
+        const resultsElement = document.getElementById("results");
+        const resultsHeaderElement = document.getElementById("results-header");
+
+        const searchClient = algoliasearch(
+          "GZ4VT7F6I3",
+          "e0d906f19dcc2080a42fe8ce003dc0bd",
+        );
+        const searchResult = instantsearch({
+          indexName: "description",
+          searchClient,
+        });
+
+        searchResult.addWidgets([
+          instantsearch.widgets.searchBox({
+            container: "#search",
+            placeholder: "Search for permits",
+          }),
+          instantsearch.widgets.hits({
+            container: "#hits",
+            templates: {
+              item: `
+        <div class="py-8">
+          <p class="">{{#helpers.highlight}}{ "attribute": "description" }{{/helpers.highlight}}</p>
+        </div>`,
+            },
+          }),
+        ]);
 
         function checkInput() {
-          if(searchBar.value.length === 0) {
-            resultsHeaderElement.classList.remove('grid-cols-2')
-            resultsElement.classList.add('w-full', 'flex', 'flex-col', 'justify-center', 'items-center')
+          if (searchBar.value.length === 0) {
+            resultsHeaderElement.classList.remove("grid-cols-2");
+            resultsElement.classList.add(
+              "w-full",
+              "flex",
+              "flex-col",
+              "justify-center",
+              "items-center",
+            );
             resultsElement.innerHTML = `
             <div class="w-[60em] p-4 mt-[-20em] flex flex-col items-center">
                 <p>Appendable indexes your data which you can query and search all on the client side. </p>
@@ -92,54 +156,67 @@
                 </div>
             </div>`;
 
-            const keywordsElement = document.getElementById('keywords');
-            goodKeywords.forEach(keyword => {
-              const keywordButton = document.createElement('button');
-              keywordButton.className = 'p-2 text-center m-1';
+            const keywordsElement = document.getElementById("keywords");
+            goodKeywords.forEach((keyword) => {
+              const keywordButton = document.createElement("button");
+              keywordButton.className = "p-2 text-center m-1";
               keywordButton.textContent = keyword;
-              // keywordButton.onclick = function() {
-              //   searchBar.value = keyword;
-              //   submitQuery(new Event('submit'));
-              // };
               keywordsElement.appendChild(keywordButton);
             });
-
           } else {
-            resultsElement.innerHTML = ''
-            resultsHeaderElement.classList.add('grid-cols-2')
-            resultsElement.classList.remove('w-full', 'flex', 'flex-col', 'justify-center', 'items-center')
+            resultsElement.innerHTML = "";
+            resultsHeaderElement.classList.add("grid-cols-2");
+            resultsElement.classList.remove(
+              "w-full",
+              "flex",
+              "flex-col",
+              "justify-center",
+              "items-center",
+            );
           }
         }
 
-        searchBar.addEventListener('input', checkInput);
+        searchResult.start();
+        searchBar.addEventListener("input", checkInput);
 
-        checkInput()
+        checkInput();
 
-        const form = document.querySelector('form');
-        form.addEventListener('submit', submitQuery);
+        const form = document.querySelector("form");
+        form.addEventListener(
+          "submit",
+          submitQuery.then(() => {
+            searchResult.refresh();
+          }),
+        );
       });
 
-
       async function submitQuery(event) {
-        document.getElementById("results").innerHTML = "";
         event.preventDefault();
-        const searchBar = document.getElementById("searchbar");
+
+        document.getElementById("results").innerHTML = "";
+        const searchBar = document.getElementById("search");
         const value = searchBar.value;
 
         if (value.length >= 3 && dbInstance != null) {
-          console.log(`firing query`);
-          const query = await dbInstance.query({
-            search: {
-              key: "description",
-              like: value,
-              config: {
-                minGram: 3,
-                maxGram: 3,
+          try {
+            // Execute the database query
+            const queryResult = await dbInstance.query({
+              search: {
+                key: "description",
+                like: value,
+                config: {
+                  minGram: 3,
+                  maxGram: 3,
+                },
               },
-            },
-          });
+            });
 
-          await bindQuery(query);
+            await bindQuery(queryResult);
+
+            console.log("Query fired and processed.");
+          } catch (error) {
+            console.error("Error processing the query:", error);
+          }
         }
       }
       async function bindQuery(query) {
@@ -152,7 +229,6 @@
             return false;
           }
 
-
           const resultDiv = document.createElement("div");
           resultDiv.classList.add("result-item");
 
@@ -161,19 +237,19 @@
             const keyObj = JSON.parse(data);
 
             if ("description" in keyObj) {
-              const scoreP = document.createElement('p');
-              scoreP.textContent= `Score: ${score}`;
-              scoreP.className = "font-semibold"
-              resultDiv.appendChild(scoreP)
+              const scoreP = document.createElement("p");
+              scoreP.textContent = `Score: ${score}`;
+              scoreP.className = "font-semibold";
+              resultDiv.appendChild(scoreP);
 
-              const titleP = document.createElement('p');
+              const titleP = document.createElement("p");
               titleP.textContent = `Title: ${keyObj.permitNumber}`;
-              resultDiv.appendChild(titleP)
+              resultDiv.appendChild(titleP);
 
-              const descP = document.createElement('p');
-              descP.className = "text-wrap"
+              const descP = document.createElement("p");
+              descP.className = "text-wrap";
               descP.textContent = `Description: ${keyObj.description}`;
-              resultDiv.appendChild(descP)
+              resultDiv.appendChild(descP);
 
               resultsElement.appendChild(resultDiv);
 
@@ -185,7 +261,6 @@
 
           return false;
         }
-
 
         for (let idx = 0; idx <= 9; idx++) {
           const res = await appendResult();

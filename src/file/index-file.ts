@@ -65,6 +65,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
   async metadata(): Promise<FileMeta> {
     const tree = await this.tree();
     const buffer = await tree.metadata();
+
     return readFileMeta(buffer);
   }
 
