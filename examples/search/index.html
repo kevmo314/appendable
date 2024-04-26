@@ -115,14 +115,18 @@
         const searchResult = instantsearch({
           indexName: "description",
           searchClient,
+          insights: true,
+          initialUiState: {
+            description: {
+              query: "zzzzzzzzzzzz",
+            },
+          },
         });
 
         searchResult.addWidgets([
           instantsearch.widgets.searchBox({
             container: "#searchbox",
             placeholder: "Search for permits",
-            autofocus: true,
-            searchAsYouType: true,
           }),
           instantsearch.widgets.hits({
             container: "#hits",
@@ -171,7 +175,6 @@
               keywordsElement.appendChild(keywordButton);
             });
           } else {
-            resultsElement.innerHTML = "";
             resultsHeaderElement.classList.add("grid-cols-2");
             resultsElement.classList.remove(
               "w-full",
@@ -185,11 +188,16 @@
 
         searchBar.addEventListener("input", checkInput);
         searchResult.start();
+
         checkInput();
         const form = document.querySelector("form");
         form.addEventListener("submit", (e) => {
-          console.log(`pres`);
-          return Promise.all([submitQuery(e), searchResult.refresh()]);
+          return Promise.all([
+            submitQuery(e),
+            searchResult.setUiState({
+              description: { query: searchBar.value },
+            }),
+          ]);
         });
       });
 
