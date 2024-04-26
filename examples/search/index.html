@@ -68,13 +68,12 @@
 
         <input
           type="text"
-          id="search"
-          name="search"
+          id="searchbox"
+          name="searchbox"
           autocapitalize="none"
           autocorrect="off"
           autocomplete="off"
           spellcheck="false"
-          placeholder="search for permits"
           required
           class="w-full px-4 py-2 text-2xl outline-none"
         />
@@ -86,7 +85,7 @@
       class="flex-1 overflow-y-scroll w-full grid grid-cols-2 gap-x-8"
     >
       <pre class="space-y-8 p-4" id="results"></pre>
-      <div id="hits" class="hits-container"></div>
+      <div id="hits"></div>
     </div>
     <script>
       const goodKeywords = [
@@ -106,10 +105,9 @@
       });
 
       document.addEventListener("DOMContentLoaded", function () {
-        const searchBar = document.getElementById("search");
+        const searchBar = document.getElementById("searchbox");
         const resultsElement = document.getElementById("results");
         const resultsHeaderElement = document.getElementById("results-header");
-
         const searchClient = algoliasearch(
           "GZ4VT7F6I3",
           "e0d906f19dcc2080a42fe8ce003dc0bd",
@@ -121,16 +119,25 @@
 
         searchResult.addWidgets([
           instantsearch.widgets.searchBox({
-            container: "#search",
+            container: "#searchbox",
             placeholder: "Search for permits",
+            autofocus: true,
+            searchAsYouType: true,
           }),
           instantsearch.widgets.hits({
             container: "#hits",
             templates: {
-              item: `
-        <div class="py-8">
-          <p class="">{{#helpers.highlight}}{ "attribute": "description" }{{/helpers.highlight}}</p>
-        </div>`,
+              item(hit, { html }) {
+                return html`
+                  <div class="py-8">
+                    <p>score ${hit}</p>
+                    <p>${hit.description}</p>
+                  </div>
+                `;
+              },
+              empty(results, { html }) {
+                return html`<></>`;
+              },
             },
           }),
         ]);
@@ -176,25 +183,21 @@
           }
         }
 
-        searchResult.start();
         searchBar.addEventListener("input", checkInput);
-
+        searchResult.start();
         checkInput();
-
         const form = document.querySelector("form");
-        form.addEventListener(
-          "submit",
-          submitQuery.then(() => {
-            searchResult.refresh();
-          }),
-        );
+        form.addEventListener("submit", (e) => {
+          console.log(`pres`);
+          return Promise.all([submitQuery(e), searchResult.refresh()]);
+        });
       });
 
       async function submitQuery(event) {
         event.preventDefault();
 
         document.getElementById("results").innerHTML = "";
-        const searchBar = document.getElementById("search");
+        const searchBar = document.getElementById("searchbox");
         const value = searchBar.value;
 
         if (value.length >= 3 && dbInstance != null) {
