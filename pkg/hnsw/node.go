@@ -1,9 +1,22 @@
 package hnsw
 
-type Node struct {
-	level int
-	point *Point
+type NodeID = uint32
+type Vector = []float32
 
-	// fl is the friends list
-	fl []*Node
+type Node struct {
+	// Index of the vector
+	id NodeID
+	v  Vector
+
+	// Layered list of neighbors,
+	// each layer is a slice of NodeIds
+	friends [][]NodeID
+}
+
+func NewNode(id NodeID, v Vector) *Node {
+	return &Node{
+		id,
+		v,
+		make([][]NodeID, 0),
+	}
 }
