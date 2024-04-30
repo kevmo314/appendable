@@ -19,6 +19,7 @@ func NewNode(id NodeID, v Vector) *Node {
 	return &Node{
 		id,
 		v,
+		-1,
 		make([][]NodeID, 0),
 	}
 }
