@@ -1,6 +1,9 @@
 package hnsw
 
-import "math"
+import (
+	"math"
+	"math/rand"
+)
 
 /*
 The greedy algorithm can be divided into two phases: zoom-out and zoom-in.
@@ -48,4 +51,11 @@ func NewHNSW(d, m int, efc int) *Hnsw {
 	}
 
 	return h
+}
+
+func (h *Hnsw) EntryTopLayer() int {
+	return h.Nodes[h.EntryNodeID].layer
+}
+func (h *Hnsw) SpawnLayer() int {
+	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }

@@ -8,6 +8,8 @@ type Node struct {
 	id NodeID
 	v  Vector
 
+	layer int
+
 	// Layered list of neighbors,
 	// each layer is a slice of NodeIds
 	friends [][]NodeID
