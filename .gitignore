@@ -12,6 +12,9 @@ pprof.out
 examples/**/appendable.min.js
 examples/**/appendable.min.js.map
 
+# But include the palo-alto dataset
+!examples/workspace/palo-alto.jsonl
+
 # But include these files in src/tests/mock_binaries
 !src/tests/mock_binaries/*.jsonl
 !src/tests/mock_binaries/*.cs
