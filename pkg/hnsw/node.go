@@ -7,7 +7,8 @@ type Vector []float64
 type NodeID = uint32
 
 type Node struct {
-	// Index of the vector
+	// id is very special. It is sequential, with the 0-id reserved for the entry point node.
+	// We need id to be sequential because we build the bitset with the assumption that every id is unique and sequential.
 	id NodeID
 	v  Vector
 
