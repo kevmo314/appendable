@@ -3,7 +3,7 @@ package hnsw
 import "container/heap"
 
 type Item struct {
-	id    NodeID
+	id    NodeId
 	dist  float64
 	index int
 }
@@ -31,7 +31,7 @@ func NewEucQueue(min bool) *EucQueue {
 	}
 }
 
-func (eq *EucQueue) Push(id NodeID, dist float64) {
+func (eq *EucQueue) Push(id NodeId, dist float64) {
 	heap.Push(eq.queue, &Item{
 		id:   id,
 		dist: dist,
@@ -96,7 +96,7 @@ func (pq *MinQueue) Pop() any {
 	return item
 }
 
-func (pq *MinQueue) update(item *Item, id NodeID, dist float64) {
+func (pq *MinQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(pq, item.index)
@@ -140,7 +140,7 @@ func (pq *MaxQueue) Pop() any {
 	return item
 }
 
-func (pq *MaxQueue) update(item *Item, id NodeID, dist float64) {
+func (pq *MaxQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(pq, item.index)
