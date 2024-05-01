@@ -8,140 +8,110 @@ type Item struct {
 	index int
 }
 
-// EucQueue is a heap that can return the furthest or closest neighbor based
-// on the euclidian distance of that given vector from an origin vector.
-// We shouldn't go below EucQueue as everything we need has been abstracted away.
-type EucQueue struct {
-	queue heap.Interface
+type Heapy interface {
+	heap.Interface
+	Insert(id NodeId, dist float64)
+	IsEmpty() bool
+	Len() int
+	Peel() *Item
+	Peek() *Item
+
+	update(item *Item, id NodeId, dist float64)
 }
 
-func NewEucQueue(min bool) *EucQueue {
-	var queue heap.Interface
-	if min {
-		minQueue := &MinQueue{}
-		heap.Init(minQueue)
-		queue = minQueue
-	} else {
-		maxQueue := &MaxQueue{}
-		heap.Init(maxQueue)
-		queue = maxQueue
-	}
-	return &EucQueue{
-		queue: queue,
-	}
-}
+// Nothing from baseQueue should be used. Only use the Max and Min queue.
+// baseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
+type baseQueue struct{ items []*Item }
 
-func (eq *EucQueue) Push(id NodeId, dist float64) {
-	heap.Push(eq.queue, &Item{
-		id:   id,
-		dist: dist,
-	})
-}
-
-func (eq *EucQueue) Pop() *Item {
-	if eq.queue.Len() == 0 {
-		return nil
-	}
-	return heap.Pop(eq.queue).(*Item)
-}
-
-func (eq *EucQueue) Peek() *Item {
-	return eq.Peek()
-}
-
-func (eq *EucQueue) IsEmpty() bool {
-	return eq.queue.Len() == 0
-}
-
-func (eq *EucQueue) Len() int {
-	return eq.queue.Len()
-}
-
-// MinQueue is a priority queue where the minimum distance has the highest priority.
-// Use case for this is when we need to find the closest neighbor for a given layer.
-// MinQueue implements heap.Interface
-type MinQueue []*Item
-
-func (pq MinQueue) Len() int { return len(pq) }
-func (pq MinQueue) Less(i, j int) bool {
-	return pq[i].dist < pq[j].dist
-}
-func (pq MinQueue) Swap(i, j int) {
+func (bq baseQueue) Len() int { return len(bq.items) }
+func (bq baseQueue) Swap(i, j int) {
+	pq := bq.items
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
-func (pq *MinQueue) Push(x any) {
-	n := len(*pq)
+func (bq *baseQueue) Push(x any) {
+	n := len(bq.items)
 	item := x.(*Item)
 	item.index = n
-	*pq = append(*pq, item)
+	bq.items = append(bq.items, item)
 }
 
-func (pq MinQueue) Peek() *Item {
-	if len(pq) == 0 {
+func (bq *baseQueue) Peek() *Item {
+	if len(bq.items) == 0 {
 		return nil
 	}
-	return pq[0]
+	return bq.items[0]
 }
 
-func (pq *MinQueue) Pop() any {
-	old := *pq
+func (bq *baseQueue) IsEmpty() bool {
+	return len(bq.items) == 0
+}
+
+func (bq *baseQueue) Pop() any {
+	old := bq.items
 	n := len(old)
 	item := old[n-1]
 	old[n-1] = nil
 	item.index = -1
-	*pq = old[0 : n-1]
+	bq.items = old[0 : n-1]
 	return item
 }
 
-func (pq *MinQueue) update(item *Item, id NodeId, dist float64) {
-	item.id = id
-	item.dist = dist
-	heap.Fix(pq, item.index)
+type MinQueue struct{ baseQueue }
+
+type MaxQueue struct{ baseQueue }
+
+func NewMinQueue() *MinQueue {
+	mq := &MinQueue{}
+	heap.Init(mq)
+	return mq
 }
 
-// MaxQueue is a priority queue where the maximum distance has the highest priority.
-// Use case for this is when we need to find the furthest neighbor for a given layer.
-// MaxQueue implements heap.Interface
-type MaxQueue []*Item
-
-func (pq MaxQueue) Len() int { return len(pq) }
-func (pq MaxQueue) Less(i, j int) bool {
-	return pq[i].dist > pq[j].dist
-}
-func (pq MaxQueue) Swap(i, j int) {
-	pq[i], pq[j] = pq[j], pq[i]
-	pq[i].index = i
-	pq[j].index = j
+func NewMaxQueue() *MaxQueue {
+	mq := &MaxQueue{}
+	heap.Init(mq)
+	return mq
 }
 
-func (pq *MaxQueue) Push(x any) {
-	n := len(*pq)
-	item := x.(*Item)
-	item.index = n
-	*pq = append(*pq, item)
+func (mq *MinQueue) Insert(id NodeId, dist float64) {
+	heap.Push(mq, &Item{id: id, dist: dist})
 }
 
-func (pq MaxQueue) Peek() *Item {
-	if len(pq) == 0 {
+func (mq *MaxQueue) Insert(id NodeId, dist float64) {
+	heap.Push(mq, &Item{id: id, dist: dist})
+}
+
+func (mq *MinQueue) Less(i, j int) bool {
+	return mq.items[i].dist < mq.items[j].dist
+}
+
+func (mq *MaxQueue) Less(i, j int) bool {
+	return mq.items[i].dist > mq.items[j].dist
+}
+
+func (mq *MinQueue) Peel() *Item {
+	if mq.Len() == 0 {
 		return nil
 	}
-	return pq[0]
-}
-func (pq *MaxQueue) Pop() any {
-	old := *pq
-	n := len(old)
-	item := old[n-1]
-	old[n-1] = nil
-	item.index = -1
-	*pq = old[0 : n-1]
-	return item
+	return heap.Pop(mq).(*Item)
 }
 
-func (pq *MaxQueue) update(item *Item, id NodeId, dist float64) {
+func (mq *MaxQueue) Peel() *Item {
+	if mq.Len() == 0 {
+		return nil
+	}
+	return heap.Pop(mq).(*Item)
+}
+
+func (mq *MinQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
-	heap.Fix(pq, item.index)
+	heap.Fix(mq, item.index)
+}
+func (mq *MaxQueue) update(item *Item, id NodeId, dist float64) {
+	item.id = id
+	item.dist = dist
+	heap.Fix(mq, item.index)
 }

@@ -75,24 +75,24 @@ searchLayer needs two things:
 1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
 2.
 */
-func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *EucQueue) {
+func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *MaxQueue) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
 	visited := make([]bool, len(h.Nodes))
 	visited[h.EntryNodeId] = true
 
-	candidates := NewEucQueue(true)
+	candidates := NewMinQueue()
 
-	candidates.Push(h.EntryNodeId, 0)               // todo fix! should be the dist from en -> q.
-	nearestNeighborsToQForEf.Push(h.EntryNodeId, 0) // todo fix! ^^
+	candidates.Insert(h.EntryNodeId, 0)               // todo fix! should be the dist from en -> q.
+	nearestNeighborsToQForEf.Insert(h.EntryNodeId, 0) // todo fix! ^^
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q
-		closestCandidate := candidates.Pop()
+		closestCandidate := candidates.Peel()
 
 		// get the furthest element from W to q
-		furthestNN := nearestNeighborsToQForEf.Pop()
+		furthestNN := nearestNeighborsToQForEf.Peel()
 
 		closestCandidateToQDist := EuclidDist(h.Nodes[closestCandidate.id].v, q)
 		furthestNNToQDist := EuclidDist(h.Nodes[furthestNN.id].v, q)
@@ -115,8 +115,8 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *
 					furthestNNToQDist := EuclidDist(h.Nodes[furthestNNItem.id].v, q)
 
 					if friendToQDist < furthestNNToQDist || nearestNeighborsToQForEf.Len() < ef {
-						candidates.Push(friendId, friendToQDist)
-						nearestNeighborsToQForEf.Push(friendId, friendToQDist)
+						candidates.Insert(friendId, friendToQDist)
+						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
 
 						if nearestNeighborsToQForEf.Len() > ef {
 							nearestNeighborsToQForEf.Pop()
