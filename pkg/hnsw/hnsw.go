@@ -73,7 +73,6 @@ func (h *Hnsw) spawnLayer() int {
 /*
 searchLayer needs two things:
 1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
-2.
 */
 func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *MaxQueue) {
 
@@ -126,4 +125,23 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *
 			}
 		}
 	}
+}
+
+func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *MinQueue {
+
+	if candidates.Len() <= numNeighborsToReturn {
+		return nil
+	}
+
+	mCandidatesNearestElementsFromQ := NewMinQueue()
+
+	for candidate := candidates.Peel(); candidate != nil; candidate = candidates.Peel() {
+		if mCandidatesNearestElementsFromQ.Len() == numNeighborsToReturn {
+			return mCandidatesNearestElementsFromQ
+		}
+
+		mCandidatesNearestElementsFromQ.Insert(candidate.id, candidate.dist)
+	}
+
+	return nil
 }
