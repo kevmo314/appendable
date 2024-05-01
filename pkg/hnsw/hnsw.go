@@ -15,6 +15,7 @@ Halts when characteristic radius of the node links length reaches the scale of t
 type Hnsw struct {
 	vectorDimension int
 
+	// A lookup table for all nodes that exist in this graph
 	Nodes map[NodeID]*Node
 
 	EntryNodeID NodeID
@@ -37,7 +38,6 @@ type Hnsw struct {
 // New needs two things: vector dimensionality d
 // and m the number of neighbors for each vertex
 func NewHNSW(d, m int, efc int) *Hnsw {
-
 	h := &Hnsw{
 		vectorDimension: d,
 		M:               m,
@@ -63,8 +63,10 @@ func (h *Hnsw) SpawnLayer() int {
 // w must be a max euc queue
 func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 
-	visited := make(map[NodeID]interface{})
-	visited[h.EntryNodeID] = struct{}{}
+	// visited is a bitset that keeps track of all nodes that have been visited.
+	// we know the size of visited will never exceed len(h.Nodes)
+	visited := make([]bool, len(h.Nodes))
+	visited[h.EntryNodeID] = true
 
 	candidates := NewEucQueue(true)
 	candidates.Push(h.EntryNodeID, 0)
@@ -91,8 +93,8 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 
 			for _, friendId := range friends {
 				// if e ∉ v
-				if _, found := visited[friendId]; !found {
-					visited[friendId] = struct{}{}
+				if !visited[friendId] {
+					visited[friendId] = true
 					maxItem := w.Peek()
 
 					eqDist := EuclidDist(h.Nodes[friendId].v, q)
