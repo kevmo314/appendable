@@ -45,6 +45,10 @@ func (eq *EucQueue) Pop() *Item {
 	return heap.Pop(eq.queue).(*Item)
 }
 
+func (eq *EucQueue) Peek() *Item {
+	return eq.Peek()
+}
+
 func (eq *EucQueue) IsEmpty() bool {
 	return eq.queue.Len() == 0
 }
@@ -73,6 +77,13 @@ func (pq *MinQueue) Push(x any) {
 	item := x.(*Item)
 	item.index = n
 	*pq = append(*pq, item)
+}
+
+func (pq MinQueue) Peek() *Item {
+	if len(pq) == 0 {
+		return nil
+	}
+	return pq[0]
 }
 
 func (pq *MinQueue) Pop() any {
@@ -113,6 +124,12 @@ func (pq *MaxQueue) Push(x any) {
 	*pq = append(*pq, item)
 }
 
+func (pq MaxQueue) Peek() *Item {
+	if len(pq) == 0 {
+		return nil
+	}
+	return pq[0]
+}
 func (pq *MaxQueue) Pop() any {
 	old := *pq
 	n := len(old)

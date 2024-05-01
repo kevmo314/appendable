@@ -13,8 +13,7 @@ type Node struct {
 
 	layer int
 
-	// Layered list of neighbors,
-	// each layer is a slice of NodeIds
+	// for every layer, we have a list of friends' NodeIDs
 	friends [][]NodeID
 }
 
