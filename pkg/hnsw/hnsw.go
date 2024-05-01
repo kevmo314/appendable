@@ -16,10 +16,10 @@ type Hnsw struct {
 	vectorDimension int
 
 	// A lookup table for all nodes that exist in this graph
-	Nodes map[NodeID]*Node
+	Nodes map[NodeId]*Node
 
-	EntryNodeID NodeID
-	NextNodeID  NodeID
+	EntryNodeId NodeId
+	NextNodeId  NodeId
 
 	MaxLayer int
 
@@ -39,9 +39,9 @@ type Hnsw struct {
 // New needs two things: vector dimensionality d
 // and m the number of neighbors for each vertex
 func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
-	nt := make(map[NodeID]*Node)
+	nt := make(map[NodeId]*Node)
 
-	enId := NodeID(0) // special. Reserved for the entryPointNode
+	enId := NodeId(0) // special. Reserved for the entryPointNode
 	nt[enId] = entryPoint
 
 	nextId := enId + 1
@@ -50,8 +50,8 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 		vectorDimension: d,
 		M:               m,
 		Nodes:           nt,
-		EntryNodeID:     enId,
-		NextNodeID:      nextId,
+		EntryNodeId:     enId,
+		NextNodeId:      nextId,
 		MaxLayer:        -1,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
@@ -63,7 +63,7 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 }
 
 func (h *Hnsw) entryTopLayer() int {
-	return h.Nodes[h.EntryNodeID].layer
+	return h.Nodes[h.EntryNodeId].layer
 }
 func (h *Hnsw) spawnLayer() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
@@ -79,12 +79,12 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
 	visited := make([]bool, len(h.Nodes))
-	visited[h.EntryNodeID] = true
+	visited[h.EntryNodeId] = true
 
 	candidates := NewEucQueue(true)
-	candidates.Push(h.EntryNodeID, 0) // todo fix! should be the dist from en -> q.
+	candidates.Push(h.EntryNodeId, 0) // todo fix! should be the dist from en -> q.
 
-	nearestNeighborsToQForEf.Push(h.EntryNodeID, 0) // todo fix! ^^
+	nearestNeighborsToQForEf.Push(h.EntryNodeId, 0) // todo fix! ^^
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q

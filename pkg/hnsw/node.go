@@ -4,26 +4,26 @@ import "math"
 
 type Vector []float64
 
-type NodeID = uint32
+type NodeId = uint32
 
 type Node struct {
 	// id is very special. It is sequential, with the 0-id reserved for the entry point node.
 	// We need id to be sequential because we build the bitset with the assumption that every id is unique and sequential.
-	id NodeID
+	id NodeId
 	v  Vector
 
 	layer int
 
-	// for every layer, we have a list of friends' NodeIDs
-	friends [][]NodeID
+	// for every layer, we have a list of friends' NodeIds
+	friends [][]NodeId
 }
 
-func NewNode(id NodeID, v Vector) *Node {
+func NewNode(id NodeId, v Vector) *Node {
 	return &Node{
 		id,
 		v,
 		-1,
-		make([][]NodeID, 0),
+		make([][]NodeId, 0),
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 )
 
 type Pair struct {
-	id   NodeID
+	id   NodeId
 	dist float64
 }
 
@@ -24,7 +24,7 @@ func TestEucQueue(t *testing.T) {
 		eq := NewEucQueue(true)
 		for i, v := range vs {
 			dist := EuclidDist(v0, v)
-			eq.Push(NodeID(i), dist)
+			eq.Push(NodeId(i), dist)
 		}
 
 		expected := [5]Pair{
