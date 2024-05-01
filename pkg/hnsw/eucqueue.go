@@ -1,6 +1,9 @@
 package hnsw
 
-import "container/heap"
+import (
+	"container/heap"
+	"fmt"
+)
 
 type Item struct {
 	id    NodeId
@@ -15,7 +18,7 @@ type Heapy interface {
 	Len() int
 	Peel() *Item
 	Peek() *Item
-
+	Take(count int) ([]*Item, error)
 	update(item *Item, id NodeId, dist float64)
 }
 
@@ -114,4 +117,43 @@ func (mq *MaxQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(mq, item.index)
+}
+
+func (mq *MinQueue) Take(count int) ([]*Item, error) {
+	if mq.Len() > count {
+		return nil, fmt.Errorf("not enough elements to take %v. Only %v items", count, mq.Len())
+	}
+
+	tq := NewMinQueue()
+	tq.items = make([]*Item, len(mq.items))
+	copy(tq.items, mq.items)
+
+	heap.Init(tq)
+
+	items := make([]*Item, 0, count)
+	for i := 0; i < count; i++ {
+		item := heap.Pop(tq).(*Item)
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
+func (mq *MaxQueue) Take(count int) ([]*Item, error) {
+	if mq.Len() > count {
+		return nil, fmt.Errorf("not enough elements to take %v. Only %v items", count, mq.Len())
+	}
+
+	tq := NewMaxQueue()
+	tq.items = make([]*Item, len(mq.items))
+	copy(tq.items, mq.items)
+	heap.Init(tq)
+
+	items := make([]*Item, 0, count)
+	for i := 0; i < count; i++ {
+		item := heap.Pop(tq).(*Item)
+		items = append(items, item)
+	}
+
+	return items, nil
 }
