@@ -21,7 +21,6 @@ type Hnsw struct {
 	EntryNodeId NodeId
 	NextNodeId  NodeId
 
-
 	MaxLayer int
 
 	// default number of connections
@@ -85,7 +84,7 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *
 
 	candidates := NewEucQueue(true)
 
-	candidates.Push(h.EntryNodeId, 0) // todo fix! should be the dist from en -> q.
+	candidates.Push(h.EntryNodeId, 0)               // todo fix! should be the dist from en -> q.
 	nearestNeighborsToQForEf.Push(h.EntryNodeId, 0) // todo fix! ^^
 
 	for !candidates.IsEmpty() {
