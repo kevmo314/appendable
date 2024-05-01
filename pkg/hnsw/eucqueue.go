@@ -19,11 +19,9 @@ type Heapy interface {
 	update(item *Item, id NodeId, dist float64)
 }
 
-
 // Nothing from baseQueue should be used. Only use the Max and Min queue.
 // baseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
 type baseQueue struct{ items []*Item }
-
 
 func (bq baseQueue) Len() int { return len(bq.items) }
 func (bq baseQueue) Swap(i, j int) {
@@ -60,7 +58,6 @@ func (bq *baseQueue) Pop() any {
 	bq.items = old[0 : n-1]
 	return item
 }
-
 
 type MinQueue struct{ baseQueue }
 
