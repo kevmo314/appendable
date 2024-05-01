@@ -19,6 +19,7 @@ type Hnsw struct {
 	Nodes map[NodeID]*Node
 
 	EntryNodeID NodeID
+	NextNodeID  NodeID
 
 	MaxLayer int
 
@@ -37,12 +38,20 @@ type Hnsw struct {
 
 // New needs two things: vector dimensionality d
 // and m the number of neighbors for each vertex
-func NewHNSW(d, m int, efc int) *Hnsw {
+func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
+	nt := make(map[NodeID]*Node)
+
+	enId := NodeID(0) // special. Reserved for the entryPointNode
+	nt[enId] = entryPoint
+
+	nextId := enId + 1
+
 	h := &Hnsw{
 		vectorDimension: d,
 		M:               m,
-		Nodes:           make(map[NodeID]*Node),
-		EntryNodeID:     ^uint32(0),
+		Nodes:           nt,
+		EntryNodeID:     enId,
+		NextNodeID:      nextId,
 		MaxLayer:        -1,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
@@ -53,15 +62,19 @@ func NewHNSW(d, m int, efc int) *Hnsw {
 	return h
 }
 
-func (h *Hnsw) EntryTopLayer() int {
+func (h *Hnsw) entryTopLayer() int {
 	return h.Nodes[h.EntryNodeID].layer
 }
-func (h *Hnsw) SpawnLayer() int {
+func (h *Hnsw) spawnLayer() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-// w must be a max euc queue
-func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
+/*
+searchLayer needs two things:
+1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
+2.
+*/
+func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *EucQueue) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -69,43 +82,43 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 	visited[h.EntryNodeID] = true
 
 	candidates := NewEucQueue(true)
-	candidates.Push(h.EntryNodeID, 0)
+	candidates.Push(h.EntryNodeID, 0) // todo fix! should be the dist from en -> q.
 
-	w.Push(h.EntryNodeID, 0)
+	nearestNeighborsToQForEf.Push(h.EntryNodeID, 0) // todo fix! ^^
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q
-		c := candidates.Pop()
+		closestCandidate := candidates.Pop()
 
 		// get the furthest element from W to q
-		f := w.Pop()
+		furthestNN := nearestNeighborsToQForEf.Pop()
 
-		cq := EuclidDist(h.Nodes[c.id].v, q)
-		fq := EuclidDist(h.Nodes[f.id].v, q)
+		closestCandidateToQDist := EuclidDist(h.Nodes[closestCandidate.id].v, q)
+		furthestNNToQDist := EuclidDist(h.Nodes[furthestNN.id].v, q)
 
-		if cq > fq {
+		if closestCandidateToQDist > furthestNNToQDist {
 			// all elements in W are evaluated
 			break
 		}
 
-		if len(h.Nodes[c.id].friends) >= layerId+1 {
-			friends := h.Nodes[c.id].friends[layerId]
+		if len(h.Nodes[closestCandidate.id].friends) >= layerId+1 {
+			friends := h.Nodes[closestCandidate.id].friends[layerId]
 
 			for _, friendId := range friends {
-				// if e ∉ v
+				// if friendId ∉ visitor
 				if !visited[friendId] {
 					visited[friendId] = true
-					maxItem := w.Peek()
+					furthestNNItem := nearestNeighborsToQForEf.Peek()
 
-					eqDist := EuclidDist(h.Nodes[friendId].v, q)
-					maxDist := EuclidDist(h.Nodes[maxItem.id].v, q)
+					friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
+					furthestNNToQDist := EuclidDist(h.Nodes[furthestNNItem.id].v, q)
 
-					if eqDist < maxDist || w.Len() < ef {
-						candidates.Push(friendId, eqDist)
-						w.Push(friendId, eqDist)
+					if friendToQDist < furthestNNToQDist || nearestNeighborsToQForEf.Len() < ef {
+						candidates.Push(friendId, friendToQDist)
+						nearestNeighborsToQForEf.Push(friendId, friendToQDist)
 
-						if w.Len() > ef {
-							w.Pop()
+						if nearestNeighborsToQForEf.Len() > ef {
+							nearestNeighborsToQForEf.Pop()
 						}
 					}
 				}
