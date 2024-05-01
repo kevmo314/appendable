@@ -23,13 +23,7 @@ func TestEucQueue(t *testing.T) {
 
 		eq := NewEucQueue(true)
 		for i, v := range vs {
-
-			dist, err := Eucdist(v0, v)
-
-			if err != nil {
-				t.Fatalf("error occured during euc dist comp: %v", err)
-			}
-
+			dist := EuclidDist(v0, v)
 			eq.Push(NodeID(i), dist)
 		}
 
@@ -51,7 +45,7 @@ func TestEucQueue(t *testing.T) {
 		i := 0
 		for eq.Len() > 0 {
 			item := eq.Pop()
-			if item.id != expected[i].id {
+			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
 				t.Fatalf("expected item %v, got %v at %v", expected[i].id, item.id, i)
 			}
 
