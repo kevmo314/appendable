@@ -63,11 +63,12 @@ func (h *Hnsw) SpawnLayer() int {
 // w must be a max euc queue
 func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 
-	visited := NewSet()
-	candidates := NewEucQueue(true)
+	visited := make(map[NodeID]interface{})
+	visited[h.EntryNodeID] = struct{}{}
 
-	visited.Add(h.EntryNodeID)
+	candidates := NewEucQueue(true)
 	candidates.Push(h.EntryNodeID, 0)
+
 	w.Push(h.EntryNodeID, 0)
 
 	for !candidates.IsEmpty() {
@@ -77,8 +78,8 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 		// get the furthest element from W to q
 		f := w.Pop()
 
-		cq, _ := Eucdist(h.Nodes[c.id].v, q)
-		fq, _ := Eucdist(h.Nodes[f.id].v, q)
+		cq := EuclidDist(h.Nodes[c.id].v, q)
+		fq := EuclidDist(h.Nodes[f.id].v, q)
 
 		if cq > fq {
 			// all elements in W are evaluated
@@ -90,12 +91,12 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, w *EucQueue) {
 
 			for _, friendId := range friends {
 				// if e ∉ v
-				if !visited.Contains(friendId) {
-					visited.Add(friendId)
+				if _, found := visited[friendId]; !found {
+					visited[friendId] = struct{}{}
 					maxItem := w.Peek()
 
-					eqDist, _ := Eucdist(h.Nodes[friendId].v, q)
-					maxDist, _ := Eucdist(h.Nodes[maxItem.id].v, q)
+					eqDist := EuclidDist(h.Nodes[friendId].v, q)
+					maxDist := EuclidDist(h.Nodes[maxItem.id].v, q)
 
 					if eqDist < maxDist || w.Len() < ef {
 						candidates.Push(friendId, eqDist)

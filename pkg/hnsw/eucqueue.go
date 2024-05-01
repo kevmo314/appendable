@@ -79,11 +79,11 @@ func (pq *MinQueue) Push(x any) {
 	*pq = append(*pq, item)
 }
 
-func (pq *MinQueue) Peek() *Item {
-	if len(*pq) == 0 {
+func (pq MinQueue) Peek() *Item {
+	if len(pq) == 0 {
 		return nil
 	}
-	return (*pq)[0]
+	return pq[0]
 }
 
 func (pq *MinQueue) Pop() any {
@@ -124,11 +124,11 @@ func (pq *MaxQueue) Push(x any) {
 	*pq = append(*pq, item)
 }
 
-func (pq *MaxQueue) Peek() *Item {
-	if len(*pq) == 0 {
+func (pq MaxQueue) Peek() *Item {
+	if len(pq) == 0 {
 		return nil
 	}
-	return (*pq)[0]
+	return pq[0]
 }
 func (pq *MaxQueue) Pop() any {
 	old := *pq
