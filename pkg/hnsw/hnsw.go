@@ -135,13 +135,12 @@ func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *
 
 	mCandidatesNearestElementsFromQ := NewMinQueue()
 
-	for !mCandidatesNearestElementsFromQ.IsEmpty() {
+	for candidate := candidates.Peel(); candidate != nil; candidate = candidates.Peel() {
 		if mCandidatesNearestElementsFromQ.Len() == numNeighborsToReturn {
 			return mCandidatesNearestElementsFromQ
 		}
 
-		closestCandidate := candidates.Peel()
-		mCandidatesNearestElementsFromQ.Insert(closestCandidate.id, closestCandidate.dist)
+		mCandidatesNearestElementsFromQ.Insert(candidate.id, candidate.dist)
 	}
 
 	return nil
