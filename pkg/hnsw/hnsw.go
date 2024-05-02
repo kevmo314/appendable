@@ -75,7 +75,7 @@ func (h *Hnsw) spawnLayer() int {
 searchLayer needs two things:
 1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
 */
-func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int, numNearestToQ *MinQueue) {
+func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *MinQueue {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -135,10 +135,13 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int, numNe
 		}
 	}
 
+	numNearestToQ := NewMinQueue()
 	for !nearestNeighborsToQForEf.IsEmpty() {
 		peeled := nearestNeighborsToQForEf.Peel()
 		numNearestToQ.Insert(peeled.id, peeled.dist)
 	}
+
+	return numNearestToQ
 }
 
 func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *MinQueue {
@@ -165,11 +168,22 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	entryPointNode := h.Nodes[h.EntryNodeId]
 
 	for l := entryPointNode.layer; l >= 1; l-- {
-		h.searchLayer(q, entryPointNode, 1, l, currentNearestElements)
+		numNearestToQAtLevelL := h.searchLayer(q, entryPointNode, 1, l)
+
+		for !numNearestToQAtLevelL.IsEmpty() {
+			peeled := numNearestToQAtLevelL.Peel()
+			currentNearestElements.Insert(peeled.id, peeled.dist)
+		}
+
 		entryPointNode = h.Nodes[currentNearestElements.Peel().id]
 	}
 
-	h.searchLayer(q, entryPointNode, ef, 0, currentNearestElements)
+	numNearestToQAtBase := h.searchLayer(q, entryPointNode, ef, 0)
+
+	for !numNearestToQAtBase.IsEmpty() {
+		peeled := numNearestToQAtBase.Peel()
+		currentNearestElements.Insert(peeled.id, peeled.dist)
+	}
 
 	if currentNearestElements.Len() < kNeighborsToReturn {
 		panic("")
