@@ -175,10 +175,5 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 		panic("")
 	}
 
-	kItems, err := currentNearestElements.Take(kNeighborsToReturn)
-	if err != nil {
-		return nil, err
-	}
-
-	return kItems, nil
+	return currentNearestElements.Take(kNeighborsToReturn)
 }
