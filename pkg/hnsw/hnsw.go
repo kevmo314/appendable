@@ -113,7 +113,10 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *MinQ
 		if len(h.Nodes[closestCandidate.id].friends) >= layerId+1 {
 			friends := h.Nodes[closestCandidate.id].friends[layerId]
 
-			for _, friendId := range friends {
+			for !friends.IsEmpty() {
+				friend := friends.Peel()
+				friendId := friend.id
+
 				// if friendId ∉ visitor
 				if !visited[friendId] {
 					visited[friendId] = true
@@ -190,4 +193,14 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	}
 
 	return currentNearestElements.Take(kNeighborsToReturn)
+}
+
+func (h *Hnsw) Link(i0, i1 *Item, level int) {
+	n0, n1 := h.Nodes[i0.id], h.Nodes[i1.id]
+	f0, f1 := n0.friends, n1.friends
+
+	mq0, mq1 := f0[level], f1[level]
+
+	mq0.Insert(i1.id, i1.dist)
+	mq1.Insert(i0.id, i0.dist)
 }
