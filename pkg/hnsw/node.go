@@ -15,7 +15,7 @@ type Node struct {
 	layer int
 
 	// for every layer, we have a list of friends' NodeIds
-	friends [][]NodeId
+	friends map[int]*MinQueue
 }
 
 func NewNode(id NodeId, v Vector) *Node {
@@ -23,7 +23,7 @@ func NewNode(id NodeId, v Vector) *Node {
 		id,
 		v,
 		-1,
-		make([][]NodeId, 0),
+		make(map[int]*MinQueue),
 	}
 }
 
