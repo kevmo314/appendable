@@ -1,6 +1,7 @@
 package hnsw
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 )
@@ -74,17 +75,25 @@ func (h *Hnsw) spawnLayer() int {
 searchLayer needs two things:
 1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
 */
-func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *MaxQueue) {
+func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *MinQueue {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
 	visited := make([]bool, len(h.Nodes))
-	visited[h.EntryNodeId] = true
+
+	if entryNode.id != h.EntryNodeId {
+		panic(fmt.Sprintf("debug: this should not occur. entry node mismatch got %v, expected: %v", entryNode.id, h.EntryNodeId))
+	}
+
+	visited[entryNode.id] = true
+
+	entryNodeToQDist := EuclidDist(entryNode.v, q)
 
 	candidates := NewMinQueue()
+	candidates.Insert(entryNode.id, entryNodeToQDist)
 
-	candidates.Insert(h.EntryNodeId, 0)               // todo fix! should be the dist from en -> q.
-	nearestNeighborsToQForEf.Insert(h.EntryNodeId, 0) // todo fix! ^^
+	nearestNeighborsToQForEf := NewMaxQueue()
+	nearestNeighborsToQForEf.Insert(entryNode.id, entryNodeToQDist)
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q
@@ -125,6 +134,14 @@ func (h *Hnsw) searchLayer(q Vector, ef, layerId int, nearestNeighborsToQForEf *
 			}
 		}
 	}
+
+	numNearestToQ := NewMinQueue()
+	for !nearestNeighborsToQForEf.IsEmpty() {
+		peeled := nearestNeighborsToQForEf.Peel()
+		numNearestToQ.Insert(peeled.id, peeled.dist)
+	}
+
+	return numNearestToQ
 }
 
 func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *MinQueue {
@@ -144,4 +161,33 @@ func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *
 	}
 
 	return nil
+}
+
+func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) {
+	currentNearestElements := NewMinQueue()
+	entryPointNode := h.Nodes[h.EntryNodeId]
+
+	for l := entryPointNode.layer; l >= 1; l-- {
+		numNearestToQAtLevelL := h.searchLayer(q, entryPointNode, 1, l)
+
+		for !numNearestToQAtLevelL.IsEmpty() {
+			peeled := numNearestToQAtLevelL.Peel()
+			currentNearestElements.Insert(peeled.id, peeled.dist)
+		}
+
+		entryPointNode = h.Nodes[currentNearestElements.Peel().id]
+	}
+
+	numNearestToQAtBase := h.searchLayer(q, entryPointNode, ef, 0)
+
+	for !numNearestToQAtBase.IsEmpty() {
+		peeled := numNearestToQAtBase.Peel()
+		currentNearestElements.Insert(peeled.id, peeled.dist)
+	}
+
+	if currentNearestElements.Len() < kNeighborsToReturn {
+		panic("")
+	}
+
+	return currentNearestElements.Take(kNeighborsToReturn)
 }
