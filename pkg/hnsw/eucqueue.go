@@ -20,6 +20,8 @@ type Heapy interface {
 	Peek() *Item
 	Take(count int) ([]*Item, error)
 	update(item *Item, id NodeId, dist float64)
+
+	Iter() []*Item
 }
 
 // Nothing from baseQueue should be used. Only use the Max and Min queue.
@@ -60,6 +62,12 @@ func (bq *baseQueue) Pop() any {
 	item.index = -1
 	bq.items = old[0 : n-1]
 	return item
+}
+
+func (bq *baseQueue) Iter() []*Item {
+	copiedItems := make([]*Item, len(bq.items))
+	copy(copiedItems, bq.items)
+	return copiedItems
 }
 
 type MinQueue struct{ baseQueue }
