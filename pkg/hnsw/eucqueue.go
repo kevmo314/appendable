@@ -74,6 +74,26 @@ type MinQueue struct{ baseQueue }
 
 type MaxQueue struct{ baseQueue }
 
+func FromMinQueue(items []*Item) *MinQueue {
+	mq := NewMinQueue()
+
+	for _, i := range items {
+		mq.Insert(i.id, i.dist)
+	}
+
+	return mq
+}
+
+func FromMaxQueue(items []*Item) *MaxQueue {
+	mq := NewMaxQueue()
+
+	for _, i := range items {
+		mq.Insert(i.id, i.dist)
+	}
+
+	return mq
+}
+
 func NewMinQueue() *MinQueue {
 	mq := &MinQueue{}
 	heap.Init(mq)

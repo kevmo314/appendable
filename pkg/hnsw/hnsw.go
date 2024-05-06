@@ -202,7 +202,7 @@ func (h *Hnsw) Link(i0, i1 *Item, level int) {
 	mq1.Insert(i0.id, i0.dist)
 }
 
-func (h *Hnsw) Insert(q Vector) {
+func (h *Hnsw) Insert(q Vector) error {
 
 	// 1. build Node for vec q
 	qLayer := h.spawnLayer()
@@ -244,7 +244,7 @@ func (h *Hnsw) Insert(q Vector) {
 		}
 	}
 
-	// 4. save qNode into the `Nodes` table
+	// 4. add qNode into the `Nodes` table
 	h.Nodes[qNode.id] = qNode
 
 	// 5. Link connections
@@ -253,6 +253,27 @@ func (h *Hnsw) Insert(q Vector) {
 
 		for _, qfriends := range friendsAtLevel.Iter() {
 			h.Link(qfriends, &qItem, level)
+
+			qFriendNode := h.Nodes[qfriends.id]
+			qFriendNodeFriendsAtLevel := qFriendNode.friends[level]
+			numFriendsForQFriendAtLevel := qFriendNodeFriendsAtLevel.Len()
+
+			if (level == 0 && numFriendsForQFriendAtLevel > h.MMax0) || (level != 0 && numFriendsForQFriendAtLevel > h.MMax) {
+				var amt int
+				if level == 0 {
+					amt = h.MMax0
+				} else {
+					amt = h.MMax
+				}
+
+				items, err := qFriendNodeFriendsAtLevel.Take(amt)
+				if err != nil {
+					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriends.id, amt, level)
+				}
+
+				// shrink connections for a friend at layer
+				h.Nodes[qfriends.id].friends[level] = FromMinQueue(items)
+			}
 		}
 	}
 
@@ -261,4 +282,6 @@ func (h *Hnsw) Insert(q Vector) {
 		h.MaxLayer = qLayer
 		h.EntryNodeId = qNode.id
 	}
+
+	return nil
 }
