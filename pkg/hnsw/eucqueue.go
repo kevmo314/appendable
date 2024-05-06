@@ -20,6 +20,8 @@ type Heapy interface {
 	Peek() *Item
 	Take(count int) ([]*Item, error)
 	update(item *Item, id NodeId, dist float64)
+
+	Iter() []*Item
 }
 
 // Nothing from baseQueue should be used. Only use the Max and Min queue.
@@ -62,9 +64,35 @@ func (bq *baseQueue) Pop() any {
 	return item
 }
 
+func (bq *baseQueue) Iter() []*Item {
+	copiedItems := make([]*Item, len(bq.items))
+	copy(copiedItems, bq.items)
+	return copiedItems
+}
+
 type MinQueue struct{ baseQueue }
 
 type MaxQueue struct{ baseQueue }
+
+func FromMinQueue(items []*Item) *MinQueue {
+	mq := NewMinQueue()
+
+	for _, i := range items {
+		mq.Insert(i.id, i.dist)
+	}
+
+	return mq
+}
+
+func FromMaxQueue(items []*Item) *MaxQueue {
+	mq := NewMaxQueue()
+
+	for _, i := range items {
+		mq.Insert(i.id, i.dist)
+	}
+
+	return mq
+}
 
 func NewMinQueue() *MinQueue {
 	mq := &MinQueue{}

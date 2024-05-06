@@ -64,9 +64,6 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 	return h
 }
 
-func (h *Hnsw) entryTopLayer() int {
-	return h.Nodes[h.EntryNodeId].layer
-}
 func (h *Hnsw) spawnLayer() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
@@ -203,4 +200,88 @@ func (h *Hnsw) Link(i0, i1 *Item, level int) {
 
 	mq0.Insert(i1.id, i1.dist)
 	mq1.Insert(i0.id, i0.dist)
+}
+
+func (h *Hnsw) Insert(q Vector) error {
+
+	// 1. build Node for vec q
+	qLayer := h.spawnLayer()
+	qNode := &Node{
+		id:      h.NextNodeId,
+		v:       q,
+		layer:   qLayer,
+		friends: make(map[int]*MinQueue),
+	}
+	h.NextNodeId++
+	qItem := Item{
+		id:   qNode.id,
+		dist: EuclidDist(qNode.v, h.Nodes[h.EntryNodeId].v),
+	}
+
+	// 2. from top -> qlayer, make the first pass
+	ep := h.Nodes[h.EntryNodeId]
+	currentTopLayer := ep.layer
+
+	// start at the top
+	for level := currentTopLayer; level > qLayer; level-- {
+		nnToQAtLevel := h.searchLayer(q, ep, 1, level)
+		nearest := nnToQAtLevel.Peel()
+
+		// at each level, find the nearest neighbor to Q at that given level,
+		// set the entryPointNode for the next iter
+		ep = h.Nodes[nearest.id]
+	}
+
+	// 3. make the second pass, this time create connections
+	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
+		nnToQAtLevel := h.searchLayer(q, ep, h.EfConstruction, level)
+
+		neighbors := h.selectNeighbors(nnToQAtLevel, h.M)
+
+		for !neighbors.IsEmpty() {
+			peeled := neighbors.Peel()
+			qNode.friends[level].Insert(peeled.id, peeled.dist)
+		}
+	}
+
+	// 4. add qNode into the `Nodes` table
+	h.Nodes[qNode.id] = qNode
+
+	// 5. Link connections
+	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
+		friendsAtLevel := qNode.friends[level]
+
+		for _, qfriends := range friendsAtLevel.Iter() {
+			h.Link(qfriends, &qItem, level)
+
+			qFriendNode := h.Nodes[qfriends.id]
+			qFriendNodeFriendsAtLevel := qFriendNode.friends[level]
+			numFriendsForQFriendAtLevel := qFriendNodeFriendsAtLevel.Len()
+
+			if (level == 0 && numFriendsForQFriendAtLevel > h.MMax0) || (level != 0 && numFriendsForQFriendAtLevel > h.MMax) {
+				var amt int
+				if level == 0 {
+					amt = h.MMax0
+				} else {
+					amt = h.MMax
+				}
+
+				items, err := qFriendNodeFriendsAtLevel.Take(amt)
+				if err != nil {
+					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriends.id, amt, level)
+				}
+
+				// shrink connections for a friend at layer
+				h.Nodes[qfriends.id].friends[level] = FromMinQueue(items)
+			}
+		}
+	}
+
+	// 6. update attr
+	if h.MaxLayer < qLayer {
+		h.MaxLayer = qLayer
+		h.EntryNodeId = qNode.id
+	}
+
+	return nil
 }
