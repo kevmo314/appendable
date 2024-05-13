@@ -1,7 +1,6 @@
 package hnsw
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -93,7 +92,7 @@ func TestEucQueue(t *testing.T) {
 		})
 
 		if err := mq.Take(2); err != nil {
-			fmt.Errorf("failed to take 3")
+			t.Fatalf("failed to take 3")
 		}
 	})
 }
