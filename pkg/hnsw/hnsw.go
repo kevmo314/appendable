@@ -189,7 +189,11 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 		panic("")
 	}
 
-	return currentNearestElements.Take(kNeighborsToReturn)
+	if err := currentNearestElements.Take(kNeighborsToReturn); err != nil {
+		return nil, fmt.Errorf("failed to knnsearch, err: %v", err)
+	}
+
+	return currentNearestElements.items, nil
 }
 
 func (h *Hnsw) Link(i0, i1 *Item, level int) {
@@ -266,13 +270,13 @@ func (h *Hnsw) Insert(q Vector) error {
 					amt = h.MMax
 				}
 
-				items, err := qFriendNodeFriendsAtLevel.Take(amt)
+				err := qFriendNodeFriendsAtLevel.Take(amt)
 				if err != nil {
 					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriends.id, amt, level)
 				}
 
 				// shrink connections for a friend at layer
-				h.Nodes[qfriends.id].friends[level] = FromMinQueue(items)
+				h.Nodes[qfriends.id].friends[level] = qFriendNodeFriendsAtLevel
 			}
 		}
 	}
