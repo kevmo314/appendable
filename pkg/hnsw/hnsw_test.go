@@ -1,7 +1,6 @@
 package hnsw
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -19,7 +18,7 @@ func TestHnsw(t *testing.T) {
 func TestHnswSelect(t *testing.T) {
 
 	t.Run("selects m nearest elements to q", func(t *testing.T) {
-		candidates := FromMinQueue([]*Item{
+		candidates := FromBaseQueue([]*Item{
 			{id: 1, dist: 30},
 			{id: 2, dist: 29},
 			{id: 3, dist: 28},
@@ -31,7 +30,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 9, dist: 22},
 			{id: 10, dist: 21},
 			{id: 11, dist: 20},
-		})
+		}, MinComparator{})
 
 		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}))
 
@@ -49,19 +48,21 @@ func TestHnswSelect(t *testing.T) {
 		i := 0
 		for !cn.IsEmpty() {
 			peeled := cn.Peel()
-			fmt.Printf("%v", peeled.id)
 			if peeled.id != NodeId(expected) {
 				t.Fatalf("expected %v, but got %v at %v", expected, peeled.id, i)
 			}
+
+			expected--
+			i++
 		}
 	})
 
 	t.Run("over selects! greedy", func(t *testing.T) {
-		candidates := FromMinQueue([]*Item{
+		candidates := FromBaseQueue([]*Item{
 			{id: 1, dist: 30},
 			{id: 2, dist: 0.6},
 			{id: 3, dist: 8},
-		})
+		}, MinComparator{})
 
 		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}))
 
@@ -75,14 +76,14 @@ func TestHnswSelect(t *testing.T) {
 func TestHnsw_Link(t *testing.T) {
 	t.Run("links correctly", func(t *testing.T) {
 
-		mq1 := make(map[int]*MinQueue)
-		mq1[0] = NewMinQueue()
-		mq1[1] = NewMinQueue()
-		mq1[2] = NewMinQueue()
+		mq1 := make(map[int]*BaseQueue)
+		mq1[0] = NewBaseQueue(MinComparator{})
+		mq1[1] = NewBaseQueue(MinComparator{})
+		mq1[2] = NewBaseQueue(MinComparator{})
 
-		mq2 := make(map[int]*MinQueue)
-		mq2[0] = NewMinQueue()
-		mq2[1] = NewMinQueue()
+		mq2 := make(map[int]*BaseQueue)
+		mq2[0] = NewBaseQueue(MinComparator{})
+		mq2[1] = NewBaseQueue(MinComparator{})
 
 		n1 := Node{
 			id:      1,

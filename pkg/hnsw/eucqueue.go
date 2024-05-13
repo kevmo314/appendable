@@ -5,6 +5,24 @@ import (
 	"fmt"
 )
 
+type Comparator interface {
+	Less(i, j *Item) bool
+}
+
+// MaxComparator implements the Comparator interface for a max-heap.
+type MaxComparator struct{}
+
+func (c MaxComparator) Less(i, j *Item) bool {
+	return i.dist > j.dist
+}
+
+// MinComparator implements the Comparator interface for a min-heap.
+type MinComparator struct{}
+
+func (c MinComparator) Less(i, j *Item) bool {
+	return i.dist < j.dist
+}
+
 type Item struct {
 	id    NodeId
 	dist  float64
@@ -18,52 +36,67 @@ type Heapy interface {
 	Len() int
 	Peel() *Item
 	Peek() *Item
-	Take(count int) error
+	Take(count int) (*BaseQueue, error)
 	update(item *Item, id NodeId, dist float64)
-
-	Iter() []*Item
 }
 
-// Nothing from baseQueue should be used. Only use the Max and Min queue.
-// baseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
-type baseQueue struct{ items []*Item }
+// Nothing from BaseQueue should be used. Only use the Max and Min queue.
+// BaseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
+type BaseQueue struct {
+	items      []*Item
+	comparator Comparator
+}
 
-func (bq *baseQueue) Take(count int) error {
+func (bq *BaseQueue) Take(count int) (*BaseQueue, error) {
 	if len(bq.items) < count {
-		return fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
+		return nil, fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
 	}
 
-	bq.items = bq.items[:count]
-	return nil
+	pq := NewBaseQueue(bq.comparator)
+
+	ct := 0
+	for {
+		if ct == count {
+			break
+		}
+
+		peeled := bq.Peel()
+
+		pq.Insert(peeled.id, peeled.dist)
+
+		ct++
+	}
+
+	return pq, nil
 }
 
-func (bq baseQueue) Len() int { return len(bq.items) }
-func (bq baseQueue) Swap(i, j int) {
+func (bq BaseQueue) Len() int { return len(bq.items) }
+func (bq BaseQueue) Swap(i, j int) {
 	pq := bq.items
 	pq[i], pq[j] = pq[j], pq[i]
 	pq[i].index = i
 	pq[j].index = j
 }
 
-func (bq *baseQueue) Push(x any) {
+func (bq *BaseQueue) Push(x any) {
 	n := len(bq.items)
 	item := x.(*Item)
 	item.index = n
 	bq.items = append(bq.items, item)
 }
 
-func (bq *baseQueue) Peek() *Item {
+func (bq *BaseQueue) Peek() *Item {
 	if len(bq.items) == 0 {
 		return nil
 	}
 	return bq.items[0]
 }
 
-func (bq *baseQueue) IsEmpty() bool {
+func (bq *BaseQueue) IsEmpty() bool {
 	return len(bq.items) == 0
 }
 
-func (bq *baseQueue) Pop() any {
+func (bq *BaseQueue) Pop() any {
 	old := bq.items
 	n := len(old)
 	item := old[n-1]
@@ -73,85 +106,39 @@ func (bq *baseQueue) Pop() any {
 	return item
 }
 
-func (bq *baseQueue) Iter() []*Item {
-	copiedItems := make([]*Item, len(bq.items))
-	copy(copiedItems, bq.items)
-	return copiedItems
+func (pq *BaseQueue) Less(i, j int) bool {
+	return pq.comparator.Less(pq.items[i], pq.items[j])
 }
 
-type MinQueue struct{ baseQueue }
+func (bq *BaseQueue) Insert(id NodeId, dist float64) {
+	heap.Push(bq, &Item{id: id, dist: dist})
+}
 
-type MaxQueue struct{ baseQueue }
-
-func FromMinQueue(items []*Item) *MinQueue {
-	mq := NewMinQueue()
+func FromBaseQueue(items []*Item, comparator Comparator) *BaseQueue {
+	bq := NewBaseQueue(comparator)
 
 	for _, i := range items {
-		mq.Insert(i.id, i.dist)
+		bq.Insert(i.id, i.dist)
 	}
 
-	return mq
+	return bq
 }
 
-func FromMaxQueue(items []*Item) *MaxQueue {
-	mq := NewMaxQueue()
-
-	for _, i := range items {
-		mq.Insert(i.id, i.dist)
-	}
-
-	return mq
+func NewBaseQueue(comparator Comparator) *BaseQueue {
+	bq := &BaseQueue{comparator: comparator}
+	heap.Init(bq)
+	return bq
 }
 
-func NewMinQueue() *MinQueue {
-	mq := &MinQueue{}
-	heap.Init(mq)
-	return mq
-}
-
-func NewMaxQueue() *MaxQueue {
-	mq := &MaxQueue{}
-	heap.Init(mq)
-	return mq
-}
-
-func (mq *MinQueue) Insert(id NodeId, dist float64) {
-	heap.Push(mq, &Item{id: id, dist: dist})
-}
-
-func (mq *MaxQueue) Insert(id NodeId, dist float64) {
-	heap.Push(mq, &Item{id: id, dist: dist})
-}
-
-func (mq *MinQueue) Less(i, j int) bool {
-	return mq.items[i].dist < mq.items[j].dist
-}
-
-func (mq *MaxQueue) Less(i, j int) bool {
-	return mq.items[i].dist > mq.items[j].dist
-}
-
-func (mq *MinQueue) Peel() *Item {
-	if mq.Len() == 0 {
+func (bq *BaseQueue) Peel() *Item {
+	if bq.Len() == 0 {
 		return nil
 	}
-	return heap.Pop(mq).(*Item)
+	return heap.Pop(bq).(*Item)
 }
 
-func (mq *MaxQueue) Peel() *Item {
-	if mq.Len() == 0 {
-		return nil
-	}
-	return heap.Pop(mq).(*Item)
-}
-
-func (mq *MinQueue) update(item *Item, id NodeId, dist float64) {
+func (bq *BaseQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
-	heap.Fix(mq, item.index)
-}
-func (mq *MaxQueue) update(item *Item, id NodeId, dist float64) {
-	item.id = id
-	item.dist = dist
-	heap.Fix(mq, item.index)
+	heap.Fix(bq, item.index)
 }

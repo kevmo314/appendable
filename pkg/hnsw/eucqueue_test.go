@@ -16,7 +16,7 @@ func TestEucQueue(t *testing.T) {
 			{0.8}, // id: 4, dist: 0.2, p: 2
 		}
 
-		eq := NewMinQueue()
+		eq := NewBaseQueue(MinComparator{})
 
 		if !eq.IsEmpty() || eq.Len() != 0 {
 			t.Fatalf("created new eq, expected empty, got %v len", eq.Len())
@@ -62,7 +62,7 @@ func TestEucQueue(t *testing.T) {
 			{0.8}, // id: 4, dist: 0.2, p: 2
 		}
 
-		eq := NewMaxQueue()
+		eq := NewBaseQueue(MaxComparator{})
 
 		if !eq.IsEmpty() || eq.Len() != 0 {
 			t.Fatalf("created new eq, expected empty, got %v len", eq.Len())
@@ -97,16 +97,22 @@ func TestEucQueue(t *testing.T) {
 	})
 
 	t.Run("takes correctly", func(t *testing.T) {
-		mq := FromMinQueue([]*Item{
+		mq := FromBaseQueue([]*Item{
 			{id: 1, dist: 33},
 			{id: 2, dist: 32},
 			{id: 3, dist: 69},
 			{id: 4, dist: 3},
 			{id: 6, dist: 0.01},
-		})
+		}, MinComparator{})
 
-		if err := mq.Take(2); err != nil {
+		pq, err := mq.Take(3)
+		if err != nil {
 			t.Fatalf("failed to take 3")
 		}
+
+		if pq.Len() != 3 {
+			t.Fatalf("expected len: %v, got %v", 3, pq.Len())
+		}
+
 	})
 }
