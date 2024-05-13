@@ -81,4 +81,18 @@ func TestEucQueue(t *testing.T) {
 			i++
 		}
 	})
+
+	t.Run("takes correctly", func(t *testing.T) {
+		mq := FromMinQueue([]*Item{
+			{id: 1, dist: 33},
+			{id: 2, dist: 32},
+			{id: 3, dist: 69},
+			{id: 4, dist: 3},
+			{id: 6, dist: 0.01},
+		})
+
+		if err := mq.Take(2); err != nil {
+			t.Fatalf("failed to take 3")
+		}
+	})
 }

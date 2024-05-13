@@ -18,7 +18,7 @@ type Heapy interface {
 	Len() int
 	Peel() *Item
 	Peek() *Item
-	Take(count int) ([]*Item, error)
+	Take(count int) error
 	update(item *Item, id NodeId, dist float64)
 
 	Iter() []*Item
@@ -27,6 +27,15 @@ type Heapy interface {
 // Nothing from baseQueue should be used. Only use the Max and Min queue.
 // baseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
 type baseQueue struct{ items []*Item }
+
+func (bq *baseQueue) Take(count int) error {
+	if len(bq.items) < count {
+		return fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
+	}
+
+	bq.items = bq.items[:count]
+	return nil
+}
 
 func (bq baseQueue) Len() int { return len(bq.items) }
 func (bq baseQueue) Swap(i, j int) {
@@ -145,43 +154,4 @@ func (mq *MaxQueue) update(item *Item, id NodeId, dist float64) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(mq, item.index)
-}
-
-func (mq *MinQueue) Take(count int) ([]*Item, error) {
-	if mq.Len() > count {
-		return nil, fmt.Errorf("not enough elements to take %v. Only %v items", count, mq.Len())
-	}
-
-	tq := NewMinQueue()
-	tq.items = make([]*Item, len(mq.items))
-	copy(tq.items, mq.items)
-
-	heap.Init(tq)
-
-	items := make([]*Item, 0, count)
-	for i := 0; i < count; i++ {
-		item := heap.Pop(tq).(*Item)
-		items = append(items, item)
-	}
-
-	return items, nil
-}
-
-func (mq *MaxQueue) Take(count int) ([]*Item, error) {
-	if mq.Len() > count {
-		return nil, fmt.Errorf("not enough elements to take %v. Only %v items", count, mq.Len())
-	}
-
-	tq := NewMaxQueue()
-	tq.items = make([]*Item, len(mq.items))
-	copy(tq.items, mq.items)
-	heap.Init(tq)
-
-	items := make([]*Item, 0, count)
-	for i := 0; i < count; i++ {
-		item := heap.Pop(tq).(*Item)
-		items = append(items, item)
-	}
-
-	return items, nil
 }

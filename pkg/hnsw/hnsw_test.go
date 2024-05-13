@@ -1,6 +1,9 @@
 package hnsw
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
@@ -9,6 +12,38 @@ func TestHnsw(t *testing.T) {
 
 		if h.MaxLayer != -1 {
 			t.Fatalf("expected max layer to default to -1, got %v", h.MaxLayer)
+		}
+	})
+}
+
+func TestHnswSelect(t *testing.T) {
+
+	t.Run("selects m nearest elements to q", func(t *testing.T) {
+		candidates := FromMinQueue([]*Item{
+			{id: 1, dist: 30},
+			{id: 2, dist: 0.6},
+			{id: 3, dist: 8},
+			{id: 4, dist: 64},
+			{id: 5, dist: 0.3},
+			{id: 6, dist: 28.2},
+			{id: 7, dist: 8},
+			{id: 8, dist: 0.01},
+			{id: 9, dist: 3.2},
+			{id: 10, dist: 3.4},
+			{id: 11, dist: 3.3},
+		})
+
+		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}))
+
+		cn := h.selectNeighbors(candidates, 10)
+
+		if cn.Len() != 10 {
+			t.Fatalf("did not take 10 items")
+		}
+
+		for !cn.IsEmpty() {
+			peeled := cn.Peel()
+			fmt.Printf("%v", peeled.id)
 		}
 	})
 }
