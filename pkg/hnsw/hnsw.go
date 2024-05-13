@@ -145,22 +145,16 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *MinQ
 }
 
 func (h *Hnsw) selectNeighbors(candidates *MinQueue, numNeighborsToReturn int) *MinQueue {
-
 	if candidates.Len() <= numNeighborsToReturn {
 		return nil
 	}
 
-	mCandidatesNearestElementsFromQ := NewMinQueue()
-
-	for candidate := candidates.Peel(); candidate != nil; candidate = candidates.Peel() {
-		if mCandidatesNearestElementsFromQ.Len() == numNeighborsToReturn {
-			return mCandidatesNearestElementsFromQ
-		}
-
-		mCandidatesNearestElementsFromQ.Insert(candidate.id, candidate.dist)
+	err := candidates.Take(numNeighborsToReturn)
+	if err != nil {
+		return nil
 	}
 
-	return nil
+	return FromMinQueue(candidates.items)
 }
 
 func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) {
