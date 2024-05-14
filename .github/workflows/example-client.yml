@@ -39,7 +39,7 @@ jobs:
           cp examples/workspace/green_tripdata_2023-01.jsonl examples/client
 
           # Build the index
-          go run cmd/main.go -i examples/client/palo-alto.index -jsonl examples/workspace/palo-alto.jsonl
+          go run cmd/main.go -i examples/client/palo-alto.index -s description -jsonl examples/workspace/palo-alto.jsonl
         
           # Copy to client
           cp examples/workspace/palo-alto.jsonl examples/client
