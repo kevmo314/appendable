@@ -1,12 +1,13 @@
 package hnsw
 
 import (
+	"fmt"
 	"testing"
 )
 
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
-		n := NewNode(0, Vector([]float64{0.1, 0.2}))
+		n := NewNode(0, []float64{0.1, 0.2}, 3)
 		h := NewHNSW(20, 32, 32, n)
 
 		if h.MaxLayer != -1 {
@@ -32,7 +33,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 11, dist: 20},
 		}, MinComparator{})
 
-		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}))
+		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}, 3))
 
 		cn, err := h.selectNeighbors(candidates, 10)
 
@@ -47,7 +48,10 @@ func TestHnswSelect(t *testing.T) {
 		expected := 11
 		i := 0
 		for !cn.IsEmpty() {
-			peeled := cn.Peel()
+			peeled, err := cn.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if peeled.id != NodeId(expected) {
 				t.Fatalf("expected %v, but got %v at %v", expected, peeled.id, i)
 			}
@@ -64,13 +68,58 @@ func TestHnswSelect(t *testing.T) {
 			{id: 3, dist: 8},
 		}, MinComparator{})
 
-		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}))
+		h := NewHNSW(2, 32, 1, NewNode(0, []float64{0, 0}, 3))
 
 		_, err := h.selectNeighbors(candidates, 10)
 		if err == nil {
 			t.Fatalf("expected to fail!")
 		}
 	})
+}
+
+func TestHnsw_Insert(t *testing.T) {
+
+	t.Run("nodes[0] is root", func(t *testing.T) {
+		n := NewNode(0, []float64{11, 11}, 3)
+		h := NewHNSW(2000, 32, 32, n)
+
+		if len(h.Nodes) != 1 {
+			t.Fatalf("hnsw should be initialized with root node but got len: %v", len(h.Nodes))
+		}
+
+		if h.Nodes[0].id != 0 {
+			t.Fatalf("expected node id at 0 to be initialized but got %v", h.Nodes[0].id)
+		}
+	})
+
+	t.Run("hnsw with inserted element q", func(t *testing.T) {
+		entryNode := NewNode(0, []float64{1, 1, 1}, 3)
+		h := NewHNSW(3, 32, 32, entryNode)
+
+		if len(h.Nodes) != 1 {
+			t.Fatalf("hnsw should be initialized with root node but got len: %v", len(h.Nodes))
+		}
+
+		err := h.Insert([]float64{1.3, 2.5, 2.3})
+		if err != nil {
+			return
+		}
+
+		if len(h.Nodes) != 2 {
+			t.Fatalf("expected 2 nodes after insertion but got %v", len(h.Nodes))
+		}
+
+		fmt.Printf("new node %v", h.Nodes[1])
+
+		if h.Nodes[1].id != 1 {
+			t.Fatalf("expected node id at 1 to be initialized but got %v", h.Nodes[1].id)
+		}
+
+		if EuclidDist(h.Nodes[1].v, []float64{1.3, 2.5, 2.3}) != 0 {
+			t.Fatalf("incorrect vector inserted at %v expected vector %v but got %v", 1, []float64{1.3, 2.5, 2.3}, h.Nodes[1].v)
+		}
+	})
+
 }
 
 func TestHnsw_Link(t *testing.T) {
@@ -100,7 +149,7 @@ func TestHnsw_Link(t *testing.T) {
 		}
 
 		p := make(Vector, 128)
-		h := NewHNSW(128, 4, 200, NewNode(0, p))
+		h := NewHNSW(128, 4, 200, NewNode(0, p, 3))
 
 		h.Nodes[1] = &n1
 		h.Nodes[2] = &n2
@@ -131,11 +180,22 @@ func TestHnsw_Link(t *testing.T) {
 			t.Fatalf("expected n2's num friends at level 1 to be 1, got %v", h.Nodes[1].friends[1].Len())
 		}
 
-		if h.Nodes[1].friends[1].Peel().id != 2 {
+		peeled, err := h.Nodes[1].friends[1].Peel()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if peeled.id != 2 {
 			t.Fatalf("expected n1 to be friends with n2 at level 1")
 		}
 
-		if h.Nodes[2].friends[1].Peel().id != 1 {
+		peeled, err = h.Nodes[2].friends[1].Peel()
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if peeled.id != 1 {
 			t.Fatalf("expected n1 to be friends with n1 at level 1")
 		}
 

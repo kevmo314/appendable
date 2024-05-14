@@ -68,11 +68,7 @@ func (h *Hnsw) spawnLayer() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-/*
-searchLayer needs two things:
-1. todo! an item from a euc queue that computes the distance from the entry point node -> q.
-*/
-func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *BaseQueue {
+func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*BaseQueue, error) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -94,10 +90,16 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *Base
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q
-		closestCandidate := candidates.Peel()
+		closestCandidate, err := candidates.Peel()
+		if err != nil {
+			return nil, err
+		}
 
 		// get the furthest element from W to q
-		furthestNN := nearestNeighborsToQForEf.Peel()
+		furthestNN, err := nearestNeighborsToQForEf.Peel()
+		if err != nil {
+			return nil, err
+		}
 
 		closestCandidateToQDist := EuclidDist(h.Nodes[closestCandidate.id].v, q)
 		furthestNNToQDist := EuclidDist(h.Nodes[furthestNN.id].v, q)
@@ -111,7 +113,10 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *Base
 			friends := h.Nodes[closestCandidate.id].friends[layerId]
 
 			for !friends.IsEmpty() {
-				friend := friends.Peel()
+				friend, err := friends.Peel()
+				if err != nil {
+					return nil, err
+				}
 				friendId := friend.id
 
 				// if friendId ∉ visitor
@@ -135,13 +140,12 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) *Base
 		}
 	}
 
-	numNearestToQ := NewBaseQueue(MinComparator{})
-	for !nearestNeighborsToQForEf.IsEmpty() {
-		peeled := nearestNeighborsToQForEf.Peel()
-		numNearestToQ.Insert(peeled.id, peeled.dist)
+	numNearestToQ, err := nearestNeighborsToQForEf.Take(ef, MinComparator{})
+	if err != nil {
+		return nil, err
 	}
 
-	return numNearestToQ
+	return numNearestToQ, nil
 }
 
 func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) (*BaseQueue, error) {
@@ -149,7 +153,7 @@ func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) 
 		return nil, fmt.Errorf("num neighbors to return is %v but candidates len is only %v", numNeighborsToReturn, candidates.Len())
 	}
 
-	pq, err := candidates.Take(numNeighborsToReturn)
+	pq, err := candidates.Take(numNeighborsToReturn, MinComparator{})
 	if err != nil {
 		return nil, fmt.Errorf("an error occured during take: %v", err)
 	}
@@ -162,20 +166,42 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	entryPointNode := h.Nodes[h.EntryNodeId]
 
 	for l := entryPointNode.layer; l >= 1; l-- {
-		numNearestToQAtLevelL := h.searchLayer(q, entryPointNode, 1, l)
+		numNearestToQAtLevelL, err := h.searchLayer(q, entryPointNode, 1, l)
+
+		if err != nil {
+			return nil, err
+		}
 
 		for !numNearestToQAtLevelL.IsEmpty() {
-			peeled := numNearestToQAtLevelL.Peel()
+			peeled, err := numNearestToQAtLevelL.Peel()
+
+			if err != nil {
+				return nil, err
+			}
+
 			currentNearestElements.Insert(peeled.id, peeled.dist)
 		}
 
-		entryPointNode = h.Nodes[currentNearestElements.Peel().id]
+		nearest, err := currentNearestElements.Peel()
+
+		if err != nil {
+			return nil, err
+		}
+
+		entryPointNode = h.Nodes[nearest.id]
 	}
 
-	numNearestToQAtBase := h.searchLayer(q, entryPointNode, ef, 0)
+	numNearestToQAtBase, err := h.searchLayer(q, entryPointNode, ef, 0)
+
+	if err != nil {
+		return nil, err
+	}
 
 	for !numNearestToQAtBase.IsEmpty() {
-		peeled := numNearestToQAtBase.Peel()
+		peeled, err := numNearestToQAtBase.Peel()
+		if err != nil {
+			return nil, err
+		}
 		currentNearestElements.Insert(peeled.id, peeled.dist)
 	}
 
@@ -183,7 +209,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 		panic("")
 	}
 
-	pq, err := currentNearestElements.Take(kNeighborsToReturn)
+	pq, err := currentNearestElements.Take(kNeighborsToReturn, MinComparator{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to knnsearch, err: %v", err)
 	}
@@ -205,12 +231,8 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// 1. build Node for vec q
 	qLayer := h.spawnLayer()
-	qNode := &Node{
-		id:      h.NextNodeId,
-		v:       q,
-		layer:   qLayer,
-		friends: make(map[int]*BaseQueue),
-	}
+	qNode := NewNode(h.NextNodeId, q, qLayer)
+
 	h.NextNodeId++
 	qItem := Item{
 		id:   qNode.id,
@@ -223,8 +245,21 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// start at the top
 	for level := currentTopLayer; level > qLayer; level-- {
-		nnToQAtLevel := h.searchLayer(q, ep, 1, level)
-		nearest := nnToQAtLevel.Peel()
+		nnToQAtLevel, err := h.searchLayer(q, ep, 1, level)
+
+		if err != nil {
+			return err
+		}
+
+		if nnToQAtLevel.IsEmpty() {
+			return fmt.Errorf("no nearest neighbors to q at level %v", level)
+		}
+
+		nearest, err := nnToQAtLevel.Peel()
+
+		if err != nil {
+			return err
+		}
 
 		// at each level, find the nearest neighbor to Q at that given level,
 		// set the entryPointNode for the next iter
@@ -233,7 +268,10 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// 3. make the second pass, this time create connections
 	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
-		nnToQAtLevel := h.searchLayer(q, ep, h.EfConstruction, level)
+		nnToQAtLevel, err := h.searchLayer(q, ep, h.EfConstruction, level)
+		if err != nil {
+			return err
+		}
 
 		neighbors, err := h.selectNeighbors(nnToQAtLevel, h.M)
 
@@ -242,7 +280,10 @@ func (h *Hnsw) Insert(q Vector) error {
 		}
 
 		for !neighbors.IsEmpty() {
-			peeled := neighbors.Peel()
+			peeled, err := neighbors.Peel()
+			if err != nil {
+				return err
+			}
 			qNode.friends[level].Insert(peeled.id, peeled.dist)
 		}
 	}
@@ -255,7 +296,10 @@ func (h *Hnsw) Insert(q Vector) error {
 		friendsAtLevel := qNode.friends[level]
 
 		for !friendsAtLevel.IsEmpty() {
-			qfriends := friendsAtLevel.Peel()
+			qfriends, err := friendsAtLevel.Peel()
+			if err != nil {
+				return err
+			}
 			h.Link(qfriends, &qItem, level)
 
 			qFriendNode := h.Nodes[qfriends.id]
@@ -270,7 +314,7 @@ func (h *Hnsw) Insert(q Vector) error {
 					amt = h.MMax
 				}
 
-				pq, err := qFriendNodeFriendsAtLevel.Take(amt)
+				pq, err := qFriendNodeFriendsAtLevel.Take(amt, MinComparator{})
 				if err != nil {
 					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriends.id, amt, level)
 				}

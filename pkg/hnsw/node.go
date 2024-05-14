@@ -18,11 +18,11 @@ type Node struct {
 	friends map[int]*BaseQueue
 }
 
-func NewNode(id NodeId, v Vector) *Node {
+func NewNode(id NodeId, v Vector, layer int) *Node {
 	return &Node{
 		id,
 		v,
-		-1,
+		layer,
 		make(map[int]*BaseQueue),
 	}
 }

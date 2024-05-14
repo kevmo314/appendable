@@ -42,7 +42,10 @@ func TestEucQueue(t *testing.T) {
 
 		i := 0
 		for eq.Len() > 0 {
-			item := eq.Peel()
+			item, err := eq.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
 				t.Fatalf("expected item %v, got %v at %v", expected[i].id, item.id, i)
 			}
@@ -87,7 +90,10 @@ func TestEucQueue(t *testing.T) {
 
 		i := 0
 		for eq.Len() > 0 {
-			item := eq.Peel()
+			item, err := eq.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
 				t.Fatalf("expected item id: %v, got id: %v at i: %v", expected[i].id, item.id, i)
 			}
@@ -105,7 +111,7 @@ func TestEucQueue(t *testing.T) {
 			{id: 6, dist: 0.01},
 		}, MinComparator{})
 
-		pq, err := mq.Take(3)
+		pq, err := mq.Take(3, MinComparator{})
 		if err != nil {
 			t.Fatalf("failed to take 3")
 		}
