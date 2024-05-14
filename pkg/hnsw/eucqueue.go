@@ -47,12 +47,12 @@ type BaseQueue struct {
 	comparator Comparator
 }
 
-func (bq *BaseQueue) Take(count int) (*BaseQueue, error) {
+func (bq *BaseQueue) Take(count int, comparator Comparator) (*BaseQueue, error) {
 	if len(bq.items) < count {
 		return nil, fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
 	}
 
-	pq := NewBaseQueue(bq.comparator)
+	pq := NewBaseQueue(comparator)
 
 	ct := 0
 	for {
@@ -60,7 +60,10 @@ func (bq *BaseQueue) Take(count int) (*BaseQueue, error) {
 			break
 		}
 
-		peeled := bq.Peel()
+		peeled, err := bq.Peel()
+		if err != nil {
+			return nil, err
+		}
 
 		pq.Insert(peeled.id, peeled.dist)
 
@@ -130,11 +133,11 @@ func NewBaseQueue(comparator Comparator) *BaseQueue {
 	return bq
 }
 
-func (bq *BaseQueue) Peel() *Item {
+func (bq *BaseQueue) Peel() (*Item, error) {
 	if bq.Len() == 0 {
-		return nil
+		return nil, fmt.Errorf("no items to peel")
 	}
-	return heap.Pop(bq).(*Item)
+	return heap.Pop(bq).(*Item), nil
 }
 
 func (bq *BaseQueue) update(item *Item, id NodeId, dist float64) {
