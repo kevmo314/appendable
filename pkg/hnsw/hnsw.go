@@ -109,31 +109,29 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*Bas
 			break
 		}
 
-		if len(h.Nodes[closestCandidate.id].friends) >= layerId+1 {
-			friends := h.Nodes[closestCandidate.id].friends[layerId]
+		friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(layerId)
 
-			for !friends.IsEmpty() {
-				friend, err := friends.Peel()
-				if err != nil {
-					return nil, err
-				}
-				friendId := friend.id
+		for !friends.IsEmpty() {
+			friend, err := friends.Peel()
+			if err != nil {
+				return nil, err
+			}
+			friendId := friend.id
 
-				// if friendId ∉ visitor
-				if !visited[friendId] {
-					visited[friendId] = true
-					furthestNNItem := nearestNeighborsToQForEf.Peek()
+			// if friendId ∉ visitor
+			if !visited[friendId] {
+				visited[friendId] = true
+				furthestNNItem := nearestNeighborsToQForEf.Peek()
 
-					friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
-					furthestNNToQDist := EuclidDist(h.Nodes[furthestNNItem.id].v, q)
+				friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
+				furthestNNToQDist := EuclidDist(h.Nodes[furthestNNItem.id].v, q)
 
-					if friendToQDist < furthestNNToQDist || nearestNeighborsToQForEf.Len() < ef {
-						candidates.Insert(friendId, friendToQDist)
-						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
+				if friendToQDist < furthestNNToQDist || nearestNeighborsToQForEf.Len() < ef {
+					candidates.Insert(friendId, friendToQDist)
+					nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
 
-						if nearestNeighborsToQForEf.Len() > ef {
-							nearestNeighborsToQForEf.Pop()
-						}
+					if nearestNeighborsToQForEf.Len() > ef {
+						nearestNeighborsToQForEf.Pop()
 					}
 				}
 			}
@@ -284,7 +282,7 @@ func (h *Hnsw) Insert(q Vector) error {
 			if err != nil {
 				return err
 			}
-			qNode.friends[level].Insert(peeled.id, peeled.dist)
+			qNode.InsertFriendsAtLevel(level, peeled.id, peeled.dist)
 		}
 	}
 
@@ -293,7 +291,7 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// 5. Link connections
 	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
-		friendsAtLevel := qNode.friends[level]
+		friendsAtLevel := qNode.GetFriendsAtLevel(level)
 
 		for !friendsAtLevel.IsEmpty() {
 			qfriends, err := friendsAtLevel.Peel()
@@ -303,7 +301,7 @@ func (h *Hnsw) Insert(q Vector) error {
 			h.Link(qfriends, &qItem, level)
 
 			qFriendNode := h.Nodes[qfriends.id]
-			qFriendNodeFriendsAtLevel := qFriendNode.friends[level]
+			qFriendNodeFriendsAtLevel := qFriendNode.GetFriendsAtLevel(level)
 			numFriendsForQFriendAtLevel := qFriendNodeFriendsAtLevel.Len()
 
 			if (level == 0 && numFriendsForQFriendAtLevel > h.MMax0) || (level != 0 && numFriendsForQFriendAtLevel > h.MMax) {

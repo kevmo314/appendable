@@ -27,6 +27,25 @@ func NewNode(id NodeId, v Vector, layer int) *Node {
 	}
 }
 
+func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
+
+	bq, ok := n.friends[level]
+	if !ok {
+		bq = NewBaseQueue(MinComparator{})
+	}
+
+	bq.Insert(id, dist)
+}
+
+func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {
+	if bq, ok := n.friends[level]; ok {
+		return bq
+	}
+
+	n.friends[level] = NewBaseQueue(MinComparator{})
+	return n.friends[level]
+}
+
 func (n0 *Node) VecDistFromVec(v1 Vector) float64 {
 	v0 := n0.v
 
