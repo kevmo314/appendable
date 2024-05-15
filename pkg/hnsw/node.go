@@ -29,12 +29,14 @@ func NewNode(id NodeId, v Vector, layer int) *Node {
 
 func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
 
-	bq, ok := n.friends[level]
-	if !ok {
-		bq = NewBaseQueue(MinComparator{})
+	if bq, ok := n.friends[level]; ok {
+		bq.Insert(id, dist)
+		return
 	}
 
+	bq := NewBaseQueue(MinComparator{})
 	bq.Insert(id, dist)
+	n.friends[level] = bq
 }
 
 func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {
