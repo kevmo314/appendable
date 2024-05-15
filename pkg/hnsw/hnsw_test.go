@@ -155,7 +155,6 @@ func TestHnsw_Link(t *testing.T) {
 		h.Nodes[2] = &n2
 
 		i1 := Item{id: 1, dist: 3}
-		i2 := Item{id: 2, dist: 49}
 
 		// now h has enuogh context to test Linking
 
@@ -167,7 +166,7 @@ func TestHnsw_Link(t *testing.T) {
 			t.Fatalf("expected n2's num friends at level 1 to be 0, got %v", h.Nodes[1].friends[1].Len())
 		}
 
-		h.Link(&i1, &i2, 1)
+		h.Link(&i1, &n2, 1)
 
 		// i1 should be friends with i2
 		// i2 should be friends with i1
@@ -199,5 +198,71 @@ func TestHnsw_Link(t *testing.T) {
 			t.Fatalf("expected n1 to be friends with n1 at level 1")
 		}
 
+	})
+
+	t.Run("links correctly 2", func(t *testing.T) {
+		qNode := NewNode(1, []float64{4, 4}, 3)
+
+		h := NewHNSW(2, 1, 23, NewNode(0, []float64{0, 0}, 10))
+
+		h.Nodes[qNode.id] = qNode
+
+		friends := [][]float64{
+			{2, 2}, {3, 3}, {3.5, 3.5},
+		}
+
+		for i, v := range friends {
+			id := NodeId(i + 2)
+			h.Nodes[id] = NewNode(id, v, 2)
+
+			if len(h.Nodes[id].friends) != 0 {
+				t.Fatalf("only initialized so expected qfriend to have size 0 friend map")
+			}
+		}
+
+		// add some friends for qnode at layer 2
+		qNode.InsertFriendsAtLevel(2, 2, qNode.VecDistFromNode(h.Nodes[2]))
+		qNode.InsertFriendsAtLevel(2, 3, qNode.VecDistFromNode(h.Nodes[3]))
+		qNode.InsertFriendsAtLevel(2, 4, qNode.VecDistFromNode(h.Nodes[4]))
+
+		qFriendsAtLevel2 := qNode.GetFriendsAtLevel(2)
+		if qFriendsAtLevel2.Len() != 3 {
+			t.Fatalf("expected qFriendsAtLevel2 to be 3, got %v", qFriendsAtLevel2.Len())
+		}
+
+		// we pop since link adds bidirectional
+		for !qFriendsAtLevel2.IsEmpty() {
+			peeled, err := qFriendsAtLevel2.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if peeled.id != NodeId(qFriendsAtLevel2.Len()+2) {
+				t.Fatalf("expected peeled id to be %v got %v", qFriendsAtLevel2.Len()+2, peeled.id)
+			}
+		}
+
+		for i, v := range friends {
+			id := NodeId(i + 2)
+			dist := qNode.VecDistFromVec(v)
+
+			h.Link(&Item{id: id, dist: dist}, qNode, 2)
+
+			qFriendNode := h.Nodes[id]
+			friendsAtLevel2 := qFriendNode.GetFriendsAtLevel(2)
+
+			if friendsAtLevel2.Len() != 1 {
+				t.Fatalf("expected friends at level 2 to be 1, got %v", friendsAtLevel2.Len())
+			}
+
+			qFriendFriend, err := friendsAtLevel2.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if qFriendFriend.id != qNode.id {
+				t.Fatalf("expected friend id at level 2 to be q node 1, got %v", qFriendFriend.id)
+			}
+		}
 	})
 }

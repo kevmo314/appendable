@@ -215,14 +215,18 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	return pq.items, nil
 }
 
-func (h *Hnsw) Link(i0, i1 *Item, level int) {
-	n0, n1 := h.Nodes[i0.id], h.Nodes[i1.id]
-	f0, f1 := n0.friends, n1.friends
+func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
+	dist := node.VecDistFromNode(h.Nodes[friendItem.id])
 
-	mq0, mq1 := f0[level], f1[level]
+	// update both friends
+	friend, ok := h.Nodes[friendItem.id]
 
-	mq0.Insert(i1.id, i1.dist)
-	mq1.Insert(i0.id, i0.dist)
+	if !ok {
+		panic("should not happen")
+	}
+
+	friend.InsertFriendsAtLevel(level, node.id, dist)
+	node.InsertFriendsAtLevel(level, friend.id, dist)
 }
 
 func (h *Hnsw) Insert(q Vector) error {
@@ -232,10 +236,6 @@ func (h *Hnsw) Insert(q Vector) error {
 	qNode := NewNode(h.NextNodeId, q, qLayer)
 
 	h.NextNodeId++
-	qItem := Item{
-		id:   qNode.id,
-		dist: EuclidDist(qNode.v, h.Nodes[h.EntryNodeId].v),
-	}
 
 	// 2. from top -> qlayer, make the first pass
 	ep := h.Nodes[h.EntryNodeId]
@@ -294,13 +294,13 @@ func (h *Hnsw) Insert(q Vector) error {
 		friendsAtLevel := qNode.GetFriendsAtLevel(level)
 
 		for !friendsAtLevel.IsEmpty() {
-			qfriends, err := friendsAtLevel.Peel()
+			qfriend, err := friendsAtLevel.Peel()
 			if err != nil {
 				return err
 			}
-			h.Link(qfriends, &qItem, level)
+			h.Link(qfriend, qNode, level)
 
-			qFriendNode := h.Nodes[qfriends.id]
+			qFriendNode := h.Nodes[qfriend.id]
 			qFriendNodeFriendsAtLevel := qFriendNode.GetFriendsAtLevel(level)
 			numFriendsForQFriendAtLevel := qFriendNodeFriendsAtLevel.Len()
 
@@ -314,11 +314,11 @@ func (h *Hnsw) Insert(q Vector) error {
 
 				pq, err := qFriendNodeFriendsAtLevel.Take(amt, MinComparator{})
 				if err != nil {
-					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriends.id, amt, level)
+					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriend.id, amt, level)
 				}
 
 				// shrink connections for a friend at layer
-				h.Nodes[qfriends.id].friends[level] = pq
+				h.Nodes[qfriend.id].friends[level] = pq
 			}
 		}
 	}
