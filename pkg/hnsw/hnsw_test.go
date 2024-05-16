@@ -10,8 +10,8 @@ func TestHnsw(t *testing.T) {
 		n := NewNode(0, []float64{0.1, 0.2}, 3)
 		h := NewHNSW(20, 32, 32, n)
 
-		if h.MaxLayer != -1 {
-			t.Fatalf("expected max layer to default to -1, got %v", h.MaxLayer)
+		if h.MaxLevel != -1 {
+			t.Fatalf("expected max level to default to -1, got %v", h.MaxLevel)
 		}
 	})
 }
@@ -149,14 +149,14 @@ func TestHnsw_Link(t *testing.T) {
 		n1 := Node{
 			id:      1,
 			v:       make(Vector, 128),
-			layer:   3,
+			level:   3,
 			friends: mq1,
 		}
 
 		n2 := Node{
 			id:      2,
 			v:       make(Vector, 128),
-			layer:   0,
+			level:   0,
 			friends: mq2,
 		}
 
@@ -232,7 +232,7 @@ func TestHnsw_Link(t *testing.T) {
 			}
 		}
 
-		// add some friends for qnode at layer 2
+		// add some friends for qnode at level 2
 		qNode.InsertFriendsAtLevel(2, 2, qNode.VecDistFromNode(h.Nodes[2]))
 		qNode.InsertFriendsAtLevel(2, 3, qNode.VecDistFromNode(h.Nodes[3]))
 		qNode.InsertFriendsAtLevel(2, 4, qNode.VecDistFromNode(h.Nodes[4]))
