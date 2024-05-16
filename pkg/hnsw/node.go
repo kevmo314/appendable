@@ -12,17 +12,17 @@ type Node struct {
 	id NodeId
 	v  Vector
 
-	layer int
+	level int
 
-	// for every layer, we have a list of friends' NodeIds
+	// for every level, we have a list of friends' NodeIds
 	friends map[int]*BaseQueue
 }
 
-func NewNode(id NodeId, v Vector, layer int) *Node {
+func NewNode(id NodeId, v Vector, level int) *Node {
 	return &Node{
 		id,
 		v,
-		layer,
+		level,
 		make(map[int]*BaseQueue),
 	}
 }
@@ -37,6 +37,14 @@ func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
 	bq := NewBaseQueue(MinComparator{})
 	bq.Insert(id, dist)
 	n.friends[level] = bq
+}
+
+func (n *Node) HasLevel(level int) bool {
+	if level < 0 {
+		panic("level cannot be negative")
+	}
+
+	return len(n.friends)-1 >= level
 }
 
 func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {

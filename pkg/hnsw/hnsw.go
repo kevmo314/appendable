@@ -12,7 +12,7 @@ Starts in the zoom-out phase from a low degree node, traverses the graph increas
 Halts when characteristic radius of the node links length reaches the scale of the distance to the query.
 */
 
-// Hnsw is a multilayer graph
+// Hnsw is a multilevel graph
 type Hnsw struct {
 	vectorDimension int
 
@@ -22,12 +22,12 @@ type Hnsw struct {
 	EntryNodeId NodeId
 	NextNodeId  NodeId
 
-	MaxLayer int
+	MaxLevel int
 
 	// default number of connections
 	M int
 
-	//  Maximum number of connections per element per layer
+	//  Maximum number of connections per element per level
 	MMax, MMax0 int
 
 	// Size of dynamic candidate list during construction
@@ -54,7 +54,7 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 		Nodes:           nt,
 		EntryNodeId:     enId,
 		NextNodeId:      nextId,
-		MaxLayer:        -1,
+		MaxLevel:        -1,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
 		MMax:            m,
@@ -64,11 +64,11 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 	return h
 }
 
-func (h *Hnsw) spawnLayer() int {
+func (h *Hnsw) spawnLevel() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*BaseQueue, error) {
+func (h *Hnsw) searchLevel(q Vector, entryNode *Node, ef int, levelId int) (*BaseQueue, error) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -109,7 +109,7 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*Bas
 			break
 		}
 
-		friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(layerId)
+		friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(levelId)
 
 		for !friends.IsEmpty() {
 			friend, err := friends.Peel()
@@ -163,8 +163,8 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	currentNearestElements := NewBaseQueue(MinComparator{})
 	entryPointNode := h.Nodes[h.EntryNodeId]
 
-	for l := entryPointNode.layer; l >= 1; l-- {
-		numNearestToQAtLevelL, err := h.searchLayer(q, entryPointNode, 1, l)
+	for l := entryPointNode.level; l >= 1; l-- {
+		numNearestToQAtLevelL, err := h.searchLevel(q, entryPointNode, 1, l)
 
 		if err != nil {
 			return nil, err
@@ -189,7 +189,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 		entryPointNode = h.Nodes[nearest.id]
 	}
 
-	numNearestToQAtBase, err := h.searchLayer(q, entryPointNode, ef, 0)
+	numNearestToQAtBase, err := h.searchLevel(q, entryPointNode, ef, 0)
 
 	if err != nil {
 		return nil, err
@@ -232,18 +232,18 @@ func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
 func (h *Hnsw) Insert(q Vector) error {
 
 	// 1. build Node for vec q
-	qLayer := h.spawnLayer()
-	qNode := NewNode(h.NextNodeId, q, qLayer)
+	qLevel := h.spawnLevel()
+	qNode := NewNode(h.NextNodeId, q, qLevel)
 
 	h.NextNodeId++
 
-	// 2. from top -> qlayer, make the first pass
+	// 2. from top -> qlevel, make the first pass
 	ep := h.Nodes[h.EntryNodeId]
-	currentTopLayer := ep.layer
+	currentTopLevel := ep.level
 
 	// start at the top
-	for level := currentTopLayer; level > qLayer; level-- {
-		nnToQAtLevel, err := h.searchLayer(q, ep, 1, level)
+	for level := currentTopLevel; level > qLevel; level-- {
+		nnToQAtLevel, err := h.searchLevel(q, ep, 1, level)
 
 		if err != nil {
 			return err
@@ -265,8 +265,8 @@ func (h *Hnsw) Insert(q Vector) error {
 	}
 
 	// 3. make the second pass, this time create connections
-	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
-		nnToQAtLevel, err := h.searchLayer(q, ep, h.EfConstruction, level)
+	for level := min(currentTopLevel, qLevel); level >= 0; level-- {
+		nnToQAtLevel, err := h.searchLevel(q, ep, h.EfConstruction, level)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ func (h *Hnsw) Insert(q Vector) error {
 	h.Nodes[qNode.id] = qNode
 
 	// 5. Link connections
-	for level := min(currentTopLayer, qLayer); level >= 0; level-- {
+	for level := min(currentTopLevel, qLevel); level >= 0; level-- {
 		friendsAtLevel := qNode.GetFriendsAtLevel(level)
 
 		for !friendsAtLevel.IsEmpty() {
@@ -317,15 +317,15 @@ func (h *Hnsw) Insert(q Vector) error {
 					return fmt.Errorf("failed to take friend id %v's %v at level %v", qfriend.id, amt, level)
 				}
 
-				// shrink connections for a friend at layer
+				// shrink connections for a friend at level
 				h.Nodes[qfriend.id].friends[level] = pq
 			}
 		}
 	}
 
 	// 6. update attr
-	if h.MaxLayer < qLayer {
-		h.MaxLayer = qLayer
+	if h.MaxLevel < qLevel {
+		h.MaxLevel = qLevel
 		h.EntryNodeId = qNode.id
 	}
 
