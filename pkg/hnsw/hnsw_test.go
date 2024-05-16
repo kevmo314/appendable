@@ -120,6 +120,18 @@ func TestHnsw_Insert(t *testing.T) {
 		}
 	})
 
+	t.Run("verify insert", func(t *testing.T) {
+		h := NewHNSW(2000, 32, 32, NewNode(0, []float64{1, 1, 1}, 10))
+
+		if h.MaxLayer != 10 {
+			t.Fatalf("expected max layer to be set greater than 0, but got %v", h.MaxLayer)
+		}
+
+		if err := h.Insert([]float64{3, 3, 3}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 }
 
 func TestHnsw_Link(t *testing.T) {

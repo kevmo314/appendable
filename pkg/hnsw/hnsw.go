@@ -54,7 +54,7 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 		Nodes:           nt,
 		EntryNodeId:     enId,
 		NextNodeId:      nextId,
-		MaxLayer:        -1,
+		MaxLayer:        entryPoint.layer,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
 		MMax:            m,
@@ -109,9 +109,12 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*Bas
 			break
 		}
 
+		fmt.Println("we should be checking")
+
 		friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(layerId)
 
 		for !friends.IsEmpty() {
+			fmt.Println("friends exist!")
 			friend, err := friends.Peel()
 			if err != nil {
 				return nil, err
@@ -148,12 +151,12 @@ func (h *Hnsw) searchLayer(q Vector, entryNode *Node, ef int, layerId int) (*Bas
 
 func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) (*BaseQueue, error) {
 	if candidates.Len() <= numNeighborsToReturn {
-		return nil, fmt.Errorf("num neighbors to return is %v but candidates len is only %v", numNeighborsToReturn, candidates.Len())
+		return nil, fmt.Errorf("select neighbors to return is %v but candidates len is only %v", numNeighborsToReturn, candidates.Len())
 	}
 
 	pq, err := candidates.Take(numNeighborsToReturn, MinComparator{})
 	if err != nil {
-		return nil, fmt.Errorf("an error occured during take: %v", err)
+		return nil, fmt.Errorf("select neighbors: an error occured during take: %v", err)
 	}
 
 	return pq, nil
@@ -241,12 +244,13 @@ func (h *Hnsw) Insert(q Vector) error {
 	ep := h.Nodes[h.EntryNodeId]
 	currentTopLayer := ep.layer
 
+	fmt.Println("aye")
 	// start at the top
 	for level := currentTopLayer; level > qLayer; level-- {
 		nnToQAtLevel, err := h.searchLayer(q, ep, 1, level)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to search layer closest neighbor at level %d: %v", level, err)
 		}
 
 		if nnToQAtLevel.IsEmpty() {
