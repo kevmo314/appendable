@@ -5,6 +5,26 @@ import (
 	"testing"
 )
 
+func TestWithinLevels(t *testing.T) {
+	t.Run("levels are in bounds", func(t *testing.T) {
+		n := NewNode(3, []float64{3, 6, 9}, 3)
+
+		n.friends[0] = NewBaseQueue(MinComparator{})
+		n.friends[1] = NewBaseQueue(MinComparator{})
+		n.friends[2] = NewBaseQueue(MinComparator{})
+
+		for i := 0; i < 3; i++ {
+			if !n.HasLevel(i) {
+				t.Fatalf("since n's max level is %v, all levels less should be true", n.level)
+			}
+		}
+
+		if n.HasLevel(3 + 1) {
+			t.Fatalf("since n's max level is %v, levels greater is not in bounds", n.level)
+		}
+	})
+}
+
 func TestVec(t *testing.T) {
 
 	type t_case struct {
