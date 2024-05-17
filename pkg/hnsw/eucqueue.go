@@ -109,8 +109,8 @@ func (bq *BaseQueue) Pop() any {
 	return item
 }
 
-func (pq *BaseQueue) Less(i, j int) bool {
-	return pq.comparator.Less(pq.items[i], pq.items[j])
+func (bq *BaseQueue) Less(i, j int) bool {
+	return bq.comparator.Less(bq.items[i], bq.items[j])
 }
 
 func (bq *BaseQueue) Insert(id NodeId, dist float64) {
