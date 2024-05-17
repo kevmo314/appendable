@@ -121,4 +121,66 @@ func TestEucQueue(t *testing.T) {
 		}
 
 	})
+
+	t.Run("updates already existing id with new priority", func(t *testing.T) {
+		mq := FromBaseQueue([]*Item{
+			{id: 1, dist: 2.2},
+			{id: 2, dist: 3.0},
+		}, MinComparator{})
+
+		mq.Insert(1, 2.1)
+
+		if mq.Len() != 2 {
+			t.Fatalf("update shouldn't incur another element. expected length: %v, got: %v", 2, mq.Len())
+		}
+
+		if mq.Peek().id != 1 {
+			t.Fatalf("expected first id to be 1, got: %v", mq.Peek().id)
+		}
+
+		if mq.Peek().dist != 2.1 {
+			t.Fatalf("expected distance to be updated to %v, got %v", 2.1, mq.Peek().dist)
+		}
+
+		_, err := mq.Peel()
+
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		if mq.Peek().id != 2 {
+			t.Fatalf("expected second id to be 2, got %v", mq.Peek().id)
+		}
+
+		if mq.Peek().dist != 3.0 {
+			t.Fatalf("expected distance %v, got %v", 3.0, mq.Peek().dist)
+		}
+	})
+
+	t.Run("inserting with same id yields update, not insertion", func(t *testing.T) {
+		mq := FromBaseQueue([]*Item{
+			{id: 1, dist: 40},
+		}, MinComparator{})
+
+		for i := 2; i <= 100; i++ {
+			mq.Insert(1, float64(i))
+
+			if mq.Len() != 1 {
+				t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
+			}
+
+			if !NearlyEqual(mq.Peek().dist, float64(i)) {
+				t.Fatalf("expected distance to be the newly updated %v, got %v", i, mq.Peek().dist)
+			}
+		}
+
+		if mq.Len() != 1 {
+			t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
+		}
+
+		if !NearlyEqual(mq.Peek().dist, float64(100)) {
+			t.Fatalf("expected distance to be the newly updated %v, got %v", 100, mq.Peek().dist)
+		}
+
+	})
 }

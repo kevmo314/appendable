@@ -114,6 +114,14 @@ func (bq *BaseQueue) Less(i, j int) bool {
 }
 
 func (bq *BaseQueue) Insert(id NodeId, dist float64) {
+
+	for _, item := range bq.items {
+		if item.id == id {
+			bq.update(item, id, dist)
+			return
+		}
+	}
+
 	heap.Push(bq, &Item{id: id, dist: dist})
 }
 
