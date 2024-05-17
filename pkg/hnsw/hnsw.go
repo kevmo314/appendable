@@ -22,7 +22,7 @@ type Hnsw struct {
 	EntryNodeId NodeId
 	NextNodeId  NodeId
 
-	MaxLevel int
+	MaxLevel uint
 
 	// default number of connections
 	M int
@@ -54,7 +54,7 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 		Nodes:           nt,
 		EntryNodeId:     enId,
 		NextNodeId:      nextId,
-		MaxLevel:        -1,
+		MaxLevel:        entryPoint.level,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
 		MMax:            m,
@@ -64,11 +64,11 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 	return h
 }
 
-func (h *Hnsw) spawnLevel() int {
-	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
+func (h *Hnsw) spawnLevel() uint {
+	return uint(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-func (h *Hnsw) searchLevel(q Vector, entryNode *Node, ef int, levelId int) (*BaseQueue, error) {
+func (h *Hnsw) searchLevel(q Vector, entryNode *Node, ef int, levelId uint) (*BaseQueue, error) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -215,7 +215,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	return pq.items, nil
 }
 
-func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
+func (h *Hnsw) Link(friendItem *Item, node *Node, level uint) {
 	dist := node.VecDistFromNode(h.Nodes[friendItem.id])
 
 	// update both friends
@@ -225,8 +225,10 @@ func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
 		panic("should not happen")
 	}
 
-	friend.InsertFriendsAtLevel(level, node.id, dist)
-	node.InsertFriendsAtLevel(level, friend.id, dist)
+	if friend.HasLevel(level) && node.HasLevel(level) {
+		friend.InsertFriendsAtLevel(level, node.id, dist)
+		node.InsertFriendsAtLevel(level, friend.id, dist)
+	}
 }
 
 func (h *Hnsw) Insert(q Vector) error {

@@ -12,47 +12,43 @@ type Node struct {
 	id NodeId
 	v  Vector
 
-	level int
+	level uint
 
 	// for every level, we have a list of friends' NodeIds
-	friends map[int]*BaseQueue
+	friends []*BaseQueue
 }
 
-func NewNode(id NodeId, v Vector, level int) *Node {
+// level is 0-indexed!
+func NewNode(id NodeId, v Vector, level uint) *Node {
+
+	friends := make([]*BaseQueue, level+1)
+
+	for i := range friends {
+		friends[i] = NewBaseQueue(MinComparator{})
+	}
+
 	return &Node{
 		id,
 		v,
 		level,
-		make(map[int]*BaseQueue),
+		friends,
 	}
 }
 
-func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
-
-	if bq, ok := n.friends[level]; ok {
-		bq.Insert(id, dist)
-		return
-	}
-
-	bq := NewBaseQueue(MinComparator{})
-	bq.Insert(id, dist)
-	n.friends[level] = bq
+// Must assert with HasLevel first
+func (n *Node) InsertFriendsAtLevel(level uint, id NodeId, dist float64) {
+	n.friends[int(level)].Insert(id, dist)
 }
 
-func (n *Node) HasLevel(level int) bool {
+func (n *Node) HasLevel(level uint) bool {
 	if level < 0 {
 		panic("level cannot be negative")
 	}
 
-	return len(n.friends)-1 >= level
+	return len(n.friends)-1 >= int(level)
 }
 
-func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {
-	if bq, ok := n.friends[level]; ok {
-		return bq
-	}
-
-	n.friends[level] = NewBaseQueue(MinComparator{})
+func (n *Node) GetFriendsAtLevel(level uint) *BaseQueue {
 	return n.friends[level]
 }
 

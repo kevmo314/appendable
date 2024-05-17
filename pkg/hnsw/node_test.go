@@ -14,7 +14,7 @@ func TestWithinLevels(t *testing.T) {
 		n.friends[2] = NewBaseQueue(MinComparator{})
 
 		for i := 0; i < 3; i++ {
-			if !n.HasLevel(i) {
+			if !n.HasLevel(uint(i)) {
 				t.Fatalf("since n's max level is %v, all levels less should be true", n.level)
 			}
 		}
@@ -82,4 +82,33 @@ func TestVec(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestNodeFriends(t *testing.T) {
+	t.Run("initialized with correct # of levels", func(t *testing.T) {
+		h := NewHNSW(20, 32, 32, NewNode(0, []float64{3, 4}, 8))
+		qLayer := h.spawnLevel()
+		qNode := NewNode(1, []float64{3, 1}, qLayer)
+
+		if uint(len(qNode.friends)) != qLayer+1 {
+			t.Fatalf("expected the friends list to initialize to %v levels, got %v", qLayer+1, len(qNode.friends))
+		}
+	})
+
+	t.Run("correctly determines if has layer", func(t *testing.T) {
+		qNode := NewNode(10, []float64{3, 1, 0.3, 9.2}, 100)
+
+		if !qNode.HasLevel(100) {
+			t.Fatalf("expected qNode to have level %v", 100)
+		}
+
+		if qNode.HasLevel(101) {
+			t.Fatalf("expected qNode to not have level %v", 101)
+		}
+
+		if !qNode.HasLevel(0) {
+			t.Fatalf("expected qNode to have level %v", 0)
+		}
+	})
+
 }
