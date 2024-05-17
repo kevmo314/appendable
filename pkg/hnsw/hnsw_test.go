@@ -10,8 +10,8 @@ func TestHnsw(t *testing.T) {
 		n := NewNode(0, []float64{0.1, 0.2}, 3)
 		h := NewHNSW(20, 32, 32, n)
 
-		if h.MaxLevel != -1 {
-			t.Fatalf("expected max level to default to -1, got %v", h.MaxLevel)
+		if h.MaxLevel != n.level {
+			t.Fatalf("expected max level to default to %v, got %v", n.level, h.MaxLevel)
 		}
 	})
 }
@@ -125,61 +125,34 @@ func TestHnsw_Insert(t *testing.T) {
 func TestHnsw_Link(t *testing.T) {
 	t.Run("links correctly", func(t *testing.T) {
 
-		mq1 := make(map[int]*BaseQueue)
-		mq1[0] = NewBaseQueue(MinComparator{})
-		mq1[1] = NewBaseQueue(MinComparator{})
-		mq1[2] = NewBaseQueue(MinComparator{})
-
-		mq2 := make(map[int]*BaseQueue)
-		mq2[0] = NewBaseQueue(MinComparator{})
-		mq2[1] = NewBaseQueue(MinComparator{})
-
-		n1 := Node{
-			id:      1,
-			v:       make(Vector, 128),
-			level:   3,
-			friends: mq1,
-		}
-
-		n2 := Node{
-			id:      2,
-			v:       make(Vector, 128),
-			level:   0,
-			friends: mq2,
-		}
+		n1 := NewNode(1, make(Vector, 128), 3)
+		n2 := NewNode(2, make(Vector, 128), 0)
 
 		p := make(Vector, 128)
 		h := NewHNSW(128, 4, 200, NewNode(0, p, 3))
 
-		h.Nodes[1] = &n1
-		h.Nodes[2] = &n2
+		h.Nodes[1] = n1
+		h.Nodes[2] = n2
 
 		i1 := Item{id: 1, dist: 3}
 
 		// now h has enuogh context to test Linking
 
-		if h.Nodes[1].friends[1].Len() != 0 {
-			t.Fatalf("expected n1's num friends at level 1 to be 0, got %v", h.Nodes[1].friends[1].Len())
+		if len(h.Nodes[1].friends) != 4 {
+			t.Fatalf("node1 has max layer 3 so 4 layers total, got %v", len(h.Nodes[1].friends))
 		}
 
-		if h.Nodes[2].friends[1].Len() != 0 {
-			t.Fatalf("expected n2's num friends at level 1 to be 0, got %v", h.Nodes[1].friends[1].Len())
-		}
+		h.Link(&i1, n2, 0)
 
-		h.Link(&i1, &n2, 1)
-
-		// i1 should be friends with i2
-		// i2 should be friends with i1
-
-		if h.Nodes[1].friends[1].Len() != 1 {
+		if h.Nodes[1].friends[0].Len() != 1 {
 			t.Fatalf("expected n1's num friends at level 1 to be 1, got %v", h.Nodes[1].friends[1].Len())
 		}
 
-		if h.Nodes[2].friends[1].Len() != 1 {
+		if h.Nodes[2].friends[0].Len() != 1 {
 			t.Fatalf("expected n2's num friends at level 1 to be 1, got %v", h.Nodes[1].friends[1].Len())
 		}
 
-		peeled, err := h.Nodes[1].friends[1].Peel()
+		peeled, err := h.Nodes[1].friends[0].Peel()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -188,7 +161,7 @@ func TestHnsw_Link(t *testing.T) {
 			t.Fatalf("expected n1 to be friends with n2 at level 1")
 		}
 
-		peeled, err = h.Nodes[2].friends[1].Peel()
+		peeled, err = h.Nodes[2].friends[0].Peel()
 
 		if err != nil {
 			t.Fatal(err)
@@ -215,8 +188,8 @@ func TestHnsw_Link(t *testing.T) {
 			id := NodeId(i + 2)
 			h.Nodes[id] = NewNode(id, v, 2)
 
-			if len(h.Nodes[id].friends) != 0 {
-				t.Fatalf("only initialized so expected qfriend to have size 0 friend map")
+			if len(h.Nodes[id].friends) != 3 {
+				t.Fatalf("only initialized so expected qfriend to have size 0 friend map, got: %v", len(h.Nodes[id].friends))
 			}
 		}
 
