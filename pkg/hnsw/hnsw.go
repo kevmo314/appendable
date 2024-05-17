@@ -68,25 +68,23 @@ func (h *Hnsw) spawnLevel() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-func (h *Hnsw) searchLevel(q Vector, entryNode *Node, ef int, levelId int) (*BaseQueue, error) {
+func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (*BaseQueue, error) {
 
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
 	visited := make([]bool, len(h.Nodes))
 
-	if entryNode.id != h.EntryNodeId {
-		panic(fmt.Sprintf("debug: this should not occur. entry node mismatch got %v, expected: %v", entryNode.id, h.EntryNodeId))
+	if entryNodeItem.id != h.EntryNodeId {
+		panic(fmt.Sprintf("debug: this should not occur. entry node mismatch got %v, expected: %v", entryNodeItem.id, h.EntryNodeId))
 	}
 
-	visited[entryNode.id] = true
-
-	entryNodeToQDist := EuclidDist(entryNode.v, q)
+	visited[entryNodeItem.id] = true
 
 	candidates := NewBaseQueue(MinComparator{})
-	candidates.Insert(entryNode.id, entryNodeToQDist)
+	candidates.Insert(entryNodeItem.id, entryNodeItem.dist)
 
 	nearestNeighborsToQForEf := NewBaseQueue(MaxComparator{})
-	nearestNeighborsToQForEf.Insert(entryNode.id, entryNodeToQDist)
+	nearestNeighborsToQForEf.Insert(entryNodeItem.id, entryNodeItem.dist)
 
 	for !candidates.IsEmpty() {
 		// extract nearest element from C to q
@@ -162,34 +160,10 @@ func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) 
 func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) {
 	currentNearestElements := NewBaseQueue(MinComparator{})
 	entryPointNode := h.Nodes[h.EntryNodeId]
+	entryPointItem := &Item{id: h.EntryNodeId, dist: entryPointNode.VecDistFromVec(q)}
+	newEntryItem := h.findCloserEntryPoint(entryPointItem, q, 0)
 
-	for l := entryPointNode.level; l >= 1; l-- {
-		numNearestToQAtLevelL, err := h.searchLevel(q, entryPointNode, 1, l)
-
-		if err != nil {
-			return nil, err
-		}
-
-		for !numNearestToQAtLevelL.IsEmpty() {
-			peeled, err := numNearestToQAtLevelL.Peel()
-
-			if err != nil {
-				return nil, err
-			}
-
-			currentNearestElements.Insert(peeled.id, peeled.dist)
-		}
-
-		nearest, err := currentNearestElements.Peel()
-
-		if err != nil {
-			return nil, err
-		}
-
-		entryPointNode = h.Nodes[nearest.id]
-	}
-
-	numNearestToQAtBase, err := h.searchLevel(q, entryPointNode, ef, 0)
+	numNearestToQAtBase, err := h.searchLevel(q, newEntryItem, ef, 0)
 
 	if err != nil {
 		return nil, err
@@ -229,44 +203,40 @@ func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
 	node.InsertFriendsAtLevel(level, friend.id, dist)
 }
 
+func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel int) *Item {
+	for level := h.Nodes[h.EntryNodeId].level; level > qLevel; level-- {
+		friends := h.Nodes[ep.id].GetFriendsAtLevel(level)
+		fmt.Printf("\nlevel: %v: friends: %v\n", level, friends.Len())
+		for !friends.IsEmpty() {
+			friend, _ := friends.Peel()
+			friendDist := h.Nodes[friend.id].VecDistFromVec(q)
+			if friendDist < ep.dist {
+				ep = &Item{id: friend.id, dist: friend.dist}
+			}
+		}
+	}
+
+	return ep
+}
+
 func (h *Hnsw) Insert(q Vector) error {
+
+	ep := h.Nodes[h.EntryNodeId]
+	currentTopLevel := ep.level
 
 	// 1. build Node for vec q
 	qLevel := h.spawnLevel()
 	qNode := NewNode(h.NextNodeId, q, qLevel)
-
 	h.NextNodeId++
 
-	// 2. from top -> qlevel, make the first pass
-	ep := h.Nodes[h.EntryNodeId]
-	currentTopLevel := ep.level
+	epItem := &Item{id: ep.id, dist: ep.VecDistFromVec(q)}
 
-	// start at the top
-	for level := currentTopLevel; level > qLevel; level-- {
-		nnToQAtLevel, err := h.searchLevel(q, ep, 1, level)
-
-		if err != nil {
-			return err
-		}
-
-		if nnToQAtLevel.IsEmpty() {
-			return fmt.Errorf("no nearest neighbors to q at level %v", level)
-		}
-
-		nearest, err := nnToQAtLevel.Peel()
-
-		if err != nil {
-			return err
-		}
-
-		// at each level, find the nearest neighbor to Q at that given level,
-		// set the entryPointNode for the next iter
-		ep = h.Nodes[nearest.id]
-	}
+	// 2. find the correct entry point
+	newEpItem := h.findCloserEntryPoint(epItem, q, qLevel)
 
 	// 3. make the second pass, this time create connections
 	for level := min(currentTopLevel, qLevel); level >= 0; level-- {
-		nnToQAtLevel, err := h.searchLevel(q, ep, h.EfConstruction, level)
+		nnToQAtLevel, err := h.searchLevel(q, newEpItem, h.EfConstruction, level)
 		if err != nil {
 			return err
 		}

@@ -28,15 +28,17 @@ func NewNode(id NodeId, v Vector, level int) *Node {
 }
 
 func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
+	if n.friends == nil {
+		n.friends = make(map[int]*BaseQueue)
+	}
 
 	if bq, ok := n.friends[level]; ok {
 		bq.Insert(id, dist)
-		return
+	} else {
+		bq := NewBaseQueue(MinComparator{})
+		bq.Insert(id, dist)
+		n.friends[level] = bq
 	}
-
-	bq := NewBaseQueue(MinComparator{})
-	bq.Insert(id, dist)
-	n.friends[level] = bq
 }
 
 func (n *Node) HasLevel(level int) bool {
@@ -83,7 +85,7 @@ func EuclidDist(v0, v1 Vector) float64 {
 		sum += delta * delta
 	}
 
-	return math.Sqrt(sum)
+	return sum
 }
 
 // NearlyEqual is sourced from scalar package written by gonum

@@ -266,3 +266,81 @@ func TestHnsw_Link(t *testing.T) {
 		}
 	})
 }
+
+func TestFindCloserEntryPoint(t *testing.T) {
+	t.Run("find nothing closer", func(t *testing.T) {
+		epNode := NewNode(0, []float64{0, 0}, 10)
+		h := NewHNSW(10, 32, 32, epNode)
+
+		qVector := []float64{6, 6}
+		qLevel := h.spawnLevel()
+
+		epItem := &Item{id: 0, dist: epNode.VecDistFromVec(qVector)}
+		newEpItem := h.findCloserEntryPoint(epItem, qVector, qLevel)
+
+		if epItem.id != newEpItem.id {
+			t.Fatalf("expected id to be %v, got %v", newEpItem.id, epItem.id)
+		}
+	})
+
+	t.Run("finds something closer traverse all layers", func(t *testing.T) {
+		ep := NewNode(0, []float64{0, 0}, 10)
+		h := NewHNSW(10, 32, 32, ep)
+
+		q := []float64{6, 6}
+
+		// suppose we had m := []float{5, 5}. It is closer to q, so let's add m to the friends of ep
+
+		m := NewNode(1, []float64{5, 5}, 9)
+		h.Nodes[m.id] = m
+
+		for level := 0; level <= 9; level++ {
+			ep.InsertFriendsAtLevel(level, m.id, m.VecDistFromVec(q))
+		}
+
+		epItem := &Item{id: 0, dist: ep.VecDistFromVec(q)}
+		newEpItem := h.findCloserEntryPoint(epItem, q, 0)
+
+		if epItem.id == newEpItem.id {
+			t.Fatalf("expected id to be %v, got %v", newEpItem.id, epItem.id)
+		}
+
+		if newEpItem.id != 1 {
+			t.Fatalf("expected id to be 1, got %v", newEpItem.id)
+		}
+	})
+
+	t.Run("finds something closer during the insertion context", func(t *testing.T) {
+		ep := NewNode(0, []float64{0, 0}, 10)
+		h := NewHNSW(10, 32, 32, ep)
+
+		q := []float64{6, 6}
+		qLayer := 3
+
+		// suppose we had m := []float{5, 5}. It is closer to q, so let's add m to the friends of ep
+		m := NewNode(1, []float64{5, 5}, 9)
+		h.Nodes[m.id] = m
+		mDist := m.VecDistFromVec(q)
+		for level := 9; level > qLayer; level-- {
+			fmt.Printf("level: %v", level)
+			h.Nodes[h.EntryNodeId].InsertFriendsAtLevel(level, m.id, mDist)
+		}
+
+		// if q layer is 3, then the last layer to check is 3 + 1
+		n := NewNode(2, []float64{6.1, 6.1}, 4)
+		for level := 4; level > qLayer; level-- {
+			h.Nodes[h.EntryNodeId].InsertFriendsAtLevel(level, n.id, n.VecDistFromVec(q))
+		}
+
+		epItem := &Item{id: 0, dist: ep.VecDistFromVec(q)}
+		newEpItem := h.findCloserEntryPoint(epItem, q, qLayer)
+
+		if epItem.id == newEpItem.id {
+			t.Fatalf("expected id to be %v, got %v", newEpItem.id, epItem.id)
+		}
+
+		if newEpItem.id != n.id {
+			t.Fatalf("expected id to be %v, got %v", n.id, newEpItem.id)
+		}
+	})
+}
