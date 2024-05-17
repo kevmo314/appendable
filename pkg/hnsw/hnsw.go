@@ -68,7 +68,6 @@ func (h *Hnsw) spawnLevel() uint {
 	return uint(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-
 func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId uint) (*BaseQueue, error) {
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
@@ -205,19 +204,18 @@ func (h *Hnsw) Link(friendItem *Item, node *Node, level uint) {
 	}
 }
 
-func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel int) *Item {
-	for level := h.Nodes[h.EntryNodeId].level; level > qLevel; level-- {
+func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel uint) *Item {
+	for level := h.MaxLevel; level > qLevel; level-- {
 		friends := h.Nodes[ep.id].GetFriendsAtLevel(level)
-		fmt.Printf("\nlevel: %v: friends: %v\n", level, friends.Len())
-		for !friends.IsEmpty() {
-			friend, _ := friends.Peel()
+
+		for _, friend := range friends.items {
 			friendDist := h.Nodes[friend.id].VecDistFromVec(q)
+
 			if friendDist < ep.dist {
 				ep = &Item{id: friend.id, dist: friend.dist}
 			}
 		}
 	}
-
 	return ep
 }
 

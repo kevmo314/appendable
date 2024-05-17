@@ -35,7 +35,6 @@ func NewNode(id NodeId, v Vector, level uint) *Node {
 	}
 }
 
-
 // Must assert with HasLevel first
 func (n *Node) InsertFriendsAtLevel(level uint, id NodeId, dist float64) {
 	n.friends[int(level)].Insert(id, dist)
@@ -80,7 +79,7 @@ func EuclidDist(v0, v1 Vector) float64 {
 		sum += delta * delta
 	}
 
-	return sum
+	return math.Sqrt(sum)
 }
 
 // NearlyEqual is sourced from scalar package written by gonum

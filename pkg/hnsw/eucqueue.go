@@ -47,6 +47,16 @@ type BaseQueue struct {
 	comparator Comparator
 }
 
+func (bq *BaseQueue) Clone() *BaseQueue {
+	nq := NewBaseQueue(bq.comparator)
+
+	for _, i := range bq.items {
+		nq.Insert(i.id, i.dist)
+	}
+	heap.Init(bq)
+	return nq
+}
+
 func (bq *BaseQueue) Take(count int, comparator Comparator) (*BaseQueue, error) {
 	if len(bq.items) < count {
 		return nil, fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
@@ -109,8 +119,8 @@ func (bq *BaseQueue) Pop() any {
 	return item
 }
 
-func (pq *BaseQueue) Less(i, j int) bool {
-	return pq.comparator.Less(pq.items[i], pq.items[j])
+func (bq *BaseQueue) Less(i, j int) bool {
+	return bq.comparator.Less(bq.items[i], bq.items[j])
 }
 
 func (bq *BaseQueue) Insert(id NodeId, dist float64) {
