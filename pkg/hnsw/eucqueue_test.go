@@ -18,7 +18,7 @@ func TestEucQueue(t *testing.T) {
 
 		eq := NewBaseQueue(MinComparator{})
 
-		if !eq.IsEmpty() || eq.Len() != 0 {
+		if !eq.IsEmpty() || eq.Len() != 0 || len(eq.visitedIds) != 0 {
 			t.Fatalf("created new eq, expected empty, got %v len", eq.Len())
 		}
 
@@ -28,6 +28,10 @@ func TestEucQueue(t *testing.T) {
 
 			if i+1 != eq.Len() {
 				t.Fatalf("inserting element %v means eq should have length of %v, got: %v", i, i+1, eq.Len())
+			}
+
+			if _, ok := eq.visitedIds[NodeId(i)]; !ok {
+				t.Fatalf("expected node id %v to be in visited set", i)
 			}
 
 		}
@@ -50,6 +54,10 @@ func TestEucQueue(t *testing.T) {
 				t.Fatalf("expected item %v, got %v at %v", expected[i].id, item.id, i)
 			}
 
+			if _, ok := eq.visitedIds[item.id]; ok {
+				t.Fatalf("expected item id %v to be popped!", item.id)
+			}
+
 			i++
 		}
 	})
@@ -67,7 +75,7 @@ func TestEucQueue(t *testing.T) {
 
 		eq := NewBaseQueue(MaxComparator{})
 
-		if !eq.IsEmpty() || eq.Len() != 0 {
+		if !eq.IsEmpty() || eq.Len() != 0 || len(eq.visitedIds) != 0 {
 			t.Fatalf("created new eq, expected empty, got %v len", eq.Len())
 		}
 
@@ -77,6 +85,10 @@ func TestEucQueue(t *testing.T) {
 
 			if i+1 != eq.Len() {
 				t.Fatalf("inserting element %v means eq should have length of %v, got: %v", i, i+1, eq.Len())
+			}
+
+			if _, ok := eq.visitedIds[NodeId(i)]; !ok {
+				t.Fatalf("expected node id %v to be in visited set", i)
 			}
 		}
 
@@ -96,6 +108,10 @@ func TestEucQueue(t *testing.T) {
 			}
 			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
 				t.Fatalf("expected item id: %v, got id: %v at i: %v", expected[i].id, item.id, i)
+			}
+
+			if _, ok := eq.visitedIds[item.id]; ok {
+				t.Fatalf("expected item id %v to be popped!", item.id)
 			}
 
 			i++
@@ -118,6 +134,10 @@ func TestEucQueue(t *testing.T) {
 
 		if pq.Len() != 3 {
 			t.Fatalf("expected len: %v, got %v", 3, pq.Len())
+		}
+
+		if len(pq.visitedIds) != 3 {
+			t.Fatalf("expected # of visited ids to be %v, got %v", 3, len(pq.visitedIds))
 		}
 
 	})
@@ -181,6 +201,5 @@ func TestEucQueue(t *testing.T) {
 		if !NearlyEqual(mq.Peek().dist, float64(100)) {
 			t.Fatalf("expected distance to be the newly updated %v, got %v", 100, mq.Peek().dist)
 		}
-
 	})
 }

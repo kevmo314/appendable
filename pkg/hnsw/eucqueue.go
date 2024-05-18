@@ -43,6 +43,7 @@ type Heapy interface {
 // Nothing from BaseQueue should be used. Only use the Max and Min queue.
 // BaseQueue isn't even a heap! It misses the Less() method which the Min/Max queue implement.
 type BaseQueue struct {
+	visitedIds map[NodeId]*Item
 	items      []*Item
 	comparator Comparator
 }
@@ -114,15 +115,15 @@ func (bq *BaseQueue) Less(i, j int) bool {
 }
 
 func (bq *BaseQueue) Insert(id NodeId, dist float64) {
-
-	for _, item := range bq.items {
-		if item.id == id {
-			bq.update(item, id, dist)
-			return
-		}
+	if item, ok := bq.visitedIds[id]; ok {
+		bq.update(item, id, dist)
+		return
 	}
 
-	heap.Push(bq, &Item{id: id, dist: dist})
+	newItem := Item{id: id, dist: dist}
+	heap.Push(bq, &newItem)
+	bq.visitedIds[id] = &newItem
+
 }
 
 func FromBaseQueue(items []*Item, comparator Comparator) *BaseQueue {
@@ -136,7 +137,10 @@ func FromBaseQueue(items []*Item, comparator Comparator) *BaseQueue {
 }
 
 func NewBaseQueue(comparator Comparator) *BaseQueue {
-	bq := &BaseQueue{comparator: comparator}
+	bq := &BaseQueue{
+		visitedIds: map[NodeId]*Item{},
+		comparator: comparator,
+	}
 	heap.Init(bq)
 	return bq
 }
@@ -145,7 +149,9 @@ func (bq *BaseQueue) Peel() (*Item, error) {
 	if bq.Len() == 0 {
 		return nil, fmt.Errorf("no items to peel")
 	}
-	return heap.Pop(bq).(*Item), nil
+	popped := heap.Pop(bq).(*Item)
+	delete(bq.visitedIds, popped.id)
+	return popped, nil
 }
 
 func (bq *BaseQueue) update(item *Item, id NodeId, dist float64) {
