@@ -13,7 +13,7 @@ type Hnsw struct {
 	EntryNodeId NodeId
 	NextNodeId  NodeId
 
-	MaxLevel uint
+	MaxLevel int
 
 	// default number of connections
 	M int
@@ -52,11 +52,11 @@ func (h *Hnsw) getNextNodeId() NodeId {
 	return atomic.AddUint32(&h.NextNodeId, 1) - 1
 }
 
-func (h *Hnsw) spawnLevel() uint {
-	return uint(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
+func (h *Hnsw) spawnLevel() int {
+	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
 }
 
-func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId uint) (*BaseQueue, error) {
+func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (*BaseQueue, error) {
 	// visited is a bitset that keeps track of all nodes that have been visited.
 	// we know the size of visited will never exceed len(h.Nodes)
 	visited := make([]bool, len(h.Nodes))
@@ -86,54 +86,47 @@ func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId uint) 
 			return nil, err
 		}
 
-		closestCandidateToQDist := EuclidDist(h.Nodes[closestCandidate.id].v, q)
-		furthestNNToQDist := EuclidDist(h.Nodes[furthestNN.id].v, q)
+		closestCandidateToQDist := closestCandidate.dist
+		furthestNNToQDist := furthestNN.dist
 
 		if closestCandidateToQDist > furthestNNToQDist {
 			// all elements in W are evaluated
 			break
 		}
 
-		friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(levelId)
+		if h.Nodes[closestCandidate.id].HasLevel(levelId) {
+			friends := h.Nodes[closestCandidate.id].GetFriendsAtLevel(levelId)
 
-		for !friends.IsEmpty() {
-			friend, err := friends.Peel()
-			if err != nil {
-				return nil, err
-			}
-			friendId := friend.id
+			for _, friend := range friends.items {
+				friendId := friend.id
 
-			// if friendId ∉ visitor
-			if !visited[friendId] {
-				visited[friendId] = true
-				furthestNNItem := nearestNeighborsToQForEf.Peek()
+				if !visited[friendId] {
+					visited[friendId] = true
+					furthestNNItem := nearestNeighborsToQForEf.Peek()
 
-				friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
-				furthestNNToQDist := EuclidDist(h.Nodes[furthestNNItem.id].v, q)
+					friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
 
-				if friendToQDist < furthestNNToQDist || nearestNeighborsToQForEf.Len() < ef {
-					candidates.Insert(friendId, friendToQDist)
-					nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
-
-					if nearestNeighborsToQForEf.Len() > ef {
+					if nearestNeighborsToQForEf.Len() < ef {
+						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
+						candidates.Insert(friendId, friendToQDist)
+					} else if friendToQDist < furthestNNItem.dist {
 						nearestNeighborsToQForEf.Pop()
+						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
+						candidates.Insert(friendId, friendToQDist)
 					}
+
+					return nearestNeighborsToQForEf, nil
 				}
 			}
 		}
 	}
 
-	numNearestToQ, err := nearestNeighborsToQForEf.Take(ef, MinComparator{})
-	if err != nil {
-		return nil, err
-	}
-
-	return numNearestToQ, nil
+	return nearestNeighborsToQForEf, nil
 }
 
 func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) (*BaseQueue, error) {
 	if candidates.Len() <= numNeighborsToReturn {
-		return nil, fmt.Errorf("num neighbors to return is %v but candidates len is only %v", numNeighborsToReturn, candidates.Len())
+		return candidates, nil
 	}
 
 	pq, err := candidates.Take(numNeighborsToReturn, MinComparator{})
@@ -176,7 +169,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	return pq.items, nil
 }
 
-func (h *Hnsw) Link(friendItem *Item, node *Node, level uint) {
+func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {
 	dist := node.VecDistFromNode(h.Nodes[friendItem.id])
 
 	// update both friends
@@ -192,7 +185,7 @@ func (h *Hnsw) Link(friendItem *Item, node *Node, level uint) {
 	}
 }
 
-func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel uint) *Item {
+func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel int) *Item {
 	for level := h.MaxLevel; level > qLevel; level-- {
 		friends := h.Nodes[ep.id].GetFriendsAtLevel(level)
 

@@ -14,7 +14,7 @@ func TestWithinLevels(t *testing.T) {
 		n.friends[2] = NewBaseQueue(MinComparator{})
 
 		for i := 0; i < 3; i++ {
-			if !n.HasLevel(uint(i)) {
+			if !n.HasLevel(i) {
 				t.Fatalf("since n's max level is %v, all levels less should be true", n.level)
 			}
 		}
@@ -90,7 +90,7 @@ func TestNodeFriends(t *testing.T) {
 		qLayer := h.spawnLevel()
 		qNode := NewNode(1, []float64{3, 1}, qLayer)
 
-		if uint(len(qNode.friends)) != qLayer+1 {
+		if len(qNode.friends) != qLayer+1 {
 			t.Fatalf("expected the friends list to initialize to %v levels, got %v", qLayer+1, len(qNode.friends))
 		}
 	})
