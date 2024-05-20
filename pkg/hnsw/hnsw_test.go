@@ -118,7 +118,7 @@ func TestHnsw_Insert(t *testing.T) {
 	})
 
 	t.Run("multiple insert", func(t *testing.T) {
-		h := NewHNSW(10, 10, NewNode(0, []float64{0, 0}, 4))
+		h := NewHNSW(10, 10, NewNode(0, []float64{0, 0}, 40))
 
 		for i := 0; i < 32; i++ {
 			if len(h.Nodes) != i+1 {
