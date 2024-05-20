@@ -86,7 +86,7 @@ func TestVec(t *testing.T) {
 
 func TestNodeFriends(t *testing.T) {
 	t.Run("initialized with correct # of levels", func(t *testing.T) {
-		h := NewHNSW(20, 32, 32, NewNode(0, []float64{3, 4}, 8))
+		h := NewHNSW(32, 32, NewNode(0, []float64{3, 4}, 8))
 		qLayer := h.spawnLevel()
 		qNode := NewNode(1, []float64{3, 1}, qLayer)
 

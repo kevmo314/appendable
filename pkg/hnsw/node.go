@@ -18,7 +18,6 @@ type Node struct {
 	friends []*BaseQueue
 }
 
-// level is 0-indexed!
 func NewNode(id NodeId, v Vector, level uint) *Node {
 
 	friends := make([]*BaseQueue, level+1)
