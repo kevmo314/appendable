@@ -158,7 +158,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 	}
 
 	if currentNearestElements.Len() < kNeighborsToReturn {
-		panic("")
+		return nil, fmt.Errorf("the currentNearestElement length %v", currentNearestElements.Len())
 	}
 
 	pq, err := currentNearestElements.Take(kNeighborsToReturn, MinComparator{})
