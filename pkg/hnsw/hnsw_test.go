@@ -69,9 +69,9 @@ func TestHnswSelect(t *testing.T) {
 
 		h := NewHNSW(32, 1, NewNode(0, []float64{0, 0}, 3))
 
-		_, err := h.selectNeighbors(candidates, 10)
-		if err == nil {
-			t.Fatalf("expected to fail!")
+		res, err := h.selectNeighbors(candidates, 10)
+		if err != nil || res.Len() != 3 {
+			t.Fatal("if num neighbors to return is greater than candidates, we should just be returning the candidates")
 		}
 	})
 }
@@ -277,7 +277,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		m := NewNode(1, []float64{5, 5}, 9)
 		h.Nodes[m.id] = m
 
-		for level := uint(0); level <= 9; level++ {
+		for level := 0; level <= 9; level++ {
 			ep.InsertFriendsAtLevel(level, m.id, m.VecDistFromVec(q))
 		}
 
@@ -298,7 +298,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		h := NewHNSW(32, 32, ep)
 
 		q := []float64{6, 6}
-		qLayer := uint(3)
+		qLayer := 3
 
 		// suppose we had m := []float{5, 5}. It is closer to q, so let's add m to the friends of ep
 		m := NewNode(1, []float64{5, 5}, 9)

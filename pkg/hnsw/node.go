@@ -1,6 +1,9 @@
 package hnsw
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 type Vector []float64
 
@@ -12,13 +15,13 @@ type Node struct {
 	id NodeId
 	v  Vector
 
-	level uint
+	level int
 
 	// for every level, we have a list of friends' NodeIds
 	friends []*BaseQueue
 }
 
-func NewNode(id NodeId, v Vector, level uint) *Node {
+func NewNode(id NodeId, v Vector, level int) *Node {
 
 	friends := make([]*BaseQueue, level+1)
 
@@ -35,11 +38,11 @@ func NewNode(id NodeId, v Vector, level uint) *Node {
 }
 
 // Must assert with HasLevel first
-func (n *Node) InsertFriendsAtLevel(level uint, id NodeId, dist float64) {
+func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
 	n.friends[int(level)].Insert(id, dist)
 }
 
-func (n *Node) HasLevel(level uint) bool {
+func (n *Node) HasLevel(level int) bool {
 	if level < 0 {
 		panic("level cannot be negative")
 	}
@@ -47,7 +50,8 @@ func (n *Node) HasLevel(level uint) bool {
 	return len(n.friends)-1 >= int(level)
 }
 
-func (n *Node) GetFriendsAtLevel(level uint) *BaseQueue {
+func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {
+	fmt.Printf("length of friends %v for level: %v\n", len(n.friends), level)
 	return n.friends[level]
 }
 
