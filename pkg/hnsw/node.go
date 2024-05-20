@@ -1,7 +1,6 @@
 package hnsw
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -38,21 +37,20 @@ func NewNode(id NodeId, v Vector, level int) *Node {
 }
 
 // Must assert with HasLevel first
-func (n *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
-	n.friends[int(level)].Insert(id, dist)
+func (n0 *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
+	n0.friends[int(level)].Insert(id, dist)
 }
 
-func (n *Node) HasLevel(level int) bool {
+func (n0 *Node) HasLevel(level int) bool {
 	if level < 0 {
 		panic("level cannot be negative")
 	}
 
-	return len(n.friends)-1 >= int(level)
+	return len(n0.friends)-1 >= int(level)
 }
 
-func (n *Node) GetFriendsAtLevel(level int) *BaseQueue {
-	fmt.Printf("length of friends %v for level: %v\n", len(n.friends), level)
-	return n.friends[level]
+func (n0 *Node) GetFriendsAtLevel(level int) *BaseQueue {
+	return n0.friends[level]
 }
 
 func (n0 *Node) VecDistFromVec(v1 Vector) float64 {

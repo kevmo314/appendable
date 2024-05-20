@@ -216,7 +216,6 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// 3. make the second pass, this time create connections
 	for level := min(currentTopLevel, qLevel); level >= 0; level-- {
-		fmt.Printf("3rd pass LEVEL : %v\n", level)
 		nnToQAtLevel, err := h.searchLevel(q, newEpItem, h.EfConstruction, level)
 		if err != nil {
 			return fmt.Errorf("failed to make connections, %v", err)
