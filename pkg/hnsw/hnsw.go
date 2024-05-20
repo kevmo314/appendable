@@ -137,7 +137,7 @@ func (h *Hnsw) selectNeighbors(candidates *BaseQueue, numNeighborsToReturn int) 
 	return pq, nil
 }
 
-func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) {
+func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) (*BaseQueue, error) {
 	currentNearestElements := NewBaseQueue(MinComparator{})
 	entryPointNode := h.Nodes[h.EntryNodeId]
 	entryPointItem := &Item{id: h.EntryNodeId, dist: entryPointNode.VecDistFromVec(q)}
@@ -166,7 +166,7 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) ([]*Item, error) 
 		return nil, fmt.Errorf("failed to knnsearch, err: %v", err)
 	}
 
-	return pq.items, nil
+	return pq, nil
 }
 
 func (h *Hnsw) Link(friendItem *Item, node *Node, level int) {

@@ -139,17 +139,24 @@ func TestHnsw_Insert(t *testing.T) {
 			return
 		}
 
-		if len(items) != 32 {
-			t.Fatalf("expected to return %v neighbors, got: %v", 32, len(items))
+		if items.Len() != 10 {
+			t.Fatalf("expected to return %v neighbors, got: %v", 10, items.Len())
 		}
 
 		expectedId := NodeId(1)
 
-		for _, item := range items {
-			if item.id != expectedId {
-				t.Fatalf("expected to find %v in %v", expectedId, item.id)
+		for !items.IsEmpty() {
+			peeled, err := items.Peel()
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if peeled.id != expectedId {
+				t.Fatalf("expected %v, but got %v", expectedId, peeled.id)
 			}
 		}
+
 	})
 }
 
