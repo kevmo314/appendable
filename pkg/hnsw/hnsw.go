@@ -4,19 +4,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"sync/atomic"
 )
 
-/*
-The greedy algorithm can be divided into two phases: zoom-out and zoom-in.
-Starts in the zoom-out phase from a low degree node, traverses the graph increasing the node's degree.
-Halts when characteristic radius of the node links length reaches the scale of the distance to the query.
-*/
-
-// Hnsw is a multilevel graph
 type Hnsw struct {
-	vectorDimension int
-
-	// A lookup table for all nodes that exist in this graph
 	Nodes map[NodeId]*Node
 
 	EntryNodeId NodeId
@@ -37,23 +28,16 @@ type Hnsw struct {
 	levelMultiplier float64
 }
 
-// New needs two things: vector dimensionality d
-// and m the number of neighbors for each vertex
-func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
+func NewHNSW(m int, efc int, entryPoint *Node) *Hnsw {
 	nt := make(map[NodeId]*Node)
-
 	enId := NodeId(0) // special. Reserved for the entryPointNode
-
 	nt[enId] = entryPoint
 
-	nextId := enId + 1
-
 	h := &Hnsw{
-		vectorDimension: d,
 		M:               m,
 		Nodes:           nt,
 		EntryNodeId:     enId,
-		NextNodeId:      nextId,
+		NextNodeId:      enId + 1,
 		MaxLevel:        entryPoint.level,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
@@ -62,6 +46,10 @@ func NewHNSW(d, m int, efc int, entryPoint *Node) *Hnsw {
 	}
 
 	return h
+}
+
+func (h *Hnsw) getNextNodeId() NodeId {
+	return atomic.AddUint32(&h.NextNodeId, 1) - 1
 }
 
 func (h *Hnsw) spawnLevel() uint {
@@ -226,8 +214,7 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	// 1. build Node for vec q
 	qLevel := h.spawnLevel()
-	qNode := NewNode(h.NextNodeId, q, qLevel)
-	h.NextNodeId++
+	qNode := NewNode(h.getNextNodeId(), q, qLevel)
 
 	epItem := &Item{id: ep.id, dist: ep.VecDistFromVec(q)}
 
@@ -238,7 +225,7 @@ func (h *Hnsw) Insert(q Vector) error {
 	for level := min(currentTopLevel, qLevel); level >= 0; level-- {
 		nnToQAtLevel, err := h.searchLevel(q, newEpItem, h.EfConstruction, level)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to make connections, %v", err)
 		}
 
 		neighbors, err := h.selectNeighbors(nnToQAtLevel, h.M)
