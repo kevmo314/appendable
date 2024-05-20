@@ -117,6 +117,47 @@ func TestHnsw_Insert(t *testing.T) {
 		}
 	})
 
+	t.Run("multiple insert", func(t *testing.T) {
+		h := NewHNSW(10, 10, NewNode(0, []float64{0, 0}, 40))
+
+		for i := 0; i < 32; i++ {
+			if len(h.Nodes) != i+1 {
+				t.Fatalf("expected the number of nodes in graph to be %v, got %v", i+1, len(h.Nodes))
+			}
+
+			if err := h.Insert([]float64{float64(32 - i), float64(31 - i)}); err != nil {
+				t.Fatal(err)
+			}
+
+			if len(h.Nodes) != i+2 {
+				t.Fatalf("expected the number of nodes in graph to be %v, got %v", i+2, len(h.Nodes)+2)
+			}
+		}
+
+		items, err := h.KnnSearch([]float64{32, 31}, 10, 32)
+		if err != nil {
+			return
+		}
+
+		if items.Len() != 10 {
+			t.Fatalf("expected to return %v neighbors, got: %v", 10, items.Len())
+		}
+
+		expectedId := NodeId(1)
+
+		for !items.IsEmpty() {
+			peeled, err := items.Peel()
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if peeled.id != expectedId {
+				t.Fatalf("expected %v, but got %v", expectedId, peeled.id)
+			}
+		}
+
+	})
 }
 
 func TestHnsw_Link(t *testing.T) {
