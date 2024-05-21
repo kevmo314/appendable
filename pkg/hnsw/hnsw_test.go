@@ -158,6 +158,35 @@ func TestHnsw_Insert(t *testing.T) {
 		}
 
 	})
+
+	t.Run("multiple insert 2", func(t *testing.T) {
+		h := NewHNSW(10, 10, NewNode(0, []float64{0, 0, 0, 0}, 100))
+
+		if h.MaxLevel != 100 {
+			t.Fatalf("expected max level to be %v, got %v", 100, h.MaxLevel)
+		}
+
+		if _, numNodes := h.numNodes(); numNodes != 1 {
+			t.Fatalf("expected to return 1 node but got %v", numNodes)
+		}
+
+		for i := 0; i < 32; i++ {
+			q := []float64{float64(32 - i), float64(31 - i), float64(32 - i), float64(31 - 1)}
+			if err := h.Insert(q); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, numNodes := h.numNodes(); numNodes != i+2 {
+				t.Fatalf("expected to return %v node but got %v", i+2, numNodes)
+			}
+
+			currNodeId := NodeId(i + 1)
+			if !NearlyEqual(h.Nodes[currNodeId].VecDistFromVec(q), 0) {
+				t.Fatalf("expected at id %v, for vec to be q but got %v", currNodeId, h.Nodes[currNodeId].VecDistFromVec(q))
+			}
+
+		}
+	})
 }
 
 func TestHnsw_Link(t *testing.T) {

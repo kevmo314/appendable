@@ -70,7 +70,7 @@ func (n0 *Node) VecDistFromNode(n1 *Node) float64 {
 func EuclidDist(v0, v1 Vector) float64 {
 	// check if vector dimensionality is correct
 	if len(v0) != len(v1) {
-		panic("invalid lengths")
+		panic("vector dimensionality between vectors are not equal!")
 	}
 
 	var sum float64
