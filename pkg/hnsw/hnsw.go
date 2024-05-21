@@ -281,35 +281,3 @@ func (h *Hnsw) Insert(q Vector) error {
 
 	return nil
 }
-
-// functions below are primarily used for testing
-
-func (h *Hnsw) numNodes() ([]NodeId, int) {
-	num := 0
-
-	var nodeIds []NodeId
-	for k := range h.Nodes {
-		nodeIds = append(nodeIds, k)
-		num += 1
-	}
-
-	return nodeIds, num
-}
-
-// should never exceed MMAX, at level 0 shouldn't exceed MMAX0
-func (h *Hnsw) assert_num_neighbor_connections() (bool, error) {
-
-	for nodeId, node := range h.Nodes {
-
-		if len(node.friends) == 0 {
-			return false, fmt.Errorf("node %v shouldn't have 0 friends", nodeId)
-		}
-
-		for level := len(node.friends) - 1; level >= 0; level-- {
-
-		}
-
-	}
-
-	return true, nil
-}

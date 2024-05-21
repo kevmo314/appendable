@@ -4,6 +4,15 @@ import (
 	"testing"
 )
 
+func numNodes(h *Hnsw) ([]NodeId, int) {
+	var nodeIds []NodeId
+	for k := range h.Nodes {
+		nodeIds = append(nodeIds, k)
+	}
+
+	return nodeIds, len(nodeIds)
+}
+
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
 		n := NewNode(0, []float64{0.1, 0.2}, 3)
@@ -166,7 +175,7 @@ func TestHnsw_Insert(t *testing.T) {
 			t.Fatalf("expected max level to be %v, got %v", 100, h.MaxLevel)
 		}
 
-		if _, numNodes := h.numNodes(); numNodes != 1 {
+		if _, numNodes := numNodes(h); numNodes != 1 {
 			t.Fatalf("expected to return 1 node but got %v", numNodes)
 		}
 
@@ -176,7 +185,7 @@ func TestHnsw_Insert(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			if _, numNodes := h.numNodes(); numNodes != i+2 {
+			if _, numNodes := numNodes(h); numNodes != i+2 {
 				t.Fatalf("expected to return %v node but got %v", i+2, numNodes)
 			}
 
