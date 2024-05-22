@@ -1,12 +1,13 @@
 package hnsw
 
 import (
+	"fmt"
 	"testing"
 )
 
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
-		n := NewNode(0, []float32{0.1, 0.2}, 3)
+		n := NewNode(0, []float32{0.1, 0.2}, 0)
 		h := NewHNSW(32, 32, n)
 
 		if h.MaxLevel != n.level {
@@ -310,6 +311,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	t.Run("finds something closer traverse all layers", func(t *testing.T) {
 		ep := NewNode(0, []float32{0, 0}, 10)
 		h := NewHNSW(32, 32, ep)
+		h.MaxLevel = 10
 
 		q := []float32{6, 6}
 
@@ -337,6 +339,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	t.Run("finds something closer during the insertion context", func(t *testing.T) {
 		ep := NewNode(0, []float32{0, 0}, 10)
 		h := NewHNSW(32, 32, ep)
+		h.MaxLevel = 10
 
 		q := []float32{6, 6}
 		qLayer := 3
@@ -381,5 +384,88 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		if newEpItem.id != n.id {
 			t.Fatalf("expected id to be %v, got %v", n.id, newEpItem.id)
 		}
+	})
+}
+
+func TestSpawnLevelDistribution(t *testing.T) {
+	t.Run("plot distribution", func(t *testing.T) {
+		en := NewNode(0, []float32{0, 0}, 0)
+		h := NewHNSW(12, 4, en)
+
+		levels := make(map[int]int)
+
+		for i := 0; i < 1000; i++ {
+			sLevel := h.spawnLevel()
+
+			if _, ok := levels[sLevel]; ok {
+				levels[sLevel] += 1
+			} else {
+				levels[sLevel] = 1
+			}
+		}
+
+		numLevels := len(levels)
+
+		if numLevels <= 1 {
+			t.Fatalf("expected geometric distribution to increase to max layer")
+		}
+
+		prevCt := levels[numLevels-1]
+		for level := numLevels - 2; level >= 1; level-- {
+			currCt := levels[level]
+
+			if prevCt > currCt {
+				t.Fatalf("level %v has %v nodes. level %v has %v nodes.", level, currCt, level+1, prevCt)
+			}
+
+			prevCt = currCt
+		}
+	})
+
+	t.Run("spawn nodes", func(t *testing.T) {
+		en := NewNode(0, []float32{0, 0}, 0)
+		h := NewHNSW(12, 4, en)
+
+		levels := make(map[int]int)
+
+		for i := 0; i < 1000; i++ {
+			q := []float32{float32(i), float32(i + 1)}
+			if err := h.Insert(q); err != nil {
+				t.Fatal(err)
+			}
+
+			qNode := h.Nodes[h.NextNodeId-1]
+
+			if !NearlyEqual(float64(qNode.VecDistFromVec(q)), 0) {
+				t.Fatalf("expected qnode to have id %v, got different vector: %v", qNode.id, qNode.VecDistFromVec(q))
+			}
+
+			sLevel := qNode.level
+
+			if _, ok := levels[sLevel]; ok {
+				levels[sLevel] += 1
+			} else {
+				levels[sLevel] = 1
+			}
+		}
+
+		numLevels := len(levels)
+
+		if numLevels <= 1 {
+			t.Fatalf("expected geometric distribution to increase to max layer")
+		}
+
+		prevCt := levels[numLevels-1]
+		for level := numLevels - 2; level >= 1; level-- {
+			currCt := levels[level]
+
+			if prevCt > currCt {
+				t.Fatalf("level %v has %v nodes. level %v has %v nodes.", level, currCt, level+1, prevCt)
+			}
+
+			prevCt = currCt
+		}
+
+		fmt.Printf("levels distribution: %v\n", levels)
 	})
 }

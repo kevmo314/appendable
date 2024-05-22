@@ -38,7 +38,6 @@ func NewHNSW(m int, efc int, entryPoint *Node) *Hnsw {
 		Nodes:           nt,
 		EntryNodeId:     enId,
 		NextNodeId:      enId + 1,
-		MaxLevel:        entryPoint.level,
 		levelMultiplier: 1 / math.Log(float64(m)),
 		EfConstruction:  efc,
 		MMax:            m,
