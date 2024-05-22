@@ -28,9 +28,11 @@ type Hnsw struct {
 	levelMultiplier float64
 }
 
-func NewHNSW(m int, efc int, entryPoint *Node) *Hnsw {
+func NewHNSW(m int, efc int, entryVector Vector) *Hnsw {
 	nt := make(map[NodeId]*Node)
 	enId := NodeId(0) // special. Reserved for the entryPointNode
+
+	entryPoint := NewNode(enId, entryVector, 0)
 	nt[enId] = entryPoint
 
 	h := &Hnsw{
