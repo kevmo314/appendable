@@ -8,6 +8,8 @@ import (
 )
 
 type Hnsw struct {
+	vectorDim uint
+
 	Nodes map[NodeId]*Node
 
 	EntryNodeId NodeId
@@ -28,25 +30,32 @@ type Hnsw struct {
 	levelMultiplier float64
 }
 
-func NewHNSW(m int, efc int, entryVector Vector) *Hnsw {
+func NewHNSW(d uint, m int, efc int, entryVector Vector) *Hnsw {
+	h := &Hnsw{vectorDim: d}
+	h.checkVectorDim(entryVector)
+
 	nt := make(map[NodeId]*Node)
 	enId := NodeId(0) // special. Reserved for the entryPointNode
 
 	entryPoint := NewNode(enId, entryVector, 0)
 	nt[enId] = entryPoint
 
-	h := &Hnsw{
-		M:               m,
-		Nodes:           nt,
-		EntryNodeId:     enId,
-		NextNodeId:      enId + 1,
-		levelMultiplier: 1 / math.Log(float64(m)),
-		EfConstruction:  efc,
-		MMax:            m,
-		MMax0:           m * 2,
-	}
+	h.M = m
+	h.Nodes = nt
+	h.EntryNodeId = enId
+	h.NextNodeId = enId + 1
+	h.levelMultiplier = 1 / math.Log(float64(m))
+	h.EfConstruction = efc
+	h.MMax = m
+	h.MMax0 = m * 2
 
 	return h
+}
+
+func (h *Hnsw) checkVectorDim(v Vector) {
+	if h.vectorDim != uint(len(v)) {
+		panic(fmt.Sprintf("vector (%v) is invalid, expected dim length %v, got %v", v, h.vectorDim, len(v)))
+	}
 }
 
 func (h *Hnsw) getNextNodeId() NodeId {
@@ -202,6 +211,7 @@ func (h *Hnsw) findCloserEntryPoint(ep *Item, q Vector, qLevel int) *Item {
 }
 
 func (h *Hnsw) Insert(q Vector) error {
+	h.checkVectorDim(q)
 
 	ep := h.Nodes[h.EntryNodeId]
 	currentTopLevel := ep.level
