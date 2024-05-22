@@ -25,19 +25,19 @@ func (c MinComparator) Less(i, j *Item) bool {
 
 type Item struct {
 	id    NodeId
-	dist  float64
+	dist  float32
 	index int
 }
 
 type Heapy interface {
 	heap.Interface
-	Insert(id NodeId, dist float64)
+	Insert(id NodeId, dist float32)
 	IsEmpty() bool
 	Len() int
 	Peel() *Item
 	Peek() *Item
 	Take(count int) (*BaseQueue, error)
-	update(item *Item, id NodeId, dist float64)
+	update(item *Item, id NodeId, dist float32)
 }
 
 // Nothing from BaseQueue should be used. Only use the Max and Min queue.
@@ -114,7 +114,7 @@ func (bq *BaseQueue) Less(i, j int) bool {
 	return bq.comparator.Less(bq.items[i], bq.items[j])
 }
 
-func (bq *BaseQueue) Insert(id NodeId, dist float64) {
+func (bq *BaseQueue) Insert(id NodeId, dist float32) {
 	if item, ok := bq.visitedIds[id]; ok {
 		bq.update(item, id, dist)
 		return
@@ -154,7 +154,7 @@ func (bq *BaseQueue) Peel() (*Item, error) {
 	return popped, nil
 }
 
-func (bq *BaseQueue) update(item *Item, id NodeId, dist float64) {
+func (bq *BaseQueue) update(item *Item, id NodeId, dist float32) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(bq, item.index)

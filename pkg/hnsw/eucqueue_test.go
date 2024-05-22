@@ -1,6 +1,7 @@
 package hnsw
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -24,6 +25,7 @@ func TestEucQueue(t *testing.T) {
 
 		for i, v := range vs {
 			dist := EuclidDist(v0, v)
+			fmt.Printf("dist: %v", dist)
 			eq.Insert(NodeId(i), dist)
 
 			if i+1 != eq.Len() {
@@ -50,8 +52,12 @@ func TestEucQueue(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
-				t.Fatalf("expected item %v, got %v at %v", expected[i].id, item.id, i)
+			if item.id != expected[i].id {
+				t.Fatalf("expected item id %v, got %v at %v", expected[i].id, item.id, i)
+			}
+
+			if !NearlyEqual(float64(item.dist), float64(expected[i].dist)) {
+				t.Fatalf("not equal, got %v, and %v", item.dist, expected[i].dist)
 			}
 
 			if _, ok := eq.visitedIds[item.id]; ok {
@@ -106,7 +112,7 @@ func TestEucQueue(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if item.id != expected[i].id || !NearlyEqual(item.dist, expected[i].dist) {
+			if item.id != expected[i].id || !NearlyEqual(float64(item.dist), float64(expected[i].dist)) {
 				t.Fatalf("expected item id: %v, got id: %v at i: %v", expected[i].id, item.id, i)
 			}
 
@@ -183,13 +189,13 @@ func TestEucQueue(t *testing.T) {
 		}, MinComparator{})
 
 		for i := 2; i <= 100; i++ {
-			mq.Insert(1, float64(i))
+			mq.Insert(1, float32(i))
 
 			if mq.Len() != 1 {
 				t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
 			}
 
-			if !NearlyEqual(mq.Peek().dist, float64(i)) {
+			if !NearlyEqual(float64(mq.Peek().dist), float64(i)) {
 				t.Fatalf("expected distance to be the newly updated %v, got %v", i, mq.Peek().dist)
 			}
 		}
@@ -198,7 +204,7 @@ func TestEucQueue(t *testing.T) {
 			t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
 		}
 
-		if !NearlyEqual(mq.Peek().dist, float64(100)) {
+		if !NearlyEqual(float64(mq.Peek().dist), float64(100)) {
 			t.Fatalf("expected distance to be the newly updated %v, got %v", 100, mq.Peek().dist)
 		}
 	})
