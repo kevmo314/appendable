@@ -9,7 +9,6 @@ func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
 		n := NewNode(0, []float32{0.1, 0.2}, 0)
 		h := NewHNSW(32, 32, []float32{0.1, 0.2})
-
 		if h.MaxLevel != n.level {
 			t.Fatalf("expected max level to default to %v, got %v", n.level, h.MaxLevel)
 		}
@@ -341,6 +340,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		h := NewHNSW(32, 32, []float32{0, 0})
 		h.MaxLevel = 10
 		h.Nodes[0] = ep
+
 
 		q := []float32{6, 6}
 		qLayer := 3
