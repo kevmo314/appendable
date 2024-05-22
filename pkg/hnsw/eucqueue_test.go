@@ -1,6 +1,7 @@
 package hnsw
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -24,6 +25,7 @@ func TestEucQueue(t *testing.T) {
 
 		for i, v := range vs {
 			dist := EuclidDist(v0, v)
+			fmt.Printf("dist: %v", dist)
 			eq.Insert(NodeId(i), dist)
 
 			if i+1 != eq.Len() {
