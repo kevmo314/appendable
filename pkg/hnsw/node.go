@@ -4,7 +4,7 @@ import (
 	"math"
 )
 
-type Vector []float64
+type Vector []float32
 
 type NodeId = uint32
 
@@ -37,7 +37,7 @@ func NewNode(id NodeId, v Vector, level int) *Node {
 }
 
 // Must assert with HasLevel first
-func (n0 *Node) InsertFriendsAtLevel(level int, id NodeId, dist float64) {
+func (n0 *Node) InsertFriendsAtLevel(level int, id NodeId, dist float32) {
 	n0.friends[int(level)].Insert(id, dist)
 }
 
@@ -46,20 +46,20 @@ func (n0 *Node) HasLevel(level int) bool {
 		panic("level cannot be negative")
 	}
 
-	return len(n0.friends)-1 >= int(level)
+	return len(n0.friends)-1 >= level
 }
 
 func (n0 *Node) GetFriendsAtLevel(level int) *BaseQueue {
 	return n0.friends[level]
 }
 
-func (n0 *Node) VecDistFromVec(v1 Vector) float64 {
+func (n0 *Node) VecDistFromVec(v1 Vector) float32 {
 	v0 := n0.v
 
 	return EuclidDist(v0, v1)
 }
 
-func (n0 *Node) VecDistFromNode(n1 *Node) float64 {
+func (n0 *Node) VecDistFromNode(n1 *Node) float32 {
 	// pull vec from nodes
 	v0 := n0.v
 	v1 := n1.v
@@ -67,20 +67,20 @@ func (n0 *Node) VecDistFromNode(n1 *Node) float64 {
 	return EuclidDist(v0, v1)
 }
 
-func EuclidDist(v0, v1 Vector) float64 {
+func EuclidDist(v0, v1 Vector) float32 {
 	// check if vector dimensionality is correct
 	if len(v0) != len(v1) {
 		panic("invalid lengths")
 	}
 
-	var sum float64
+	var sum float32
 
 	for i := range v0 {
-		delta := float64(v0[i] - v1[i])
+		delta := v0[i] - v1[i]
 		sum += delta * delta
 	}
 
-	return math.Sqrt(sum)
+	return float32(math.Sqrt(float64(sum)))
 }
 
 // NearlyEqual is sourced from scalar package written by gonum

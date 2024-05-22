@@ -6,7 +6,7 @@ import (
 
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
-		n := NewNode(0, []float64{0.1, 0.2}, 3)
+		n := NewNode(0, []float32{0.1, 0.2}, 3)
 		h := NewHNSW(32, 32, n)
 
 		if h.MaxLevel != n.level {
@@ -32,7 +32,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 11, dist: 20},
 		}, MinComparator{})
 
-		h := NewHNSW(32, 1, NewNode(0, []float64{0, 0}, 3))
+		h := NewHNSW(32, 1, NewNode(0, []float32{0, 0}, 3))
 
 		cn, err := h.selectNeighbors(candidates, 10)
 
@@ -67,7 +67,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 3, dist: 8},
 		}, MinComparator{})
 
-		h := NewHNSW(32, 1, NewNode(0, []float64{0, 0}, 3))
+		h := NewHNSW(32, 1, NewNode(0, []float32{0, 0}, 3))
 
 		res, err := h.selectNeighbors(candidates, 10)
 		if err != nil || res.Len() != 3 {
@@ -79,7 +79,7 @@ func TestHnswSelect(t *testing.T) {
 func TestHnsw_Insert(t *testing.T) {
 
 	t.Run("nodes[0] is root", func(t *testing.T) {
-		n := NewNode(0, []float64{11, 11}, 3)
+		n := NewNode(0, []float32{11, 11}, 3)
 		h := NewHNSW(32, 32, n)
 
 		if len(h.Nodes) != 1 {
@@ -92,14 +92,14 @@ func TestHnsw_Insert(t *testing.T) {
 	})
 
 	t.Run("hnsw with inserted element q", func(t *testing.T) {
-		entryNode := NewNode(0, []float64{1, 1, 1}, 3)
+		entryNode := NewNode(0, []float32{1, 1, 1}, 3)
 		h := NewHNSW(32, 32, entryNode)
 
 		if len(h.Nodes) != 1 {
 			t.Fatalf("hnsw should be initialized with root node but got len: %v", len(h.Nodes))
 		}
 
-		err := h.Insert([]float64{1.3, 2.5, 2.3})
+		err := h.Insert([]float32{1.3, 2.5, 2.3})
 		if err != nil {
 			return
 		}
@@ -112,20 +112,20 @@ func TestHnsw_Insert(t *testing.T) {
 			t.Fatalf("expected node id at 1 to be initialized but got %v", h.Nodes[1].id)
 		}
 
-		if EuclidDist(h.Nodes[1].v, []float64{1.3, 2.5, 2.3}) != 0 {
-			t.Fatalf("incorrect vector inserted at %v expected vector %v but got %v", 1, []float64{1.3, 2.5, 2.3}, h.Nodes[1].v)
+		if EuclidDist(h.Nodes[1].v, []float32{1.3, 2.5, 2.3}) != 0 {
+			t.Fatalf("incorrect vector inserted at %v expected vector %v but got %v", 1, []float32{1.3, 2.5, 2.3}, h.Nodes[1].v)
 		}
 	})
 
 	t.Run("multiple insert", func(t *testing.T) {
-		h := NewHNSW(10, 10, NewNode(0, []float64{0, 0}, 40))
+		h := NewHNSW(10, 10, NewNode(0, []float32{0, 0}, 40))
 
 		for i := 0; i < 32; i++ {
 			if len(h.Nodes) != i+1 {
 				t.Fatalf("expected the number of nodes in graph to be %v, got %v", i+1, len(h.Nodes))
 			}
 
-			if err := h.Insert([]float64{float64(32 - i), float64(31 - i)}); err != nil {
+			if err := h.Insert([]float32{float32(32 - i), float32(31 - i)}); err != nil {
 				t.Fatal(err)
 			}
 
@@ -134,7 +134,7 @@ func TestHnsw_Insert(t *testing.T) {
 			}
 		}
 
-		items, err := h.KnnSearch([]float64{32, 31}, 10, 32)
+		items, err := h.KnnSearch([]float32{32, 31}, 10, 32)
 		if err != nil {
 			return
 		}
@@ -212,13 +212,13 @@ func TestHnsw_Link(t *testing.T) {
 	})
 
 	t.Run("links correctly 2", func(t *testing.T) {
-		qNode := NewNode(1, []float64{4, 4}, 3)
+		qNode := NewNode(1, []float32{4, 4}, 3)
 
-		h := NewHNSW(1, 23, NewNode(0, []float64{0, 0}, 10))
+		h := NewHNSW(1, 23, NewNode(0, []float32{0, 0}, 10))
 
 		h.Nodes[qNode.id] = qNode
 
-		friends := [][]float64{
+		friends := [][]float32{
 			{2, 2}, {3, 3}, {3.5, 3.5},
 		}
 
@@ -280,7 +280,7 @@ func TestHnsw_Link(t *testing.T) {
 
 func TestNextNodeId(t *testing.T) {
 	t.Run("generate next node", func(t *testing.T) {
-		h := NewHNSW(30, 30, NewNode(0, []float64{}, 1))
+		h := NewHNSW(30, 30, NewNode(0, []float32{}, 1))
 		for i := 0; i <= 100; i++ {
 			nextNodeId := h.getNextNodeId()
 
@@ -293,10 +293,10 @@ func TestNextNodeId(t *testing.T) {
 
 func TestFindCloserEntryPoint(t *testing.T) {
 	t.Run("find nothing closer", func(t *testing.T) {
-		epNode := NewNode(0, []float64{0, 0}, 10)
+		epNode := NewNode(0, []float32{0, 0}, 10)
 		h := NewHNSW(32, 32, epNode)
 
-		qVector := []float64{6, 6}
+		qVector := []float32{6, 6}
 		qLevel := h.spawnLevel()
 
 		epItem := &Item{id: 0, dist: epNode.VecDistFromVec(qVector)}
@@ -308,14 +308,14 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	})
 
 	t.Run("finds something closer traverse all layers", func(t *testing.T) {
-		ep := NewNode(0, []float64{0, 0}, 10)
+		ep := NewNode(0, []float32{0, 0}, 10)
 		h := NewHNSW(32, 32, ep)
 
-		q := []float64{6, 6}
+		q := []float32{6, 6}
 
 		// suppose we had m := []float{5, 5}. It is closer to q, so let's add m to the friends of ep
 
-		m := NewNode(1, []float64{5, 5}, 9)
+		m := NewNode(1, []float32{5, 5}, 9)
 		h.Nodes[m.id] = m
 
 		for level := 0; level <= 9; level++ {
@@ -335,20 +335,20 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	})
 
 	t.Run("finds something closer during the insertion context", func(t *testing.T) {
-		ep := NewNode(0, []float64{0, 0}, 10)
+		ep := NewNode(0, []float32{0, 0}, 10)
 		h := NewHNSW(32, 32, ep)
 
-		q := []float64{6, 6}
+		q := []float32{6, 6}
 		qLayer := 3
 
 		// suppose we had m := []float{5, 5}. It is closer to q, so let's add m to the friends of ep
-		m := NewNode(1, []float64{5, 5}, 9)
+		m := NewNode(1, []float32{5, 5}, 9)
 		h.Nodes[m.id] = m
 		mDist := m.VecDistFromVec(q)
 
 		h.Link(&Item{id: m.id, dist: mDist}, h.Nodes[h.EntryNodeId], m.level)
 
-		n := NewNode(2, []float64{6.1, 6.1}, 4)
+		n := NewNode(2, []float32{6.1, 6.1}, 4)
 		h.Nodes[n.id] = n
 		nDist := n.VecDistFromNode(m)
 		h.Link(&Item{id: n.id, dist: nDist}, m, n.level)
