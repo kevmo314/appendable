@@ -66,7 +66,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 2, dist: 0.6},
 			{id: 3, dist: 8},
 		}, MinComparator{})
-    
+
 		h := NewHNSW(32, 1, []float32{0, 0})
 
 		res, err := h.selectNeighbors(candidates, 10)
@@ -211,7 +211,7 @@ func TestHnsw_Link(t *testing.T) {
 
 	t.Run("links correctly 2", func(t *testing.T) {
 		qNode := NewNode(1, []float32{4, 4}, 3)
-    
+
 		h := NewHNSW(1, 23, []float32{0, 0})
 
 		h.Nodes[qNode.id] = qNode
@@ -340,7 +340,6 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		h := NewHNSW(32, 32, []float32{0, 0})
 		h.MaxLevel = 10
 		h.Nodes[0] = ep
-
 
 		q := []float32{6, 6}
 		qLayer := 3
