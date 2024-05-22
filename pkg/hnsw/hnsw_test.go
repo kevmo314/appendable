@@ -8,7 +8,7 @@ import (
 func TestHnsw(t *testing.T) {
 	t.Run("builds graph", func(t *testing.T) {
 		n := NewNode(0, []float32{0.1, 0.2}, 0)
-		h := NewHNSW(32, 32, []float32{0.1, 0.2})
+		h := NewHNSW(2, 32, 32, []float32{0.1, 0.2})
 		if h.MaxLevel != n.level {
 			t.Fatalf("expected max level to default to %v, got %v", n.level, h.MaxLevel)
 		}
@@ -32,7 +32,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 11, dist: 20},
 		}, MinComparator{})
 
-		h := NewHNSW(32, 1, []float32{0, 0})
+		h := NewHNSW(2, 32, 1, []float32{0, 0})
 
 		cn, err := h.selectNeighbors(candidates, 10)
 
@@ -67,7 +67,7 @@ func TestHnswSelect(t *testing.T) {
 			{id: 3, dist: 8},
 		}, MinComparator{})
 
-		h := NewHNSW(32, 1, []float32{0, 0})
+		h := NewHNSW(2, 32, 1, []float32{0, 0})
 
 		res, err := h.selectNeighbors(candidates, 10)
 		if err != nil || res.Len() != 3 {
@@ -79,7 +79,7 @@ func TestHnswSelect(t *testing.T) {
 func TestHnsw_Insert(t *testing.T) {
 
 	t.Run("nodes[0] is root", func(t *testing.T) {
-		h := NewHNSW(32, 32, []float32{11, 11})
+		h := NewHNSW(2, 32, 32, []float32{11, 11})
 
 		if len(h.Nodes) != 1 {
 			t.Fatalf("hnsw should be initialized with root node but got len: %v", len(h.Nodes))
@@ -91,7 +91,7 @@ func TestHnsw_Insert(t *testing.T) {
 	})
 
 	t.Run("hnsw with inserted element q", func(t *testing.T) {
-		h := NewHNSW(32, 32, []float32{1, 1, 1})
+		h := NewHNSW(3, 32, 32, []float32{1, 1, 1})
 
 		if len(h.Nodes) != 1 {
 			t.Fatalf("hnsw should be initialized with root node but got len: %v", len(h.Nodes))
@@ -116,7 +116,7 @@ func TestHnsw_Insert(t *testing.T) {
 	})
 
 	t.Run("multiple insert", func(t *testing.T) {
-		h := NewHNSW(10, 10, []float32{0, 0})
+		h := NewHNSW(2, 10, 10, []float32{0, 0})
 
 		for i := 0; i < 32; i++ {
 			if len(h.Nodes) != i+1 {
@@ -154,7 +154,32 @@ func TestHnsw_Insert(t *testing.T) {
 				t.Fatalf("expected %v, but got %v", expectedId, peeled.id)
 			}
 		}
+	})
+}
 
+func TestHnswVectorDimension(t *testing.T) {
+
+	t.Run("create new hnsw", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("Expected NewHNSW to panic due to mismatched dim, but it did not")
+			}
+		}()
+		NewHNSW(3, 10, 8, []float32{1})
+	})
+
+	t.Run("insert mismatch vec", func(t *testing.T) {
+		h := NewHNSW(3, 10, 8, []float32{1, 1, 1})
+
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatalf("Expected NewHNSW to panic due to mismatched dim, but it did not")
+			}
+		}()
+		err := h.Insert([]float32{})
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 }
 
@@ -165,7 +190,7 @@ func TestHnsw_Link(t *testing.T) {
 		n2 := NewNode(2, make(Vector, 128), 0)
 
 		p := make(Vector, 128)
-		h := NewHNSW(4, 200, p)
+		h := NewHNSW(128, 4, 200, p)
 
 		h.Nodes[1] = n1
 		h.Nodes[2] = n2
@@ -212,7 +237,7 @@ func TestHnsw_Link(t *testing.T) {
 	t.Run("links correctly 2", func(t *testing.T) {
 		qNode := NewNode(1, []float32{4, 4}, 3)
 
-		h := NewHNSW(1, 23, []float32{0, 0})
+		h := NewHNSW(2, 1, 23, []float32{0, 0})
 
 		h.Nodes[qNode.id] = qNode
 
@@ -278,7 +303,7 @@ func TestHnsw_Link(t *testing.T) {
 
 func TestNextNodeId(t *testing.T) {
 	t.Run("generate next node", func(t *testing.T) {
-		h := NewHNSW(30, 30, []float32{})
+		h := NewHNSW(0, 30, 30, []float32{})
 		for i := 0; i <= 100; i++ {
 			nextNodeId := h.getNextNodeId()
 
@@ -292,7 +317,7 @@ func TestNextNodeId(t *testing.T) {
 func TestFindCloserEntryPoint(t *testing.T) {
 	t.Run("find nothing closer", func(t *testing.T) {
 		epNode := NewNode(0, []float32{0, 0}, 10)
-		h := NewHNSW(32, 32, []float32{0, 0})
+		h := NewHNSW(2, 32, 32, []float32{0, 0})
 
 		qVector := []float32{6, 6}
 		qLevel := h.spawnLevel()
@@ -307,7 +332,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 
 	t.Run("finds something closer traverse all layers", func(t *testing.T) {
 		ep := NewNode(0, []float32{0, 0}, 10)
-		h := NewHNSW(32, 32, []float32{0, 0})
+		h := NewHNSW(2, 32, 32, []float32{0, 0})
 		h.Nodes[0] = ep
 		h.MaxLevel = 10
 
@@ -337,7 +362,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	t.Run("finds something closer during the insertion context", func(t *testing.T) {
 		ep := NewNode(0, []float32{0, 0}, 10)
 
-		h := NewHNSW(32, 32, []float32{0, 0})
+		h := NewHNSW(2, 32, 32, []float32{0, 0})
 		h.MaxLevel = 10
 		h.Nodes[0] = ep
 
@@ -389,7 +414,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 
 func TestSpawnLevelDistribution(t *testing.T) {
 	t.Run("plot distribution", func(t *testing.T) {
-		h := NewHNSW(12, 4, []float32{0, 0})
+		h := NewHNSW(2, 12, 4, []float32{0, 0})
 
 		levels := make(map[int]int)
 
@@ -422,7 +447,7 @@ func TestSpawnLevelDistribution(t *testing.T) {
 	})
 
 	t.Run("spawn nodes", func(t *testing.T) {
-		h := NewHNSW(12, 4, []float32{0, 0})
+		h := NewHNSW(2, 12, 4, []float32{0, 0})
 
 		levels := make(map[int]int)
 
