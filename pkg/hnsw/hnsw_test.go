@@ -568,5 +568,68 @@ func TestHnsw_KnnCluster(t *testing.T) {
 		}
 
 	})
+	var clusterA = []Vector{
+		{0.2, 0.5},
+		{0.2, 0.7},
+		{0.3, 0.8},
+		{0.5, 0.5},
+		{0.4, 0.1},
+		{0.3, 0.7},
+		{0.27, 0.23},
+		{0.12, 0.1},
+		{0.23, 0.25},
+		{0.3, 0.3},
+		{0.01, 0.3},
+	}
 
+	var clusterB = []Vector{
+		{4.2, 3.5},
+		{4.2, 4.7},
+		{4.3, 3.8},
+		{4.5, 4.5},
+		{4.4, 3.1},
+		{4.3, 4.7},
+		{4.27, 3.23},
+		{4.1, 4.1},
+		{4.12, 3.1},
+		{4.23, 4.25},
+		{4.3, 3.3},
+		{4.01, 4.3},
+	}
+
+	t.Run("cluster a search", func(t *testing.T) {
+		h := NewHNSW(2, 14, 8, []float32{0, 0})
+
+		for i, q := range clusterA {
+			if err := h.Insert(q); err != nil {
+				t.Fatalf("failed to insert clusterA vector at iter %v, err: %v", i, err)
+			}
+		}
+
+		for i, q := range clusterB {
+			if err := h.Insert(q); err != nil {
+				t.Fatalf("failed to insert clusterA vector at iter %v, err: %v", i, err)
+			}
+		}
+
+		closest, err := h.KnnSearch([]float32{0.1, 0.1}, 4, 8)
+		if err != nil {
+			t.Fatalf("expected KNN search to return at least one KNN node. err: %v", err)
+		}
+
+		var clos []NodeId
+
+		for !closest.IsEmpty() {
+			peeled, err := closest.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
+			clos = append(clos, peeled.id)
+		}
+
+		if reflect.DeepEqual(clos, []NodeId{7, 0}) {
+			t.Fatalf("got closest ids: %v, expected %v", clos, []NodeId{7, 0})
+		}
+
+	})
 }
