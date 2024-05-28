@@ -84,14 +84,12 @@ func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (
 	nearestNeighborsToQForEf.Insert(entryNodeItem.id, entryNodeItem.dist)
 
 	for !candidates.IsEmpty() {
-		// extract nearest element from C to q
 		closestCandidate, err := candidates.Peel()
 		if err != nil {
 			return nil, err
 		}
 
-		// get the furthest element from W to q
-		furthestNN, err := nearestNeighborsToQForEf.Peel()
+		furthestNN, err := nearestNeighborsToQForEf.Peek()
 		if err != nil {
 			return nil, err
 		}
@@ -100,7 +98,6 @@ func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (
 		furthestNNToQDist := furthestNN.dist
 
 		if closestCandidateToQDist > furthestNNToQDist {
-			// all elements in W are evaluated
 			break
 		}
 
@@ -112,9 +109,14 @@ func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (
 
 				if !visited[friendId] {
 					visited[friendId] = true
-					furthestNNItem := nearestNeighborsToQForEf.Peek()
+					furthestNNItem, err := nearestNeighborsToQForEf.Peek()
+
+					if err != nil {
+						return nil, err
+					}
 
 					friendToQDist := EuclidDist(h.Nodes[friendId].v, q)
+					fmt.Printf("friend to q dist: %v", friendToQDist)
 
 					if nearestNeighborsToQForEf.Len() < ef {
 						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
@@ -124,8 +126,6 @@ func (h *Hnsw) searchLevel(q Vector, entryNodeItem *Item, ef int, levelId int) (
 						nearestNeighborsToQForEf.Insert(friendId, friendToQDist)
 						candidates.Insert(friendId, friendToQDist)
 					}
-
-					return nearestNeighborsToQForEf, nil
 				}
 			}
 		}
@@ -157,6 +157,10 @@ func (h *Hnsw) KnnSearch(q Vector, kNeighborsToReturn, ef int) (*BaseQueue, erro
 
 	if err != nil {
 		return nil, err
+	}
+
+	if numNearestToQAtBase.IsEmpty() {
+		panic("nearest to q at base is empty")
 	}
 
 	for !numNearestToQAtBase.IsEmpty() {

@@ -89,11 +89,11 @@ func (bq *BaseQueue) Push(x any) {
 	bq.items = append(bq.items, item)
 }
 
-func (bq *BaseQueue) Peek() *Item {
+func (bq *BaseQueue) Peek() (*Item, error) {
 	if len(bq.items) == 0 {
-		return nil
+		return nil, fmt.Errorf("empty base queue")
 	}
-	return bq.items[0]
+	return bq.items[0], nil
 }
 
 func (bq *BaseQueue) IsEmpty() bool {

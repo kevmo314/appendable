@@ -158,12 +158,20 @@ func TestEucQueue(t *testing.T) {
 			t.Fatalf("update shouldn't incur another element. expected length: %v, got: %v", 2, mq.Len())
 		}
 
-		if mq.Peek().id != 1 {
-			t.Fatalf("expected first id to be 1, got: %v", mq.Peek().id)
+		if item, err := mq.Peek(); err != nil || item.id != 1 {
+			t.Fatalf("expected first id to be 1, got: %v", item.id)
 		}
 
-		if mq.Peek().dist != 2.1 {
-			t.Fatalf("expected distance to be updated to %v, got %v", 2.1, mq.Peek().dist)
+		if mq.Len() != 2 {
+			t.Fatalf("update shouldn't incur another element. expected length: %v, got: %v", 2, mq.Len())
+		}
+
+		if item, err := mq.Peek(); err != nil || item.dist != 2.1 {
+			t.Fatalf("expected distance to be updated to %v, got %v", 2.1, item.dist)
+		}
+
+		if mq.Len() != 2 {
+			t.Fatalf("update shouldn't incur another element. expected length: %v, got: %v", 2, mq.Len())
 		}
 
 		_, err := mq.Peel()
@@ -172,13 +180,47 @@ func TestEucQueue(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 
-		if mq.Peek().id != 2 {
-			t.Fatalf("expected second id to be 2, got %v", mq.Peek().id)
+		if mq.Len() != 1 {
+			t.Fatalf("expected length %v, got %v", 1, mq.Len())
 		}
 
-		if mq.Peek().dist != 3.0 {
-			t.Fatalf("expected distance %v, got %v", 3.0, mq.Peek().dist)
+		if item, err := mq.Peek(); err != nil || item.id != 2 {
+			t.Fatalf("expected second id to be 2, got %v", item.id)
 		}
+
+		if item, err := mq.Peek(); err != nil || item.dist != 3.0 {
+			t.Fatalf("expected distance %v, got %v", 3.0, item.dist)
+		}
+	})
+
+	t.Run("given a max heap, peeks properly", func(t *testing.T) {
+		mq := FromBaseQueue([]*Item{
+			{id: 1, dist: 30},
+			{id: 2, dist: 40},
+		}, MaxComparator{})
+
+		if mq.Len() != 2 {
+			t.Fatalf("expected length %v, got %v", 2, mq.Len())
+		}
+
+		if item, err := mq.Peek(); err != nil || item.id != 2 {
+			t.Fatalf("expected the max item to be id %v, got %v", 2, item.id)
+		}
+
+		_, err := mq.Peel()
+
+		if err != nil {
+			t.Fatalf("error occured when peeling: %v", err)
+		}
+
+		if mq.Len() != 1 {
+			t.Fatalf("expected length %v, got %v", 1, mq.Len())
+		}
+
+		if item, err := mq.Peek(); err != nil || item.id != 1 {
+			t.Fatalf("expected the max item to be id: %v, got %v", 1, item.id)
+		}
+
 	})
 
 	t.Run("inserting with same id yields update, not insertion", func(t *testing.T) {
@@ -193,8 +235,13 @@ func TestEucQueue(t *testing.T) {
 				t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
 			}
 
-			if !NearlyEqual(float64(mq.Peek().dist), float64(i)) {
-				t.Fatalf("expected distance to be the newly updated %v, got %v", i, mq.Peek().dist)
+			item, err := mq.Peek()
+			if err != nil {
+				t.Fatalf("error when peeking %v", err)
+			}
+
+			if !NearlyEqual(float64(item.dist), float64(i)) {
+				t.Fatalf("expected distance to be the newly updated %v, got %v", i, item.dist)
 			}
 		}
 
@@ -202,8 +249,14 @@ func TestEucQueue(t *testing.T) {
 			t.Fatalf("expected len to be %v, got %v", 1, mq.Len())
 		}
 
-		if !NearlyEqual(float64(mq.Peek().dist), float64(100)) {
-			t.Fatalf("expected distance to be the newly updated %v, got %v", 100, mq.Peek().dist)
+		item, err := mq.Peek()
+
+		if err != nil {
+			t.Fatalf("error when peeking %v", err)
+		}
+
+		if !NearlyEqual(float64(item.dist), float64(100)) {
+			t.Fatalf("expected distance to be the newly updated %v, got %v", 100, item.dist)
 		}
 	})
 }

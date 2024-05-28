@@ -387,8 +387,8 @@ func TestFindCloserEntryPoint(t *testing.T) {
 		if friends[9].IsEmpty() {
 			t.Fatalf("expected friends to not be empty at level 4, got %v", friends[4].Len())
 		}
-		if friends[9].Peek().id != 1 {
-			t.Fatalf("expected friend id at level 9 to be %v, got %v", 1, friends[9].Peek().id)
+		if item, err := friends[9].Peek(); err != nil || item.id != 1 {
+			t.Fatalf("expected friend id at level 9 to be %v, got %v", 1, item.id)
 		}
 
 		nextFriends := h.Nodes[1].friends
@@ -396,8 +396,8 @@ func TestFindCloserEntryPoint(t *testing.T) {
 			t.Fatalf("expected friends to not be empty at level 4, got %v", friends[4].Len())
 		}
 
-		if nextFriends[4].Peek().id != 2 {
-			t.Fatalf("expected friend id at level 4 to be %v, got %v", 2, friends[4].Peek().id)
+		if item, err := nextFriends[4].Peek(); err != nil || item.id != 2 {
+			t.Fatalf("expected friend id at level 4 to be %v, got %v", 2, item.id)
 		}
 
 		epItem := &Item{id: 0, dist: ep.VecDistFromVec(q)}
@@ -607,10 +607,18 @@ func TestHnsw_KnnCluster(t *testing.T) {
 			}
 		}
 
+		if len(h.Nodes) != len(clusterA)+1 {
+			t.Fatalf("expected number of nodes: %v", len(h.Nodes))
+		}
+
 		for i, q := range clusterB {
 			if err := h.Insert(q); err != nil {
 				t.Fatalf("failed to insert clusterA vector at iter %v, err: %v", i, err)
 			}
+		}
+
+		if len(h.Nodes) != len(clusterA)+len(clusterB)+1 {
+			t.Fatalf("expected number of nodes %v", len(h.Nodes))
 		}
 
 		closest, err := h.KnnSearch([]float32{0.1, 0.1}, 4, 8)
