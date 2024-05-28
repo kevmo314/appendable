@@ -640,5 +640,5 @@ func TestHnsw_KnnCluster(t *testing.T) {
 			t.Fatalf("got closest ids: %v, expected %v", clos, []NodeId{7, 0})
 		}
 
-  })
+	})
 }
