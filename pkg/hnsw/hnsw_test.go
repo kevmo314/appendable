@@ -568,6 +568,7 @@ func TestHnsw_KnnCluster(t *testing.T) {
 		}
 
 	})
+
 	var clusterA = []Vector{
 		{0.2, 0.5},
 		{0.2, 0.7},
@@ -631,5 +632,5 @@ func TestHnsw_KnnCluster(t *testing.T) {
 			t.Fatalf("got closest ids: %v, expected %v", clos, []NodeId{7, 0})
 		}
 
-	})
+  })
 }
