@@ -20,6 +20,8 @@ export class BTreeNode {
   private readonly dataFileResolver: RangeResolver;
   private readonly fileFormat: FileFormat;
   private readonly pageFieldType: FieldType;
+  private readonly tree: RangeResolver;
+  private readonly pageFieldWidth: number;
 
   constructor(
     keys: ReferencedValue[],
@@ -28,6 +30,8 @@ export class BTreeNode {
     dataFileResolver: RangeResolver,
     fileFormat: FileFormat,
     pageFieldType: FieldType,
+    tree: RangeResolver,
+    pageFieldWidth: number,
   ) {
     this.keys = keys;
     this.leafPointers = leafPointers;
@@ -35,6 +39,8 @@ export class BTreeNode {
     this.dataFileResolver = dataFileResolver;
     this.fileFormat = fileFormat;
     this.pageFieldType = pageFieldType;
+    this.tree = tree;
+    this.pageFieldWidth = pageFieldWidth;
   }
 
   leaf(): boolean {
@@ -54,6 +60,25 @@ export class BTreeNode {
 
   numPointers(): number {
     return this.internalPointers.length + this.leafPointers.length;
+  }
+
+  async readChildNode(index: number) {
+    const childPointer = this.pointer(index);
+
+    const { node, bytesRead } = await BTreeNode.fromMemoryPointer(
+      childPointer,
+      this.tree,
+      this.dataFileResolver,
+      this.fileFormat,
+      this.pageFieldType,
+      this.pageFieldWidth,
+    );
+
+    if (!bytesRead) {
+      throw new Error("bytes read do not line up");
+    }
+
+    return node;
   }
 
   async unmarshalBinary(buffer: ArrayBuffer, pageFieldWidth: number) {
@@ -226,6 +251,8 @@ export class BTreeNode {
       dataFilePointer,
       fileFormat,
       pageFieldType,
+      resolver,
+      pageFieldWidth,
     );
 
     await node.unmarshalBinary(bufferData, pageFieldWidth);
