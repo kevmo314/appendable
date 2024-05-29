@@ -59,7 +59,7 @@ export class TraversalIterator {
         return false;
       }
       // propagate the rollover
-      this.records[i].node = await this.records[i + 1].node.readChildNode(
+      this.records[i].node = await this.records[i + 1].node.child(
         this.records[i + 1].index,
       );
 

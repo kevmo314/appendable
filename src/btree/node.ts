@@ -65,7 +65,7 @@ export class BTreeNode {
     return this.internalPointers.length + this.leafPointers.length;
   }
 
-  async readChildNode(index: number): Promise<BTreeNode> {
+  async child(index: number): Promise<BTreeNode> {
     if (!this.childrenCache[index]) {
       const childPointer = this.pointer(index);
 
