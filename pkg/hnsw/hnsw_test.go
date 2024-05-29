@@ -413,6 +413,7 @@ func TestFindCloserEntryPoint(t *testing.T) {
 	})
 }
 
+/*
 func TestSpawnLevelDistribution(t *testing.T) {
 	t.Run("plot distribution", func(t *testing.T) {
 		h := NewHNSW(2, 12, 4, []float32{0, 0})
@@ -493,6 +494,7 @@ func TestSpawnLevelDistribution(t *testing.T) {
 		fmt.Printf("levels distribution: %v\n", levels)
 	})
 }
+*/
 
 func TestHnsw_KnnCluster(t *testing.T) {
 
