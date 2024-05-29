@@ -53,23 +53,25 @@ export class BTree {
   async root(): Promise<RootResponse> {
     if (!this.rootNodeCache || !this.rootPointerCache) {
       this.rootPointerCache = this.meta.root();
-      this.rootNodeCache = this.rootPointerCache.then(ptr => this.readNode(ptr));
+      this.rootNodeCache = this.rootPointerCache.then((ptr) =>
+        this.readNode(ptr),
+      );
     }
 
-      const rootNode = await this.rootNodeCache;
-      const pointer = await this.rootPointerCache;
+    const rootNode = await this.rootNodeCache;
+    const pointer = await this.rootPointerCache;
 
-      if (!rootNode) {
-        return {
-          rootNode: null,
-          pointer,
-        }
-      }
-
+    if (!rootNode) {
       return {
-        rootNode,
-        pointer
-      }
+        rootNode: null,
+        pointer,
+      };
+    }
+
+    return {
+      rootNode,
+      pointer,
+    };
   }
 
   async readNode(ptr: MemoryPointer): Promise<BTreeNode> {

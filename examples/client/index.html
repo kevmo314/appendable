@@ -188,10 +188,10 @@
           document.getElementById("execute").disabled = false;
           while (true) {
             document.getElementById("next").disabled = false;
-              await new Promise(
-                      (resolve) => (document.getElementById("next").onclick = resolve),
-              );
-              result = await appendResult();
+            await new Promise(
+              (resolve) => (document.getElementById("next").onclick = resolve),
+            );
+            result = await appendResult();
           }
         }
       </script>
