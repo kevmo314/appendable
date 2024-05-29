@@ -21,6 +21,9 @@ export class BTree {
   private readonly pageFieldType: FieldType;
   private readonly pageFieldWidth: number;
 
+  private rootNodeCache: Promise<BTreeNode> | null = null;
+  private rootPointerCache: Promise<MemoryPointer> | null = null;
+
   // insight attributes below
 
   private readonly entries: number;
@@ -48,26 +51,26 @@ export class BTree {
   }
 
   async root(): Promise<RootResponse> {
-    const mp = await this.meta.root();
-
-    if (!mp || mp.length === 0) {
-      return {
-        rootNode: null,
-        pointer: mp,
-      };
+    if (!this.rootNodeCache || !this.rootPointerCache) {
+      this.rootPointerCache = this.meta.root();
+      this.rootNodeCache = this.rootPointerCache.then((ptr) =>
+        this.readNode(ptr),
+      );
     }
 
-    const root = await this.readNode(mp);
-    if (!root) {
+    const rootNode = await this.rootNodeCache;
+    const pointer = await this.rootPointerCache;
+
+    if (!rootNode) {
       return {
         rootNode: null,
-        pointer: mp,
+        pointer,
       };
     }
 
     return {
-      rootNode: root,
-      pointer: mp,
+      rootNode,
+      pointer,
     };
   }
 
