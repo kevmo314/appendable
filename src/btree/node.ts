@@ -2,7 +2,7 @@ import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
 import { decodeUvarint } from "../util/uvarint";
-import {ReferencedValue} from "./btree";
+import { ReferencedValue } from "./btree";
 
 export const pageSizeBytes = 4096;
 
@@ -70,15 +70,15 @@ export class BTreeNode {
       const childPointer = this.pointer(index);
 
       this.childrenCache[index] = BTreeNode.fromMemoryPointer(
-          childPointer,
-          this.tree,
-          this.dataFileResolver,
-          this.fileFormat,
-          this.pageFieldType,
-          this.pageFieldWidth,
+        childPointer,
+        this.tree,
+        this.dataFileResolver,
+        this.fileFormat,
+        this.pageFieldType,
+        this.pageFieldWidth,
       ).then(({ node, bytesRead }) => {
         if (!bytesRead) {
-          throw new Error("bytes read do not line up")
+          throw new Error("bytes read do not line up");
         }
 
         return node;
@@ -86,7 +86,7 @@ export class BTreeNode {
     }
 
     if (!this.childrenCache[index]) {
-      throw new Error(`children cache at ${index} is null`)
+      throw new Error(`children cache at ${index} is null`);
     }
 
     return await this.childrenCache[index]!!;

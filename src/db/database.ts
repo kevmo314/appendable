@@ -149,13 +149,13 @@ export class Database<T extends Schema> {
 
         if (!btreeMap.has(mpFieldType)) {
           const btree = new BTree(
-              this.indexFile.getResolver(),
-              mp,
-              dfResolver,
-              format,
-              mpFieldType,
-              mpFieldWidth,
-              entries,
+            this.indexFile.getResolver(),
+            mp,
+            dfResolver,
+            format,
+            mpFieldType,
+            mpFieldWidth,
+            entries,
           );
           btreeMap.set(fieldType, btree);
         }
