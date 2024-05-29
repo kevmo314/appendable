@@ -123,6 +123,8 @@ export class Database<T extends Schema> {
       const table = new PriorityTable<DataPointer>();
       const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
+      const btreeMap = new Map<FieldType, BTree>();
+
       for (const token of likeToks) {
         const { type: fieldType, valueBuf } = token;
         let mp = metaPageCache.get(fieldType);
@@ -143,17 +145,22 @@ export class Database<T extends Schema> {
           fieldType: mpFieldType,
           width: mpFieldWidth,
           totalFieldValueLength,
-        } = await readIndexMeta(await mp.metadata());
+        } = readIndexMeta(await mp.metadata());
 
-        const btree = new BTree(
-          this.indexFile.getResolver(),
-          mp,
-          dfResolver,
-          format,
-          mpFieldType,
-          mpFieldWidth,
-          entries,
-        );
+        if (!btreeMap.has(mpFieldType)) {
+          const btree = new BTree(
+            this.indexFile.getResolver(),
+            mp,
+            dfResolver,
+            format,
+            mpFieldType,
+            mpFieldWidth,
+            entries,
+          );
+          btreeMap.set(fieldType, btree);
+        }
+
+        const btree = btreeMap.get(fieldType)!;
 
         const tfMap = await btree.termFrequency(
           new ReferencedValue({ offset: 0n, length: 0 }, valueBuf),
