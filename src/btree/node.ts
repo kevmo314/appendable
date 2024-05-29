@@ -23,6 +23,8 @@ export class BTreeNode {
   private readonly tree: RangeResolver;
   private readonly pageFieldWidth: number;
 
+  private readonly childrenCache: (Promise<BTreeNode> | null)[];
+
   constructor(
     keys: ReferencedValue[],
     leafPointers: MemoryPointer[],
@@ -41,6 +43,7 @@ export class BTreeNode {
     this.pageFieldType = pageFieldType;
     this.tree = tree;
     this.pageFieldWidth = pageFieldWidth;
+    this.childrenCache = new Array(this.numPointers()).fill(null);
   }
 
   leaf(): boolean {
@@ -62,23 +65,31 @@ export class BTreeNode {
     return this.internalPointers.length + this.leafPointers.length;
   }
 
-  async child(index: number) {
-    const childPointer = this.pointer(index);
+  async child(index: number): Promise<BTreeNode> {
+    if (!this.childrenCache[index]) {
+      const childPointer = this.pointer(index);
 
-    const { node, bytesRead } = await BTreeNode.fromMemoryPointer(
-      childPointer,
-      this.tree,
-      this.dataFileResolver,
-      this.fileFormat,
-      this.pageFieldType,
-      this.pageFieldWidth,
-    );
+      this.childrenCache[index] = BTreeNode.fromMemoryPointer(
+        childPointer,
+        this.tree,
+        this.dataFileResolver,
+        this.fileFormat,
+        this.pageFieldType,
+        this.pageFieldWidth,
+      ).then(({ node, bytesRead }) => {
+        if (!bytesRead) {
+          throw new Error("bytes read do not line up");
+        }
 
-    if (!bytesRead) {
-      throw new Error("bytes read do not line up");
+        return node;
+      });
     }
 
-    return node;
+    if (!this.childrenCache[index]) {
+      throw new Error(`children cache at ${index} is null`);
+    }
+
+    return await this.childrenCache[index]!!;
   }
 
   async unmarshalBinary(buffer: ArrayBuffer, pageFieldWidth: number) {
