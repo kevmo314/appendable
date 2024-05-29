@@ -62,7 +62,7 @@ export class BTreeNode {
     return this.internalPointers.length + this.leafPointers.length;
   }
 
-  async readChildNode(index: number) {
+  async child(index: number) {
     const childPointer = this.pointer(index);
 
     const { node, bytesRead } = await BTreeNode.fromMemoryPointer(
