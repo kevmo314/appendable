@@ -53,6 +53,30 @@ func TestVector_LevelManagement(t *testing.T) {
 				if friends.Len() != 1 {
 					t.Fatalf("expected 1 item, got %v", friends.Len())
 				}
+
+				friend := friends.Peek()
+
+				if friend.id != octId {
+					t.Fatalf("expected %v, got %v", octId, friend.id)
+				}
+
+			} else {
+				if friends.Len() != 0 {
+					t.Fatalf("expected 0 items, got %v", friends.Len())
+				}
+			}
+		}
+
+		for level, friends := range oct.friends {
+			if level <= 5 {
+				if friends.Len() != 1 {
+					t.Fatalf("expected 1 item, got %v", friends.Len())
+				}
+				friend := friends.Peek()
+
+				if friend.id != hexId {
+					t.Fatalf("expected %v, got %v", hexId, friend.id)
+				}
 			} else {
 				if friends.Len() != 0 {
 					t.Fatalf("expected 0 items, got %v", friends.Len())
