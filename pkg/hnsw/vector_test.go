@@ -50,8 +50,15 @@ func TestVector_LevelManagement(t *testing.T) {
 		oct.InsertFriendsAtLevel(5, hex)
 
 		for i := 0; i <= 5; i++ {
-			hexFriends, _ := hex.GetFriendsAtLevel(i)
-			octFriends, _ := oct.GetFriendsAtLevel(i)
+			hexFriends, err := hex.GetFriendsAtLevel(i)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			octFriends, err := oct.GetFriendsAtLevel(i)
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			if hexFriends.Len() != 1 || octFriends.Len() != 1 {
 				t.Fatalf("expected hex and oct friends list at level %v to be 1, got: %v || %v", i, hexFriends.Len(), octFriends.Len())
