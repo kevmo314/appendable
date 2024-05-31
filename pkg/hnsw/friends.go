@@ -7,37 +7,32 @@ import (
 
 type Point []float32
 
-type Vector struct {
-	id    Id
-	point Point
-
+type Friends struct {
 	friends []*BaseQueue
 }
 
-// NewVector creates a new vector, note the max level is inclusive.
-func NewVector(id Id, point Point, maxLevel int) *Vector {
+// NewFriends creates a new vector, note the max level is inclusive.
+func NewFriends(maxLevel int) *Friends {
 	friends := make([]*BaseQueue, maxLevel+1)
 
 	for i := 0; i <= maxLevel; i++ {
 		friends[i] = NewBaseQueue(MinComparator{})
 	}
 
-	return &Vector{
-		id:      id,
-		point:   point,
+	return &Friends{
 		friends: friends,
 	}
 }
 
-func (v *Vector) Levels() int {
+func (v *Friends) Levels() int {
 	return len(v.friends)
 }
 
-func (v *Vector) MaxLevel() int {
+func (v *Friends) MaxLevel() int {
 	return len(v.friends) - 1
 }
 
-func (v *Vector) HasLevel(level int) bool {
+func (v *Friends) HasLevel(level int) bool {
 	if level < 0 {
 		panic("level must be nonzero positive integer")
 	}
@@ -46,12 +41,12 @@ func (v *Vector) HasLevel(level int) bool {
 }
 
 // InsertFriendsAtLevel requires level must be zero-indexed
-func (v *Vector) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
+func (v *Friends) InsertFriendsAtLevel(level int, vectorId, friendId Id, dist float32) {
 	if !v.HasLevel(level) {
 		panic("failed to insert friends at level, as level is not valId")
 	}
 
-	if friendId == v.id {
+	if friendId == vectorId {
 		panic("cannot insert yourself to friends list")
 	}
 
@@ -60,7 +55,7 @@ func (v *Vector) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	}
 }
 
-func (v *Vector) GetFriendsAtLevel(level int) (*BaseQueue, error) {
+func (v *Friends) GetFriendsAtLevel(level int) (*BaseQueue, error) {
 	if !v.HasLevel(level) {
 		return nil, errors.New("failed to get friends at level")
 	}
@@ -68,15 +63,11 @@ func (v *Vector) GetFriendsAtLevel(level int) (*BaseQueue, error) {
 	return v.friends[level], nil
 }
 
-func (v *Vector) EuclidDistance(v1 *Vector) float32 {
-	return v.EuclidDistanceFromPoint(v1.point)
-}
-
-func (v *Vector) EuclidDistanceFromPoint(point Point) float32 {
+func EuclidDistance(p0, p1 Point) float32 {
 	var sum float32
 
-	for i := range v.point {
-		delta := v.point[i] - point[i]
+	for i := range p0 {
+		delta := p0[i] - p1[i]
 		sum += delta * delta
 	}
 
