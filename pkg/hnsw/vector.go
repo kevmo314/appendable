@@ -16,11 +16,10 @@ type Vector struct {
 
 // NewVector creates a new vector, note the max level is inclusive.
 func NewVector(id Id, point Point, maxLevel int) *Vector {
-	friends := make([]*BaseQueue, 0)
+	friends := make([]*BaseQueue, maxLevel+1)
 
-	for i := 0; i < maxLevel; i++ {
-		bq := NewBaseQueue(MinComparator{})
-		friends = append(friends, bq)
+	for i := 0; i <= maxLevel; i++ {
+		friends[i] = NewBaseQueue(MinComparator{})
 	}
 
 	return &Vector{
@@ -59,7 +58,7 @@ func (v *Vector) InsertFriendsAtLevel(level int, friend *Vector) {
 	dist := v.EuclidDistance(friend)
 
 	for i := 0; i <= level; i++ {
-		v.friends[level].Insert(friend.id, dist)
+		v.friends[i].Insert(friend.id, dist)
 	}
 }
 
