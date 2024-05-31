@@ -46,19 +46,17 @@ func (v *Vector) HasLevel(level int) bool {
 }
 
 // InsertFriendsAtLevel requires level must be zero-indexed
-func (v *Vector) InsertFriendsAtLevel(level int, friend *Vector) {
+func (v *Vector) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	if !v.HasLevel(level) {
 		panic("failed to insert friends at level, as level is not valId")
 	}
 
-	if friend.id == v.id {
+	if friendId == v.id {
 		panic("cannot insert yourself to friends list")
 	}
 
-	dist := v.EuclidDistance(friend)
-
 	for i := 0; i <= level; i++ {
-		v.friends[i].Insert(friend.id, dist)
+		v.friends[i].Insert(friendId, dist)
 	}
 }
 

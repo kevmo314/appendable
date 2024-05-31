@@ -46,8 +46,10 @@ func TestVector_LevelManagement(t *testing.T) {
 			}
 		}
 
-		hex.InsertFriendsAtLevel(5, oct)
-		oct.InsertFriendsAtLevel(5, hex)
+		hexOctDist := oct.EuclidDistance(hex)
+
+		hex.InsertFriendsAtLevel(5, octId, hexOctDist)
+		oct.InsertFriendsAtLevel(5, hexId, hexOctDist)
 
 		for i := 0; i <= 5; i++ {
 			hexFriends, err := hex.GetFriendsAtLevel(i)
