@@ -126,16 +126,6 @@ func (bq *BaseQueue) Insert(id Id, dist float32) {
 
 }
 
-func FromBaseQueue(items []*Item, comparator Comparator) *BaseQueue {
-	bq := NewBaseQueue(comparator)
-
-	for _, i := range items {
-		bq.Insert(i.id, i.dist)
-	}
-
-	return bq
-}
-
 func NewBaseQueue(comparator Comparator) *BaseQueue {
 	bq := &BaseQueue{
 		visitedIds: map[Id]*Item{},
