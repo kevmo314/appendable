@@ -99,8 +99,7 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 					foundNNToQ.Insert(ccFriendId, ccFriendDistToQ)
 
 					if foundNNToQ.Len() > numNearestToQToReturn {
-						_, err = foundNNToQ.PopItem()
-						if err != nil {
+						if _, err = foundNNToQ.PopItem(); err != nil {
 							return nil, fmt.Errorf("error during searching level %d: %w", level, err)
 						}
 					}
