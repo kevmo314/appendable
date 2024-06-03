@@ -45,7 +45,29 @@ func TestPQ(t *testing.T) {
 				t.Errorf("got %d, want %d", res, c.expected)
 			}
 		}
+	})
 
+	t.Run("interchange", func(t *testing.T) {
+		bq := NewBaseQueue(MinComparator{})
+		for i := 0; i < 100; i++ {
+			bq.Insert(Id(i), float32(i))
+		}
+
+		incBq := FromBaseQueue(bq, MaxComparator{})
+
+		i := Id(99)
+		for !incBq.IsEmpty() {
+			item, err := incBq.Peel()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if item.id != i {
+				t.Fatalf("got %d, want %d", item.id, i)
+			}
+
+			i -= 1
+		}
 	})
 }
 
@@ -81,25 +103,3 @@ func furthestBuildings(heights []int, bricks, ladders int) (int, error) {
 
 	return len(heights) - 1, nil
 }
-
-/*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
- */
