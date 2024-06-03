@@ -57,7 +57,7 @@ func TestPQ(t *testing.T) {
 
 		i := Id(99)
 		for !incBq.IsEmpty() {
-			item, err := incBq.Peel()
+			item, err := incBq.PopItem()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -88,7 +88,7 @@ func furthestBuildings(heights []int, bricks, ladders int) (int, error) {
 		ladderJumps.Insert(Id(idx), float32(jump))
 
 		if ladderJumps.Len() > ladders {
-			minLadderJump, err := ladderJumps.Peel()
+			minLadderJump, err := ladderJumps.PopItem()
 			if err != nil {
 				return -1, err
 			}

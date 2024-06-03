@@ -2,46 +2,157 @@ package hnsw
 
 import (
 	"fmt"
+	"math"
+	"math/rand"
 )
 
 type Id = uint
 
+var ErrNodeNotFound = fmt.Errorf("node not found")
+
 type Hnsw struct {
 	vectorDimensionality int
 
-	Vectors map[Id]*Friends
+	points  map[Id]*Point
+	friends map[Id]*Friends
 
-	normFactorForLevelGeneration int
+	levelMultiplier float64
 
 	// efConstruction is the size of the dynamic candIdate list
 	efConstruction uint
 
 	// default number of connections
-	M int
-
-	// mmax, mmax0 is the maximum number of connections for each element per layer
-	mmax, mmax0 int
+	M, Mmax0 int
 }
 
-func NewHnsw(d int, efConstruction uint, M, mmax, mmax0 int) *Hnsw {
-	if d <= 0 {
-		panic("vector dimensionality cannot be less than 1")
+func NewHnsw(d int, efConstruction uint, M int, entryPoint Point) *Hnsw {
+	if d <= 0 || len(entryPoint) != d {
+		panic("invalid vector dimensionality")
 	}
 
+	friends := make(map[Id]*Friends)
+	friends[Id(0)] = NewFriends(0)
+
+	points := make(map[Id]*Point)
+	points[Id(0)] = &entryPoint
+
 	return &Hnsw{
+		points:               points,
 		vectorDimensionality: d,
+		friends:              friends,
 		efConstruction:       efConstruction,
 		M:                    M,
-		mmax:                 mmax,
-		mmax0:                mmax0,
+		Mmax0:                2 * M,
+		levelMultiplier:      1 / math.Log(float64(M)),
 	}
+}
+
+func (h *Hnsw) SpawnLevel() int {
+	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
+}
+
+func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, level int) (*BaseQueue, error) {
+	visited := make([]bool, len(h.friends)+1)
+
+	candidatesForQ := NewBaseQueue(MinComparator{})
+	foundNNToQ := NewBaseQueue(MaxComparator{})
+
+	// note entryItem.dist should be the distance to Q
+	candidatesForQ.Insert(entryItem.id, entryItem.dist)
+	foundNNToQ.Insert(entryItem.id, entryItem.dist)
+
+	for !candidatesForQ.IsEmpty() {
+		closestCandidate, err := candidatesForQ.PopItem()
+		if err != nil {
+			return nil, fmt.Errorf("error during searching level %d: %w", level, err)
+		}
+
+		furthestFoundNN := foundNNToQ.Top()
+
+		// if distance(c, q) > distance(f, q)
+		if closestCandidate.dist > furthestFoundNN.dist {
+			// all items in furthest found nn are evaluated
+			break
+		}
+
+		closestCandidateFriends, err := h.friends[closestCandidate.id].GetFriendsAtLevel(level)
+		if err != nil {
+			return nil, fmt.Errorf("error during searching level %d: %w", level, err)
+		}
+
+		for _, ccFriendItem := range closestCandidateFriends.items {
+			ccFriendId := ccFriendItem.id
+			if !visited[ccFriendId] {
+				visited[ccFriendId] = true
+
+				furthestFoundNN = foundNNToQ.Top()
+
+				ccFriendPoint, ok := h.points[ccFriendId]
+				if !ok {
+					return nil, ErrNodeNotFound
+				}
+
+				// if distance(ccFriend, q) < distance(f, q)
+				ccFriendDistToQ := EuclidDistance(*ccFriendPoint, *q)
+				if ccFriendDistToQ < furthestFoundNN.dist || foundNNToQ.Len() < numNearestToQToReturn {
+					candidatesForQ.Insert(ccFriendId, ccFriendDistToQ)
+					foundNNToQ.Insert(ccFriendId, ccFriendDistToQ)
+
+					if foundNNToQ.Len() > numNearestToQToReturn {
+						_, err = foundNNToQ.PopItem()
+						if err != nil {
+							return nil, fmt.Errorf("error during searching level %d: %w", level, err)
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	return FromBaseQueue(foundNNToQ, MinComparator{}), nil
+}
+
+func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
+	initialEntryPoint, ok := h.friends[Id(0)]
+	if !ok {
+		panic(ErrNodeNotFound)
+	}
+
+	entryPointDistToQ := EuclidDistance(*h.points[Id(0)], *q)
+
+	epItem := &Item{id: Id(0), dist: entryPointDistToQ}
+	for level := initialEntryPoint.TopLevel(); level > qFriends.TopLevel()+1; level-- {
+		closestNeighborsToQ, err := h.searchLevel(q, epItem, 1, level)
+		if err != nil {
+			panic(err)
+		}
+
+		if closestNeighborsToQ.IsEmpty() {
+			// return the existing epItem. it's the closest to q.
+			return epItem
+		}
+
+		newEpItem, err := closestNeighborsToQ.PopItem()
+		if err != nil {
+			panic(err)
+		}
+
+		epItem = newEpItem
+	}
+
+	return epItem
 }
 
 func (h *Hnsw) InsertVector(q Point) error {
 	if !h.validatePoint(q) {
-		return fmt.Errorf("invalidvector")
+		return fmt.Errorf("invalid vector dimensionality")
 	}
 
+	qTopLevel := h.SpawnLevel()
+	qFriends := NewFriends(qTopLevel)
+
+	_ = h.findCloserEntryPoint(&q, qFriends)
 	return nil
 }
 
