@@ -34,8 +34,8 @@ type Heapy interface {
 	Insert(id Id, dist float32)
 	IsEmpty() bool
 	Len() int
-	Peel() *Item
-	Peek() *Item
+	PopItem() *Item
+	Top() *Item
 	Take(count int) (*BaseQueue, error)
 	update(item *Item, id Id, dist float32)
 }
@@ -61,7 +61,7 @@ func (bq *BaseQueue) Take(count int, comparator Comparator) (*BaseQueue, error) 
 			break
 		}
 
-		peeled, err := bq.Peel()
+		peeled, err := bq.PopItem()
 		if err != nil {
 			return nil, err
 		}
@@ -89,7 +89,7 @@ func (bq *BaseQueue) Push(x any) {
 	bq.items = append(bq.items, item)
 }
 
-func (bq *BaseQueue) Peek() *Item {
+func (bq *BaseQueue) Top() *Item {
 	if len(bq.items) == 0 {
 		return nil
 	}
@@ -135,7 +135,7 @@ func NewBaseQueue(comparator Comparator) *BaseQueue {
 	return bq
 }
 
-func (bq *BaseQueue) Peel() (*Item, error) {
+func (bq *BaseQueue) PopItem() (*Item, error) {
 	if bq.Len() == 0 {
 		return nil, fmt.Errorf("no items to peel")
 	}

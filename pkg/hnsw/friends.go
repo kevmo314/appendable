@@ -12,10 +12,10 @@ type Friends struct {
 }
 
 // NewFriends creates a new vector, note the max level is inclusive.
-func NewFriends(maxLevel int) *Friends {
-	friends := make([]*BaseQueue, maxLevel+1)
+func NewFriends(topLevel int) *Friends {
+	friends := make([]*BaseQueue, topLevel+1)
 
-	for i := 0; i <= maxLevel; i++ {
+	for i := 0; i <= topLevel; i++ {
 		friends[i] = NewBaseQueue(MinComparator{})
 	}
 
@@ -24,11 +24,11 @@ func NewFriends(maxLevel int) *Friends {
 	}
 }
 
-func (v *Friends) Levels() int {
+func (v *Friends) NumLevels() int {
 	return len(v.friends)
 }
 
-func (v *Friends) MaxLevel() int {
+func (v *Friends) TopLevel() int {
 	return len(v.friends) - 1
 }
 
@@ -37,17 +37,13 @@ func (v *Friends) HasLevel(level int) bool {
 		panic("level must be nonzero positive integer")
 	}
 
-	return level <= v.MaxLevel()
+	return level <= v.TopLevel()
 }
 
 // InsertFriendsAtLevel requires level must be zero-indexed
-func (v *Friends) InsertFriendsAtLevel(level int, vectorId, friendId Id, dist float32) {
+func (v *Friends) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	if !v.HasLevel(level) {
 		panic("failed to insert friends at level, as level is not valId")
-	}
-
-	if friendId == vectorId {
-		panic("cannot insert yourself to friends list")
 	}
 
 	for i := 0; i <= level; i++ {

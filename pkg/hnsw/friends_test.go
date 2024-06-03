@@ -17,24 +17,24 @@ func TestVector_LevelManagement(t *testing.T) {
 
 		hexFriends := NewFriends(6)
 
-		if hexFriends.MaxLevel() != 6 {
-			t.Fatalf("since 0-indexed, the max level is 5, got: %v", hexFriends.MaxLevel())
+		if hexFriends.TopLevel() != 6 {
+			t.Fatalf("since 0-indexed, the max level is 5, got: %v", hexFriends.TopLevel())
 		}
 
-		if hexFriends.Levels() != 7 {
-			t.Fatalf("since 0-indexed, the number of levels is 6, got: %v", hexFriends.Levels())
+		if hexFriends.NumLevels() != 7 {
+			t.Fatalf("since 0-indexed, the number of levels is 6, got: %v", hexFriends.NumLevels())
 		}
 
 		octId := Id(2)
 		oct := []float32{0, 2, 3}
 		octFriends := NewFriends(8)
 
-		if octFriends.MaxLevel() != 8 {
-			t.Fatalf("since 0-indexed, the max level is 7, got: %v", octFriends.MaxLevel())
+		if octFriends.TopLevel() != 8 {
+			t.Fatalf("since 0-indexed, the max level is 7, got: %v", octFriends.TopLevel())
 		}
 
-		if octFriends.Levels() != 9 {
-			t.Fatalf("since 0-indexed, the number of levels is 8, got: %v", octFriends.Levels())
+		if octFriends.NumLevels() != 9 {
+			t.Fatalf("since 0-indexed, the number of levels is 8, got: %v", octFriends.NumLevels())
 		}
 
 		for i := 0; i <= 6; i++ {
@@ -51,8 +51,8 @@ func TestVector_LevelManagement(t *testing.T) {
 
 		hexOctDist := EuclidDistance(oct, hex)
 
-		hexFriends.InsertFriendsAtLevel(5, hexId, octId, hexOctDist)
-		octFriends.InsertFriendsAtLevel(5, octId, hexId, hexOctDist)
+		hexFriends.InsertFriendsAtLevel(5, octId, hexOctDist)
+		octFriends.InsertFriendsAtLevel(5, hexId, hexOctDist)
 
 		for i := 0; i <= 5; i++ {
 			hexFriends, err := hexFriends.GetFriendsAtLevel(i)
@@ -69,12 +69,12 @@ func TestVector_LevelManagement(t *testing.T) {
 				t.Fatalf("expected hex and oct friends list at level %v to be 1, got: %v || %v", i, hexFriends.Len(), octFriends.Len())
 			}
 
-			top := hexFriends.Peek()
+			top := hexFriends.Top()
 			if top.id != octId {
 				t.Fatalf("expected %v, got %v", octId, top.id)
 			}
 
-			top = octFriends.Peek()
+			top = octFriends.Top()
 			if top.id != hexId {
 				t.Fatalf("expected %v, got %v", hexId, top.id)
 			}
