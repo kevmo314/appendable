@@ -149,3 +149,13 @@ func (bq *BaseQueue) update(item *Item, id Id, dist float32) {
 	item.dist = dist
 	heap.Fix(bq, item.index)
 }
+
+func FromBaseQueue(bq *BaseQueue, comparator Comparator) *BaseQueue {
+	newBq := NewBaseQueue(comparator)
+
+	for _, item := range bq.items {
+		newBq.Insert(item.id, item.dist)
+	}
+
+	return newBq
+}
