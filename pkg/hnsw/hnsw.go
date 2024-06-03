@@ -8,7 +8,7 @@ type Id = uint
 
 type Hnsw struct {
 	vectorDimensionality int
-  
+
 	Vectors map[Id]*Friends
 
 	normFactorForLevelGeneration int
@@ -36,7 +36,6 @@ func NewHnsw(d int, efConstruction uint, M, mmax, mmax0 int) *Hnsw {
 		mmax0:                mmax0,
 	}
 }
-
 
 func (h *Hnsw) InsertVector(q Point) error {
 	if !h.validatePoint(q) {
