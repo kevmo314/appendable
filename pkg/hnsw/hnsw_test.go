@@ -47,8 +47,8 @@ func SetupClusterHnsw(cluster []Point) (*Hnsw, error) {
 		g.friends[pointId] = NewFriends(0)
 
 		distEntryToClusterPoint := EuclidDistance(entryPoint, point)
-		g.friends[Id(0)].InsertFriendsAtLevel(0, pointId, distEntryToClusterPoint)
-		g.friends[pointId].InsertFriendsAtLevel(0, Id(0), distEntryToClusterPoint)
+		g.friends[g.entryPointId].InsertFriendsAtLevel(0, pointId, distEntryToClusterPoint)
+		g.friends[pointId].InsertFriendsAtLevel(0, g.entryPointId, distEntryToClusterPoint)
 	}
 
 	for idx, pointA := range cluster {

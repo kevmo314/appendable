@@ -13,6 +13,8 @@ var ErrNodeNotFound = fmt.Errorf("node not found")
 type Hnsw struct {
 	vectorDimensionality int
 
+	entryPointId Id
+
 	points  map[Id]*Point
 	friends map[Id]*Friends
 
@@ -30,13 +32,16 @@ func NewHnsw(d int, efConstruction uint, M int, entryPoint Point) *Hnsw {
 		panic("invalid vector dimensionality")
 	}
 
+	defaultEntryPointId := Id(0)
+
 	friends := make(map[Id]*Friends)
-	friends[Id(0)] = NewFriends(0)
+	friends[defaultEntryPointId] = NewFriends(0)
 
 	points := make(map[Id]*Point)
-	points[Id(0)] = &entryPoint
+	points[defaultEntryPointId] = &entryPoint
 
 	return &Hnsw{
+		entryPointId:         defaultEntryPointId,
 		points:               points,
 		vectorDimensionality: d,
 		friends:              friends,
@@ -113,7 +118,7 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 }
 
 func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
-	initialEntryPoint, ok := h.friends[Id(0)]
+	initialEntryPoint, ok := h.friends[h.entryPointId]
 	if !ok {
 		panic(ErrNodeNotFound)
 	}
