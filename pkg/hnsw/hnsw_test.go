@@ -327,5 +327,4 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 			t.Fatalf("expected closest item to be %v, got %v", closerPointId, closestItem.id)
 		}
 	})
-
 }

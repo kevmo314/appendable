@@ -40,7 +40,7 @@ func (v *Friends) HasLevel(level int) bool {
 	return level <= v.TopLevel()
 }
 
-// InsertFriendsAtLevel requires level must be zero-indexed and friendId must be valida t this level
+// InsertFriendsAtLevel requires level must be zero-indexed and friendId must be valid at this level
 func (v *Friends) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	if !v.HasLevel(level) {
 		panic("failed to insert friends at level, as level is not valId")
