@@ -123,9 +123,9 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 		panic(ErrNodeNotFound)
 	}
 
-	entryPointDistToQ := EuclidDistance(*h.points[Id(0)], *q)
+	entryPointDistToQ := EuclidDistance(*h.points[h.entryPointId], *q)
 
-	epItem := &Item{id: Id(0), dist: entryPointDistToQ}
+	epItem := &Item{id: h.entryPointId, dist: entryPointDistToQ}
 	for level := initialEntryPoint.TopLevel(); level > qFriends.TopLevel()+1; level-- {
 		closestNeighborsToQ, err := h.searchLevel(q, epItem, 1, level)
 		if err != nil {
