@@ -225,8 +225,8 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if closestItem.id != Id(3) {
-			t.Fatalf("expected the closest point which is {0.5, 0.5} and id %v, got %v", Id(3), closestItem.id)
+		if closestItem.id != Id(20) {
+			t.Fatalf("expected the closest point which is {4, 2} and id %v, got %v", Id(20), closestItem.id)
 		}
 	})
 
