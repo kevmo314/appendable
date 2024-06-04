@@ -267,5 +267,65 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected the following closest ids: %v, got: %v", []Id{20, 3, 4, 6}, closestIds)
 		}
 	})
+}
+
+func TestHnsw_FindCloserEntryPoint(t *testing.T) {
+	t.Run("finds closer point", func(t *testing.T) {
+		h := NewHnsw(2, 4, 4, Point{0, 0})
+
+		/*
+			Before anything, we need to pad the entry node's friends queue to include more than level 0.
+			This is because we only consider the following topLevels
+				for level := initialEntryPoint.TopLevel(); level > qFriends.TopLevel()+1; level-- {
+		*/
+
+		h.friends[Id(0)] = NewFriends(4)
+
+		closerPointId := Id(1)
+		closerPoint := Point{2, 2}
+
+		h.points[closerPointId] = &closerPoint
+		h.friends[closerPointId] = NewFriends(4)
+
+		distToEntry := EuclidDistance(Point{0, 0}, closerPoint)
+
+		h.friends[closerPointId].InsertFriendsAtLevel(4, Id(0), distToEntry)
+		h.friends[Id(0)].InsertFriendsAtLevel(4, closerPointId, distToEntry)
+
+		closestItem := h.findCloserEntryPoint(&Point{4, 4}, NewFriends(0))
+
+		if closestItem.id != closerPointId {
+			t.Fatalf("expected closest item to be %v, got %v", closerPointId, closestItem.id)
+		}
+
+		if !NearlyEqual(closestItem.dist, EuclidDistance(Point{2, 2}, Point{4, 4})) {
+			t.Fatalf("expected the closest item dist to be %v, got %v", closestItem.dist, EuclidDistance(Point{2, 2}, Point{4, 4}))
+		}
+
+	})
+
+	t.Run("single level means entry point is the closest", func(t *testing.T) {
+		h := NewHnsw(2, 4, 4, Point{0, 0})
+
+		h.friends[Id(0)] = NewFriends(4)
+
+		closerPointId := Id(1)
+		closerPoint := Point{2, 2}
+
+		h.points[closerPointId] = &closerPoint
+		h.friends[closerPointId] = NewFriends(4)
+
+		distToEntry := EuclidDistance(Point{0, 0}, closerPoint)
+
+		// since we're inserting friends at the same level as q, it will return entry point
+		h.friends[closerPointId].InsertFriendsAtLevel(0, Id(0), distToEntry)
+		h.friends[Id(0)].InsertFriendsAtLevel(0, closerPointId, distToEntry)
+
+		closestItem := h.findCloserEntryPoint(&Point{4, 4}, NewFriends(0))
+
+		if closestItem.id != Id(0) {
+			t.Fatalf("expected closest item to be %v, got %v", closerPointId, closestItem.id)
+		}
+	})
 
 }
