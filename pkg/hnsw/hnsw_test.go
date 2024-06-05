@@ -92,9 +92,9 @@ func TestHnsw_SearchLevel(t *testing.T) {
 		mPoint := Point{2, 2}
 		g.points[Id(1)] = &mPoint
 
-		g.friends[Id(0)].InsertFriendsAtLevel(0, 1, EuclidDistance(mPoint, entryPoint))
+		g.friends[g.entryPointId].InsertFriendsAtLevel(0, 1, EuclidDistance(mPoint, entryPoint))
 		g.friends[Id(1)] = NewFriends(0)
-		g.friends[Id(1)].InsertFriendsAtLevel(0, 0, EuclidDistance(mPoint, entryPoint))
+		g.friends[Id(1)].InsertFriendsAtLevel(0, g.entryPointId, EuclidDistance(mPoint, entryPoint))
 
 		qPoint := Point{4, 4}
 		closestNeighbor, err := g.searchLevel(&qPoint, &Item{id: 0, dist: EuclidDistance(entryPoint, qPoint)}, 1, 0)
@@ -124,7 +124,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		entryPoint, ok := g.points[Id(0)]
+		entryPoint, ok := g.points[g.entryPointId]
 		if !ok {
 			t.Fatal(ErrNodeNotFound)
 		}
@@ -169,7 +169,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		entryPoint, ok := g.points[Id(0)]
+		entryPoint, ok := g.points[g.entryPointId]
 		if !ok {
 			t.Fatal(ErrNodeNotFound)
 		}
@@ -276,10 +276,11 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 		/*
 			Before anything, we need to pad the entry node's friends queue to include more than level 0.
 			This is because we only consider the following topLevels
-				for level := initialEntryPoint.TopLevel(); level > qFriends.TopLevel()+1; level-- {
+
+			for level := initialEntryPoint.TopLevel(); level > qFriends.TopLevel()+1; level-- {
 		*/
 
-		h.friends[Id(0)] = NewFriends(4)
+		h.friends[h.entryPointId] = NewFriends(4)
 
 		closerPointId := Id(1)
 		closerPoint := Point{2, 2}
@@ -288,9 +289,8 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 		h.friends[closerPointId] = NewFriends(4)
 
 		distToEntry := EuclidDistance(Point{0, 0}, closerPoint)
-
-		h.friends[closerPointId].InsertFriendsAtLevel(4, Id(0), distToEntry)
-		h.friends[Id(0)].InsertFriendsAtLevel(4, closerPointId, distToEntry)
+		h.friends[closerPointId].InsertFriendsAtLevel(4, h.entryPointId, distToEntry)
+		h.friends[h.entryPointId].InsertFriendsAtLevel(4, closerPointId, distToEntry)
 
 		closestItem := h.findCloserEntryPoint(&Point{4, 4}, NewFriends(0))
 
@@ -307,7 +307,7 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 	t.Run("single level means entry point is the closest", func(t *testing.T) {
 		h := NewHnsw(2, 4, 4, Point{0, 0})
 
-		h.friends[Id(0)] = NewFriends(4)
+		h.friends[h.entryPointId] = NewFriends(4)
 
 		closerPointId := Id(1)
 		closerPoint := Point{2, 2}
