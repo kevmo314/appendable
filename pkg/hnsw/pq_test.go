@@ -69,6 +69,42 @@ func TestPQ(t *testing.T) {
 			i -= 1
 		}
 	})
+
+	t.Run("from items", func(t *testing.T) {
+		items := []*Item{
+			{id: 0, dist: 30},
+			{id: 1, dist: 29},
+			{id: 2, dist: 28},
+			{id: 3, dist: 27},
+			{id: 4, dist: 26},
+			{id: 5, dist: 25},
+		}
+
+		bq := FromItems(items, MinComparator{})
+
+		if bq.IsEmpty() {
+			t.Fatal("empty queue")
+		}
+
+		if bq.Len() != len(items) {
+			t.Fatalf("got %d, want %d", bq.Len(), len(items))
+		}
+
+		expectedId := Id(5)
+		for !bq.IsEmpty() {
+			bqItem, err := bq.PopItem()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if bqItem.id != expectedId {
+				t.Fatalf("got %d, want %d", bqItem.id, expectedId)
+			}
+
+			expectedId -= 1
+		}
+
+	})
 }
 
 func furthestBuildings(heights []int, bricks, ladders int) (int, error) {

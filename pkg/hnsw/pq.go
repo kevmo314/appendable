@@ -36,7 +36,6 @@ type Heapy interface {
 	Len() int
 	PopItem() *Item
 	Top() *Item
-	Take(count int) (*BaseQueue, error)
 	update(item *Item, id Id, dist float32)
 }
 
@@ -46,32 +45,6 @@ type BaseQueue struct {
 	visitedIds map[Id]*Item
 	items      []*Item
 	comparator Comparator
-}
-
-func (bq *BaseQueue) Take(count int, comparator Comparator) (*BaseQueue, error) {
-	if len(bq.items) < count {
-		return nil, fmt.Errorf("queue only has %v items, but want to take %v", len(bq.items), count)
-	}
-
-	pq := NewBaseQueue(comparator)
-
-	ct := 0
-	for {
-		if ct == count {
-			break
-		}
-
-		peeled, err := bq.PopItem()
-		if err != nil {
-			return nil, err
-		}
-
-		pq.Insert(peeled.id, peeled.dist)
-
-		ct++
-	}
-
-	return pq, nil
 }
 
 func (bq BaseQueue) Len() int { return len(bq.items) }
@@ -148,6 +121,18 @@ func (bq *BaseQueue) update(item *Item, id Id, dist float32) {
 	item.id = id
 	item.dist = dist
 	heap.Fix(bq, item.index)
+}
+
+func FromItems(items []*Item, comparator Comparator) *BaseQueue {
+	bq := &BaseQueue{
+		visitedIds: map[Id]*Item{},
+		items:      items,
+		comparator: comparator,
+	}
+
+	heap.Init(bq)
+
+	return bq
 }
 
 func FromBaseQueue(bq *BaseQueue, comparator Comparator) *BaseQueue {

@@ -210,16 +210,27 @@ func (h *Hnsw) InsertVector(q Point) error {
 				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
 
-			maxNeighborsFriendsAtLevel := FromBaseQueue(neighborFriendsAtLevel, MaxComparator{})
+			if neighborFriendsAtLevel.Len() <= h.M {
+				continue
+			}
 
-			for maxNeighborsFriendsAtLevel.Len() > h.M {
-				_, err = maxNeighborsFriendsAtLevel.PopItem()
+			var items []*Item
+
+			for !neighborFriendsAtLevel.IsEmpty() {
+				if len(items) != h.M {
+					continue
+				}
+
+				neighborFriend, err := neighborFriendsAtLevel.PopItem()
+
 				if err != nil {
 					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 				}
+
+				items = append(items, neighborFriend)
 			}
 
-			h.friends[neighbor.id].friends[level] = FromBaseQueue(maxNeighborsFriendsAtLevel, MinComparator{})
+			h.friends[neighbor.id].friends[level] = FromItems(items, neighborFriendsAtLevel.comparator)
 		}
 
 		newEntryItem, err := nnToQAtLevel.PopItem()
