@@ -328,3 +328,80 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 		}
 	})
 }
+
+func TestHnsw_SelectNeighbors(t *testing.T) {
+
+	t.Run("selects neighbors given overflow", func(t *testing.T) {
+		nearestNeighbors := NewBaseQueue(MinComparator{})
+
+		M := 4
+
+		h := NewHnsw(2, 4, M, Point{0, 0})
+
+		// since M is 4
+		for i := 5; i >= 0; i-- {
+			nearestNeighbors.Insert(Id(i), float32(i))
+		}
+
+		neighbors, err := h.selectNeighbors(nearestNeighbors)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if neighbors.Len() != M {
+			t.Fatalf("select neighbors should have at most M friends")
+		}
+
+		expectedId := Id(0)
+		for !neighbors.IsEmpty() {
+			nn, err := neighbors.PopItem()
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if nn.id != expectedId {
+				t.Fatalf("expected item to be %v, got %v", expectedId, nn.id)
+			}
+
+			expectedId += 1
+		}
+	})
+
+	t.Run("selects neighbors given lower bound", func(t *testing.T) {
+		M := 10
+		h := NewHnsw(2, 10, M, Point{0, 0})
+
+		nnQueue := NewBaseQueue(MinComparator{})
+
+		for i := 0; i < 3; i++ {
+			nnQueue.Insert(Id(i), float32(i))
+		}
+
+		neighbors, err := h.selectNeighbors(nnQueue)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if neighbors.Len() != 3 {
+			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", neighbors.Len())
+		}
+
+		expectedId := Id(0)
+		for !neighbors.IsEmpty() {
+			nn, err := neighbors.PopItem()
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if nn.id != expectedId {
+				t.Fatalf("expected item to be %v, got %v", expectedId, nn.id)
+			}
+
+			expectedId += 1
+		}
+	})
+}

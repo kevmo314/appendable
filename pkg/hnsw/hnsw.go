@@ -148,6 +148,20 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 	return epItem
 }
 
+func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) (*BaseQueue, error) {
+	maxNearestNeighbors := FromBaseQueue(nearestNeighbors, MaxComparator{})
+
+	for maxNearestNeighbors.Len() > h.M {
+		_, err := maxNearestNeighbors.PopItem()
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return FromBaseQueue(maxNearestNeighbors, MinComparator{}), nil
+}
+
 func (h *Hnsw) InsertVector(q Point) error {
 	if !h.validatePoint(q) {
 		return fmt.Errorf("invalid vector dimensionality")
