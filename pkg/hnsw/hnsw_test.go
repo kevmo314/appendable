@@ -36,7 +36,7 @@ var clusterB = []Point{
 }
 
 func SetupClusterHnsw(cluster []Point) (*Hnsw, error) {
-	efc := uint(4)
+	efc := 4
 
 	entryPoint := Point{0, 0}
 	g := NewHnsw(2, efc, 4, entryPoint)
@@ -402,6 +402,23 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			}
 
 			expectedId += 1
+		}
+	})
+}
+
+func TestHnsw_InsertVector(t *testing.T) {
+	t.Run("basic insert", func(t *testing.T) {
+		h := NewHnsw(2, 3, 4, Point{0, 0})
+		q := Point{3, 3}
+
+		if len(q) != 2 {
+			t.Fatal("insert vector should have 2 elements")
+		}
+
+		err := h.InsertVector(q)
+
+		if err != nil {
+			t.Fatal(err)
 		}
 	})
 }
