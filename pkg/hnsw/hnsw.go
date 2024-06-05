@@ -240,3 +240,50 @@ func (h *Hnsw) InsertVector(q Point) error {
 func (h *Hnsw) isValidPoint(point Point) bool {
 	return len(point) == h.vectorDimensionality
 }
+
+func (h *Hnsw) KnnSearch(q Point, nnToReturn int) (*BaseQueue, error) {
+
+	entryPoint, ok := h.points[h.entryPointId]
+	if !ok {
+		return nil, fmt.Errorf("no point found for entryPointId %v", h.entryPointId)
+	}
+
+	entryPointFriends, ok := h.friends[h.entryPointId]
+	if !ok {
+		return nil, fmt.Errorf("no friends found for entryPointId %v", h.entryPointId)
+	}
+
+	topLevel := entryPointFriends.TopLevel()
+
+	entryItem := &Item{
+		id:   h.entryPointId,
+		dist: EuclidDistance(*entryPoint, q),
+	}
+
+	for level := topLevel; level >= 1; level-- {
+		nnToQAtLevel, err := h.searchLevel(&q, entryItem, 1, level)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to search for nearest neighbors to Q at level %v: %w", level, err)
+		}
+
+		entryItem = nnToQAtLevel.Top()
+	}
+
+	nnToQAtLevel0, err := h.searchLevel(&q, entryItem, h.efConstruction, 0)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to search at level %v: %w", h.entryPointId, err)
+	}
+
+	maxNNToQAtLevel0 := FromBaseQueue(nnToQAtLevel0, MaxComparator{})
+
+	for maxNNToQAtLevel0.Len() > nnToReturn {
+		_, err = maxNNToQAtLevel0.PopItem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", h.entryPointId, err)
+		}
+	}
+
+	return FromBaseQueue(maxNNToQAtLevel0, MinComparator{}), nil
+}

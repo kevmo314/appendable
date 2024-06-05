@@ -422,3 +422,52 @@ func TestHnsw_InsertVector(t *testing.T) {
 		}
 	})
 }
+
+func TestHnsw_KnnSearch(t *testing.T) {
+	t.Run("basic search", func(t *testing.T) {
+		h := NewHnsw(2, 2, 2, Point{0, 0})
+
+		err := h.InsertVector(Point{3, 3})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = h.InsertVector(Point{4, 4})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		err = h.InsertVector(Point{5, 5})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		kNearestToQ, err := h.KnnSearch(Point{5, 5}, 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if kNearestToQ.IsEmpty() {
+			t.Fatal("kNearestToQ should not be empty")
+		}
+
+		if kNearestToQ.Len() != 2 {
+			t.Fatalf("since K is 2, we expect two closest neighbors, got: %v", kNearestToQ.Len())
+		}
+
+		expectedId := Id(3)
+		for !kNearestToQ.IsEmpty() {
+			nnItem, err := kNearestToQ.PopItem()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if nnItem.id != expectedId {
+				t.Fatalf("expected item to be %v, got id: %v, point: %v", expectedId, nnItem.id, h.points[nnItem.id])
+			}
+
+			expectedId -= 1
+		}
+
+	})
+}
