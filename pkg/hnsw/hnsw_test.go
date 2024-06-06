@@ -349,13 +349,20 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if neighbors.Len() != M {
+		if len(neighbors) != M {
 			t.Fatalf("select neighbors should have at most M friends")
 		}
 
+		// for the sake of testing, let's rebuild the pq and assert ids are correct
+		reneighbors := NewBaseQueue(MinComparator{})
+
+		for _, item := range neighbors {
+			reneighbors.Insert(item.id, item.dist)
+		}
+
 		expectedId := Id(0)
-		for !neighbors.IsEmpty() {
-			nn, err := neighbors.PopItem()
+		for !reneighbors.IsEmpty() {
+			nn, err := reneighbors.PopItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -385,13 +392,20 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if neighbors.Len() != 3 {
-			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", neighbors.Len())
+
+		if len(neighbors) != 3 {
+			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", len(neighbors))
+		}
+
+		reneighbors := NewBaseQueue(MinComparator{})
+
+		for _, item := range neighbors {
+			reneighbors.Insert(item.id, item.dist)
 		}
 
 		expectedId := Id(0)
-		for !neighbors.IsEmpty() {
-			nn, err := neighbors.PopItem()
+		for !reneighbors.IsEmpty() {
+			nn, err := reneighbors.PopItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -419,6 +433,40 @@ func TestHnsw_InsertVector(t *testing.T) {
 
 		if err != nil {
 			t.Fatal(err)
+		}
+	})
+  
+  	t.Run("bulk insert", func(t *testing.T) {
+		items := 1
+
+		h := NewHnsw(3, 4, 4, Point{0, 0, 0})
+
+		for i := 100; i >= 1; i-- {
+			j := float32(i)
+			q := Point{j, j, j}
+
+			if len(h.friends) != items {
+				t.Fatalf("expected # of friends to be %v, got %v", items-1, len(h.friends))
+			}
+
+			if len(h.friends) != len(h.points) {
+				t.Fatalf("expected friends and points map to have same length throughout insertion")
+			}
+
+			err := h.InsertVector(q)
+			if err != nil {
+				return
+			}
+
+			if len(h.friends) != len(h.points) {
+				t.Fatalf("expected friends and points map to have same length throughout insertion")
+			}
+
+			if len(h.friends) != items+1 {
+				t.Fatalf("expected # of friends to be %v, got %v", items+1, len(h.friends))
+			}
+
+			items += 1
 		}
 	})
 }
@@ -467,7 +515,5 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			}
 
 			expectedId -= 1
-		}
-
-	})
+    })
 }
