@@ -152,7 +152,6 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 	return epItem
 }
 
-
 func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) ([]*Item, error) {
 	if nearestNeighbors.Len() <= h.M {
 		return nearestNeighbors.items, nil
@@ -201,7 +200,7 @@ func (h *Hnsw) InsertVector(q Point) error {
 		}
 
 		// add bidirectional connections from neighbors to q at layer c
-		for _, neighbor := range neighbors.items {
+		for _, neighbor := range neighbors {
 			neighborPoint := h.points[neighbor.id]
 
 			distNeighToQ := EuclidDistance(*neighborPoint, q)
@@ -210,7 +209,7 @@ func (h *Hnsw) InsertVector(q Point) error {
 			h.friends[qId].InsertFriendsAtLevel(level, neighbor.id, distNeighToQ)
 		}
 
-		for _, neighbor := range neighbors.items {
+		for _, neighbor := range neighbors {
 			neighborFriendsAtLevel, err := h.friends[neighbor.id].GetFriendsAtLevel(level)
 
 			if err != nil {

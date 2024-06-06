@@ -434,4 +434,39 @@ func TestHnsw_InsertVector(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+
+	t.Run("bulk insert", func(t *testing.T) {
+		items := 1
+
+		h := NewHnsw(3, 4, 4, Point{0, 0, 0})
+
+		for i := 100; i >= 1; i-- {
+			j := float32(i)
+			q := Point{j, j, j}
+
+			if len(h.friends) != items {
+				t.Fatalf("expected # of friends to be %v, got %v", items-1, len(h.friends))
+			}
+
+			if len(h.friends) != len(h.points) {
+				t.Fatalf("expected friends and points map to have same length throughout insertion")
+			}
+
+			err := h.InsertVector(q)
+			if err != nil {
+				return
+			}
+
+			if len(h.friends) != len(h.points) {
+				t.Fatalf("expected friends and points map to have same length throughout insertion")
+			}
+
+			if len(h.friends) != items+1 {
+				t.Fatalf("expected # of friends to be %v, got %v", items+1, len(h.friends))
+			}
+
+			items += 1
+		}
+
+	})
 }
