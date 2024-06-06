@@ -152,7 +152,6 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 	return epItem
 }
 
-
 func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) ([]*Item, error) {
 	if nearestNeighbors.Len() <= h.M {
 		return nearestNeighbors.items, nil
@@ -216,7 +215,6 @@ func (h *Hnsw) InsertVector(q Point) error {
 			if err != nil {
 				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
-
 
 			if neighborFriendsAtLevel.Len() <= h.M {
 				continue

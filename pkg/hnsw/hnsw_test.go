@@ -392,7 +392,6 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-
 		if len(neighbors) != 3 {
 			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", len(neighbors))
 		}
@@ -435,8 +434,8 @@ func TestHnsw_InsertVector(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
-  
-  	t.Run("bulk insert", func(t *testing.T) {
+
+	t.Run("bulk insert", func(t *testing.T) {
 		items := 1
 
 		h := NewHnsw(3, 4, 4, Point{0, 0, 0})
@@ -515,5 +514,6 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			}
 
 			expectedId -= 1
-    })
+		}
+	})
 }
