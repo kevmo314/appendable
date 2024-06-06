@@ -20,14 +20,14 @@ type Hnsw struct {
 
 	levelMultiplier float64
 
-	// efConstruction is the size of the dynamic candIdate list
-	efConstruction uint
+	// efConstruction is the size of the dynamic candidate list
+	efConstruction int
 
 	// default number of connections
 	M, Mmax0 int
 }
 
-func NewHnsw(d int, efConstruction uint, M int, entryPoint Point) *Hnsw {
+func NewHnsw(d int, efConstruction int, M int, entryPoint Point) *Hnsw {
 	if d <= 0 || len(entryPoint) != d {
 		panic("invalid vector dimensionality")
 	}
@@ -54,6 +54,10 @@ func NewHnsw(d int, efConstruction uint, M int, entryPoint Point) *Hnsw {
 
 func (h *Hnsw) SpawnLevel() int {
 	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
+}
+
+func (h *Hnsw) GenerateId() Id {
+	return Id(len(h.points))
 }
 
 func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, level int) (*BaseQueue, error) {
@@ -169,17 +173,76 @@ func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) ([]*Item, error) {
 }
 
 func (h *Hnsw) InsertVector(q Point) error {
-	if !h.validatePoint(q) {
+	if !h.isValidPoint(q) {
 		return fmt.Errorf("invalid vector dimensionality")
 	}
 
+	topLevel := h.friends[h.entryPointId].TopLevel()
+
+	qId := h.GenerateId()
 	qTopLevel := h.SpawnLevel()
 	qFriends := NewFriends(qTopLevel)
+	h.friends[qId] = qFriends
+	h.points[qId] = &q
 
-	_ = h.findCloserEntryPoint(&q, qFriends)
+	entryItem := h.findCloserEntryPoint(&q, qFriends)
+
+	for level := min(topLevel, qTopLevel); level >= 0; level-- {
+		nnToQAtLevel, err := h.searchLevel(&q, entryItem, h.efConstruction, level)
+
+		if err != nil {
+			return fmt.Errorf("failed to search for nearest neighbors to Q at level %v: %w", level, err)
+		}
+
+		neighbors, err := h.selectNeighbors(nnToQAtLevel)
+		if err != nil {
+			return fmt.Errorf("failed to select for nearest neighbors to Q at level %v: %w", level, err)
+		}
+
+		// add bidirectional connections from neighbors to q at layer c
+		for _, neighbor := range neighbors {
+			neighborPoint := h.points[neighbor.id]
+
+			distNeighToQ := EuclidDistance(*neighborPoint, q)
+
+			h.friends[neighbor.id].InsertFriendsAtLevel(level, qId, distNeighToQ)
+			h.friends[qId].InsertFriendsAtLevel(level, neighbor.id, distNeighToQ)
+		}
+
+		for _, neighbor := range neighbors {
+			neighborFriendsAtLevel, err := h.friends[neighbor.id].GetFriendsAtLevel(level)
+
+			if err != nil {
+				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+			}
+
+			maxNeighborsFriendsAtLevel := FromBaseQueue(neighborFriendsAtLevel, MaxComparator{})
+
+			for maxNeighborsFriendsAtLevel.Len() > h.M {
+				_, err = maxNeighborsFriendsAtLevel.PopItem()
+				if err != nil {
+					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+				}
+			}
+
+			h.friends[neighbor.id].friends[level] = FromBaseQueue(maxNeighborsFriendsAtLevel, MinComparator{})
+		}
+
+		newEntryItem, err := nnToQAtLevel.PopItem()
+		if err != nil {
+			return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+		}
+
+		entryItem = newEntryItem
+	}
+
+	if qTopLevel > topLevel {
+		h.entryPointId = qId
+	}
+
 	return nil
 }
 
-func (h *Hnsw) validatePoint(point Point) bool {
-	return len(point) != h.vectorDimensionality
+func (h *Hnsw) isValidPoint(point Point) bool {
+	return len(point) == h.vectorDimensionality
 }
