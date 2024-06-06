@@ -349,13 +349,20 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if neighbors.Len() != M {
+		if len(neighbors) != M {
 			t.Fatalf("select neighbors should have at most M friends")
 		}
 
+		// for the sake of testing, let's rebuild the pq and assert ids are correct
+		reneighbors := NewBaseQueue(MinComparator{})
+
+		for _, item := range neighbors {
+			reneighbors.Insert(item.id, item.dist)
+		}
+
 		expectedId := Id(0)
-		for !neighbors.IsEmpty() {
-			nn, err := neighbors.PopItem()
+		for !reneighbors.IsEmpty() {
+			nn, err := reneighbors.PopItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -385,13 +392,19 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if neighbors.Len() != 3 {
-			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", neighbors.Len())
+		if len(neighbors) != 3 {
+			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", len(neighbors))
+		}
+
+		reneighbors := NewBaseQueue(MinComparator{})
+
+		for _, item := range neighbors {
+			reneighbors.Insert(item.id, item.dist)
 		}
 
 		expectedId := Id(0)
-		for !neighbors.IsEmpty() {
-			nn, err := neighbors.PopItem()
+		for !reneighbors.IsEmpty() {
+			nn, err := reneighbors.PopItem()
 
 			if err != nil {
 				t.Fatal(err)
