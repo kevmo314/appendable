@@ -467,7 +467,16 @@ func TestHnsw_InsertVector(t *testing.T) {
 
 			items += 1
 		}
+	})
 
+	t.Run("basic cluster insertion", func(t *testing.T) {
+		h := NewHnsw(2, 4, 4, Point{0, 0})
+
+		for _, cluster := range clusterA {
+			if err := h.InsertVector(cluster); err != nil {
+				t.Fatalf("failed to insert vector: %v", err)
+			}
+		}
 	})
 }
 
@@ -512,6 +521,42 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			}
 
 			expectedId -= 1
+		}
+	})
+
+	t.Run("cluster a search", func(t *testing.T) {
+		clusterAGraph := NewHnsw(2, 4, 4, Point{0, 0})
+
+		for _, cluster := range clusterA {
+			if err := clusterAGraph.InsertVector(cluster); err != nil {
+				t.Fatalf("failed to insert point: %v, err: %v", cluster, err)
+			}
+		}
+
+		q := Point{0.27, 0.23}
+		closestToQ, err := clusterAGraph.KnnSearch(q, 3)
+		if err != nil {
+			return
+		}
+
+		if closestToQ.Len() != 3 {
+			t.Fatalf("expected three closest points to be %v, got %v", 3, closestToQ.Len())
+		}
+
+		expectedIds := []Id{7, 9, 10}
+		var gotIds []Id
+
+		for !closestToQ.IsEmpty() {
+			closest, err := closestToQ.PopItem()
+			if err != nil {
+				t.Fatalf("failed to pop item: %v, err: %v", closestToQ, err)
+			}
+
+			gotIds = append(gotIds, closest.id)
+		}
+
+		if !reflect.DeepEqual(expectedIds, gotIds) {
+			t.Fatalf("expected closest points to be %v, got %v", expectedIds, gotIds)
 		}
 	})
 }
