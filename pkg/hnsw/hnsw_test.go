@@ -573,7 +573,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 
 		q := Point{2, 2}
 
-		closestNeighbors, err := h.KnnSearch(q, len(clusterC))
+		closestNeighbors, err := h.KnnSearch(q, len(clusterC)+1)
 		if err != nil {
 			t.Fatalf("unable to find closest neighbors: %v", err)
 		}
@@ -582,7 +582,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			t.Fatalf("expected closest neighbors length to be %v, got %v", len(clusterC), closestNeighbors.Len())
 		}
 
-		expected := []Id{20, 3, 4, 6, 2, 1, 10, 7, 5, 9, 18, 11, 16, 22, 12, 8, 0, 14, 19, 23, 21, 13, 15}
+		expected := []Id{20, 3, 4, 6, 2, 1, 10, 7, 5, 9, 18, 11, 16, 22, 12, 8, 0, 14, 19, 23, 21, 13, 15, 17}
 		var got []Id
 
 		for !closestNeighbors.IsEmpty() {
