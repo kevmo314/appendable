@@ -561,10 +561,14 @@ func TestHnsw_KnnSearch(t *testing.T) {
 	t.Run("cluster c search", func(t *testing.T) {
 		clusterC := append(append([]Point{}, clusterA...), clusterB...)
 
-		h, err := SetupClusterHnsw(clusterC, len(clusterC), len(clusterC))
+		clusterCLen := len(clusterC)
 
-		if err != nil {
-			t.Fatalf("unable to set up cluster c, err: %v", err)
+		h := NewHnsw(2, clusterCLen, clusterCLen, Point{0, 0})
+
+		for _, cluster := range clusterC {
+			if err := h.InsertVector(cluster); err != nil {
+				t.Fatalf("failed to insert point: %v, err: %v", cluster, err)
+			}
 		}
 
 		q := Point{2, 2}
