@@ -524,7 +524,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		}
 	})
 
-	t.Run("cluster a seach", func(t *testing.T) {
+	t.Run("cluster a search", func(t *testing.T) {
 		clusterAGraph := NewHnsw(2, 4, 4, Point{0, 0})
 
 		for _, cluster := range clusterA {
