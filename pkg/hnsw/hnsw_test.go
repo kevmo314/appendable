@@ -470,3 +470,48 @@ func TestHnsw_InsertVector(t *testing.T) {
 
 	})
 }
+
+func TestHnsw_KnnSearch(t *testing.T) {
+	t.Run("basic search knn", func(t *testing.T) {
+		h := NewHnsw(2, 4, 4, Point{0, 0})
+
+		// id: 1
+		if err := h.InsertVector(Point{3, 3}); err != nil {
+			t.Fatalf("failed to insert point: %v, err: %v", Point{3, 3}, err)
+		}
+
+		// id: 2
+		if err := h.InsertVector(Point{4, 4}); err != nil {
+			t.Fatalf("failed to insert point %v, err: %v", Point{4, 4}, err)
+		}
+
+		// id: 3
+		if err := h.InsertVector(Point{5, 5}); err != nil {
+			t.Fatalf("failed to insert point %v, err: %v", Point{5, 5}, err)
+		}
+
+		nearestNeighbors, err := h.KnnSearch(Point{5, 5}, 3)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if nearestNeighbors.Len() != 3 {
+			t.Fatalf("expected to have 3 neighbors, got %v", nearestNeighbors)
+		}
+
+		expectedId := Id(3)
+
+		for !nearestNeighbors.IsEmpty() {
+			nearestNeighbor, err := nearestNeighbors.PopItem()
+			if err != nil {
+				t.Fatalf("failed to pop item: %v, err: %v", nearestNeighbors, err)
+			}
+
+			if nearestNeighbor.id != expectedId {
+				t.Fatalf("expected item to be %v, got %v", expectedId, nearestNeighbor.id)
+			}
+
+			expectedId -= 1
+		}
+	})
+}

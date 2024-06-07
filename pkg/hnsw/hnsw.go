@@ -246,3 +246,60 @@ func (h *Hnsw) InsertVector(q Point) error {
 func (h *Hnsw) isValidPoint(point Point) bool {
 	return len(point) == h.vectorDimensionality
 }
+
+func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*BaseQueue, error) {
+	entryPoint, ok := h.points[h.entryPointId]
+
+	if !ok {
+		return nil, fmt.Errorf("no point found for entry point %v", h.entryPointId)
+	}
+
+	entryPointFriends, ok := h.friends[h.entryPointId]
+	if !ok {
+		return nil, fmt.Errorf("no friends found for entry point %v", h.entryPointId)
+	}
+
+	entryPointTopLevel := entryPointFriends.TopLevel()
+
+	entryItem := &Item{
+		id:   h.entryPointId,
+		dist: EuclidDistance(q, *entryPoint),
+	}
+
+	for level := entryPointTopLevel; level > 0; level-- {
+		nearestNeighborQueueAtLevel, err := h.searchLevel(&q, entryItem, 1, level)
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+		}
+
+		entryItem = nearestNeighborQueueAtLevel.Top()
+	}
+
+	// level 0
+	nearestNeighborQueueAtLevel0, err := h.searchLevel(&q, entryItem, h.efConstruction, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %d", h.entryPointId, 0)
+	}
+
+	if nearestNeighborQueueAtLevel0.Len() <= numNeighborsToReturn {
+		return nearestNeighborQueueAtLevel0, nil
+	}
+
+	var items []*Item
+
+	for !nearestNeighborQueueAtLevel0.IsEmpty() {
+		if len(items) == numNeighborsToReturn {
+			return FromItems(items, MinComparator{}), nil
+		}
+
+		nearestNeighborAtLevel0Item, err := nearestNeighborQueueAtLevel0.PopItem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %d", h.entryPointId, 0)
+		}
+
+		items = append(items, nearestNeighborAtLevel0Item)
+	}
+
+	return FromItems(items, MinComparator{}), nil
+}
