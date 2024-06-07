@@ -159,3 +159,15 @@ func FromBaseQueue(bq *BaseQueue, comparator Comparator) *BaseQueue {
 
 	return newBq
 }
+
+func FromItems(items []*Item, comparator Comparator) *BaseQueue {
+	bq := &BaseQueue{
+		visitedIds: map[Id]*Item{},
+		items:      items,
+		comparator: comparator,
+	}
+
+	heap.Init(bq)
+
+	return bq
+}
