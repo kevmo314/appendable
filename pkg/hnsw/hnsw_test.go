@@ -2,6 +2,7 @@ package hnsw
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -598,4 +599,47 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			t.Fatalf("expected closest points to be %v, got %v", expected, got)
 		}
 	})
+}
+
+func generatePoints(numPoints int) []Point {
+	points := make([]Point, numPoints)
+
+	for i := 0; i < numPoints; i++ {
+		points[i] = Point{float32(i), float32(i), float32(i)}
+	}
+
+	return points
+}
+
+func BenchmarkHnsw_KnnSearch(b *testing.B) {
+	numPointsRange := []int{1, 10, 100, 1000, 10000, 100000, 1000000}
+
+	for _, numPoints := range numPointsRange {
+		b.Run(fmt.Sprintf("knnsearch %d_points", numPoints), func(b *testing.B) {
+			h := NewHnsw(3, 10, 12, Point{0, 0, 0})
+
+			points := generatePoints(numPoints)
+
+			for _, point := range points {
+				if len(point) != 3 {
+					b.Fatalf("expected point of dim 3, got dim: %v", len(point))
+				}
+
+				if err := h.InsertVector(point); err != nil {
+					b.Fatalf("failed to insert point: %v, err: %v", point, err)
+				}
+			}
+
+			q := Point{float32(numPoints / 2), float32(numPoints / 2), float32(numPoints / 2)}
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				_, err := h.KnnSearch(q, 5)
+				if err != nil {
+					b.Fatalf("failed to perform knnsearch: %v", err)
+				}
+			}
+
+		})
+	}
 }
