@@ -35,11 +35,9 @@ var clusterB = []Point{
 	{4.01, 4.3},
 }
 
-func SetupClusterHnsw(cluster []Point) (*Hnsw, error) {
-	efc := 4
-
+func SetupClusterHnsw(cluster []Point, efc, maxConnections int) (*Hnsw, error) {
 	entryPoint := Point{0, 0}
-	g := NewHnsw(2, efc, 4, entryPoint)
+	g := NewHnsw(2, efc, maxConnections, entryPoint)
 
 	for idx, point := range cluster {
 		pointId := Id(idx + 1)
@@ -118,7 +116,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 	})
 
 	t.Run("cluster a searchLayer for existing point", func(t *testing.T) {
-		g, err := SetupClusterHnsw(clusterA)
+		g, err := SetupClusterHnsw(clusterA, 4, 4)
 
 		if err != nil {
 			t.Fatal(err)
@@ -163,7 +161,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 	})
 
 	t.Run("cluster a searchLayer for new point", func(t *testing.T) {
-		g, err := SetupClusterHnsw(clusterA)
+		g, err := SetupClusterHnsw(clusterA, 4, 4)
 
 		if err != nil {
 			t.Fatal(err)
@@ -203,7 +201,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 
 	t.Run("cluster a, b, selectLayer and return the closest point", func(t *testing.T) {
 		clusterC := append(append([]Point{}, clusterA...), clusterB...)
-		g, err := SetupClusterHnsw(clusterC)
+		g, err := SetupClusterHnsw(clusterC, 8, 4)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -232,7 +230,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 
 	t.Run("cluster a, b, selectLayer and return the closest points from both clusters", func(t *testing.T) {
 		clusterC := append(append([]Point{}, clusterA...), clusterB...)
-		g, err := SetupClusterHnsw(clusterC)
+		g, err := SetupClusterHnsw(clusterC, 4, 4)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -557,6 +555,47 @@ func TestHnsw_KnnSearch(t *testing.T) {
 
 		if !reflect.DeepEqual(expectedIds, gotIds) {
 			t.Fatalf("expected closest points to be %v, got %v", expectedIds, gotIds)
+		}
+	})
+
+	t.Run("cluster c search", func(t *testing.T) {
+		clusterC := append(append([]Point{}, clusterA...), clusterB...)
+
+		clusterCLen := len(clusterC)
+
+		h := NewHnsw(2, clusterCLen+1, clusterCLen+1, Point{0, 0})
+
+		for _, cluster := range clusterC {
+			if err := h.InsertVector(cluster); err != nil {
+				t.Fatalf("failed to insert point: %v, err: %v", cluster, err)
+			}
+		}
+
+		q := Point{2, 2}
+
+		closestNeighbors, err := h.KnnSearch(q, len(clusterC)+1)
+		if err != nil {
+			t.Fatalf("unable to find closest neighbors: %v", err)
+		}
+
+		if closestNeighbors.Len() != len(clusterC)+1 {
+			t.Fatalf("expected closest neighbors length to be %v, got %v", len(clusterC)+1, closestNeighbors.Len())
+		}
+
+		expected := []Id{20, 3, 4, 6, 2, 1, 10, 7, 5, 9, 18, 11, 16, 22, 12, 8, 0, 14, 19, 23, 21, 13, 15, 17}
+		var got []Id
+
+		for !closestNeighbors.IsEmpty() {
+			closest, err := closestNeighbors.PopItem()
+			if err != nil {
+				t.Fatalf("failed to pop item: %v, err: %v", closestNeighbors, err)
+			}
+
+			got = append(got, closest.id)
+		}
+
+		if !reflect.DeepEqual(expected, got) {
+			t.Fatalf("expected closest points to be %v, got %v", expected, got)
 		}
 	})
 }
