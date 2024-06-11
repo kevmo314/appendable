@@ -3,6 +3,7 @@ package hnsw
 import (
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -612,9 +613,9 @@ func generatePoints(numPoints int) []Point {
 }
 
 func BenchmarkHnsw_KnnSearch(b *testing.B) {
-	numPointsRange := []int{1, 10, 100, 1000, 10000, 100000, 1000000}
 
-	for _, numPoints := range numPointsRange {
+	for i := 0; i <= 20; i++ {
+		numPoints := int(math.Pow(2, float64(i)))
 		b.Run(fmt.Sprintf("knnsearch %d_points", numPoints), func(b *testing.B) {
 			h := NewHnsw(3, 10, 12, Point{0, 0, 0})
 
