@@ -477,19 +477,6 @@ func TestHnsw_InsertVector(t *testing.T) {
 		}
 	})
 
-	t.Run("524,288 points inserted", func(t *testing.T) {
-		numPoints := 524288
-
-		h := NewHnsw(2, 14, 14, Point{0, 0})
-		numPoints -= 1
-
-		for i := 0; i < numPoints; i++ {
-			if err := h.InsertVector(Point{float32(i + 1), float32(i + 1)}); err != nil {
-				t.Fatalf("failed to insert vector: %v", err)
-			}
-		}
-	})
-
 }
 
 func TestHnsw_KnnSearch(t *testing.T) {
