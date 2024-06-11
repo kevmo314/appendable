@@ -207,30 +207,39 @@ func (h *Hnsw) InsertVector(q Point) error {
 		// add bidirectional connections from neighbors to q at layer c
 		for _, neighbor := range neighbors {
 			neighborPoint := h.points[neighbor.id]
-
 			distNeighToQ := EuclidDistance(*neighborPoint, q)
-
 			h.friends[neighbor.id].InsertFriendsAtLevel(level, qId, distNeighToQ)
 			h.friends[qId].InsertFriendsAtLevel(level, neighbor.id, distNeighToQ)
 		}
 
 		for _, neighbor := range neighbors {
 			neighborFriendsAtLevel, err := h.friends[neighbor.id].GetFriendsAtLevel(level)
-
 			if err != nil {
 				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
 
-			maxNeighborsFriendsAtLevel := FromBaseQueue(neighborFriendsAtLevel, MaxComparator{})
-
-			for maxNeighborsFriendsAtLevel.Len() > h.M {
-				_, err = maxNeighborsFriendsAtLevel.PopItem()
-				if err != nil {
-					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
-				}
+			maxNumberOfNeighbors := h.M
+			if level == 0 {
+				maxNumberOfNeighbors = h.Mmax0
 			}
 
-			h.friends[neighbor.id].friends[level] = FromBaseQueue(maxNeighborsFriendsAtLevel, MinComparator{})
+			eConnections := neighborFriendsAtLevel
+			if eConnections.Len() > maxNumberOfNeighbors {
+				var items []*Item
+
+				for !neighborFriendsAtLevel.IsEmpty() {
+					nearestNeighborFriendAtLevelItem, err := neighborFriendsAtLevel.PopItem()
+					if err != nil {
+						return fmt.Errorf("failed to pop from neighborFriendsAtLevel: %w", err)
+					}
+
+					items = append(items, nearestNeighborFriendAtLevelItem)
+				}
+
+				eConnections = FromItems(items, MinComparator{})
+			}
+
+			h.friends[neighbor.id].friends[level] = eConnections
 		}
 
 		newEntryItem, err := nnToQAtLevel.PopItem()
