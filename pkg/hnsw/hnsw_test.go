@@ -476,6 +476,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 			}
 		}
 	})
+
 }
 
 func TestHnsw_KnnSearch(t *testing.T) {
@@ -596,6 +597,39 @@ func TestHnsw_KnnSearch(t *testing.T) {
 
 		if !reflect.DeepEqual(expected, got) {
 			t.Fatalf("expected closest points to be %v, got %v", expected, got)
+		}
+	})
+
+	t.Run("sequential search with upper bound params", func(t *testing.T) {
+		h := NewHnsw(2, 12, 12, Point{0, 0})
+		for i := 1; i <= 8; i++ {
+			if err := h.InsertVector(Point{float32(i), float32(i + 1)}); err != nil {
+				t.Fatalf("failed to insert point: %v, err: %v", Point{float32(i), float32(i + 1)}, err)
+			}
+		}
+
+		found, err := h.KnnSearch(Point{float32(0), float32(0)}, 10)
+
+		if err != nil {
+			t.Fatalf("failed to find closest neighbors: %v", err)
+		}
+
+		if found.Len() != 9 {
+			t.Fatalf("expected to find 9 closest neighbors, got %v", found.Len())
+		}
+
+		expectedId := Id(0)
+
+		for found.IsEmpty() {
+			nnItem, err := found.PopItem()
+			if err != nil {
+				t.Fatalf("failed to pop item: %v, err: %v", found, err)
+			}
+			if expectedId != nnItem.id {
+				t.Fatalf("expected to find %v, got %v", expectedId, nnItem.id)
+			}
+
+			expectedId += 1
 		}
 	})
 }
