@@ -53,7 +53,7 @@ func NewHnsw(d int, efConstruction int, M int, entryPoint Point) *Hnsw {
 }
 
 func (h *Hnsw) SpawnLevel() int {
-	return int(math.Floor(-math.Log(rand.Float64() * h.levelMultiplier)))
+	return int(math.Floor(-math.Log(rand.Float64()) * h.levelMultiplier))
 }
 
 func (h *Hnsw) GenerateId() Id {
@@ -181,6 +181,11 @@ func (h *Hnsw) InsertVector(q Point) error {
 
 	qId := h.GenerateId()
 	qTopLevel := h.SpawnLevel()
+
+	if qTopLevel < 0 {
+		panic("invalid top level cannot have a negative top level")
+	}
+
 	qFriends := NewFriends(qTopLevel)
 	h.friends[qId] = qFriends
 	h.points[qId] = &q
