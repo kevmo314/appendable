@@ -12,6 +12,10 @@ func main() {
 	// Handle all requests by serving a file of the same name
 	http.Handle("/", fs)
 
+	http.HandleFunc("/search", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "./search.html")
+	})
+
 	// Define the port to listen on
 	port := "3001"
 	log.Printf("Listening on http://localhost:%s/", port)
