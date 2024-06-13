@@ -104,7 +104,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -149,7 +149,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -188,7 +188,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -218,7 +218,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor.Len())
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -253,7 +253,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 		var closestIds []Id
 
 		for !closestNeighbor.IsEmpty() {
-			closestItem, err := closestNeighbor.PopItem()
+			closestItem, err := closestNeighbor.PopMinItem()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -330,7 +330,7 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 func TestHnsw_SelectNeighbors(t *testing.T) {
 
 	t.Run("selects neighbors given overflow", func(t *testing.T) {
-		nearestNeighbors := NewBaseQueue(MinComparator{})
+		nearestNeighbors := NewDistHeap()
 
 		M := 4
 
@@ -352,7 +352,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 		}
 
 		// for the sake of testing, let's rebuild the pq and assert ids are correct
-		reneighbors := NewBaseQueue(MinComparator{})
+		reneighbors := NewDistHeap()
 
 		for _, item := range neighbors {
 			reneighbors.Insert(item.id, item.dist)
@@ -360,7 +360,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 
 		expectedId := Id(0)
 		for !reneighbors.IsEmpty() {
-			nn, err := reneighbors.PopItem()
+			nn, err := reneighbors.PopMinItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -378,7 +378,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 		M := 10
 		h := NewHnsw(2, 10, M, Point{0, 0})
 
-		nnQueue := NewBaseQueue(MinComparator{})
+		nnQueue := NewDistHeap()
 
 		for i := 0; i < 3; i++ {
 			nnQueue.Insert(Id(i), float32(i))
@@ -394,7 +394,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", len(neighbors))
 		}
 
-		reneighbors := NewBaseQueue(MinComparator{})
+		reneighbors := NewDistHeap()
 
 		for _, item := range neighbors {
 			reneighbors.Insert(item.id, item.dist)
@@ -402,7 +402,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 
 		expectedId := Id(0)
 		for !reneighbors.IsEmpty() {
-			nn, err := reneighbors.PopItem()
+			nn, err := reneighbors.PopMinItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -510,7 +510,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		expectedId := Id(3)
 
 		for !nearestNeighbors.IsEmpty() {
-			nearestNeighbor, err := nearestNeighbors.PopItem()
+			nearestNeighbor, err := nearestNeighbors.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", nearestNeighbors, err)
 			}
@@ -546,7 +546,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		var gotIds []Id
 
 		for !closestToQ.IsEmpty() {
-			closest, err := closestToQ.PopItem()
+			closest, err := closestToQ.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", closestToQ, err)
 			}
@@ -587,7 +587,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		var got []Id
 
 		for !closestNeighbors.IsEmpty() {
-			closest, err := closestNeighbors.PopItem()
+			closest, err := closestNeighbors.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", closestNeighbors, err)
 			}
@@ -621,7 +621,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		expectedId := Id(0)
 
 		for found.IsEmpty() {
-			nnItem, err := found.PopItem()
+			nnItem, err := found.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", found, err)
 			}
