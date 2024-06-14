@@ -11,20 +11,6 @@ type Item struct {
 
 var EmptyHeapError = fmt.Errorf("Empty Heap")
 
-type HeapInterface interface {
-	PeekMinItem() (*Item, error)
-	PeekMaxItem() (*Item, error)
-	PopMinItem() (*Item, error)
-	PopMaxItem() (*Item, error)
-	Insert(id Id, dist float32)
-	IsEmpty() bool
-	Len() int
-	Less(i, j int) bool
-	Swap(i, j int)
-	Push(x *Item)
-	Pop() *Item
-}
-
 type DistHeap struct {
 	items   []*Item
 	visited map[Id]bool
@@ -35,20 +21,33 @@ func NewDistHeap() *DistHeap {
 		items:   make([]*Item, 0),
 		visited: make(map[Id]bool),
 	}
-	Init(d)
 	return d
 }
 func FromItems(items []*Item) *DistHeap {
-	d := &DistHeap{items: items, visited: make(map[Id]bool)}
-	Init(d)
+	visited := make(map[Id]bool)
+	for _, item := range items {
+		visited[item.id] = true
+	}
+
+	d := &DistHeap{items: items, visited: visited}
+	d.Init()
+
 	return d
 }
+
+func (d *DistHeap) Init() {
+	n := d.Len()
+	for i := n/2 - 1; i >= 0; i-- {
+		d.down(i, n)
+	}
+}
+
 func (d *DistHeap) PeekMinItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
 	}
 
-	return (*d).items[0], nil
+	return d.items[0], nil
 }
 func (d *DistHeap) PeekMaxItem() (*Item, error) {
 	if d.Len() == 0 {
@@ -69,36 +68,62 @@ func (d *DistHeap) PeekMaxItem() (*Item, error) {
 		i = r
 	}
 
-	return (*d).items[i], nil
+	return d.items[i], nil
 }
 func (d *DistHeap) PopMinItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
 	}
 
-	return Pop(d), nil
+	n := d.Len() - 1
+	d.Swap(0, n)
+	d.down(0, n)
+	return d.Pop(), nil
 }
 func (d *DistHeap) PopMaxItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
 	}
 
-	return PopMax(d), nil
+	n := d.Len()
+	i := 0
+	l := lchild(0)
+
+	if l < n && !d.Less(l, i) {
+		i = l
+	}
+
+	r := rchild(0)
+	if r < n && !d.Less(r, i) {
+		i = r
+	}
+
+	d.Swap(i, n-1)
+	d.down(i, n-1)
+
+	return d.Pop(), nil
 }
 func (d *DistHeap) Insert(id Id, dist float32) {
 	if d.visited[id] {
 		for idx, item := range d.items {
 			if item.id == id {
 				item.dist = dist
-				Fix(d, idx)
+				d.Fix(idx)
 				return
 			}
 		}
 	} else {
-		Push(d, &Item{id, dist})
+		d.Push(&Item{id: id, dist: dist})
+		d.up(d.Len() - 1)
 		d.visited[id] = true
 	}
 }
+func (d *DistHeap) Fix(i int) {
+	if !d.down(i, d.Len()) {
+		d.up(i)
+	}
+}
+
 func (d DistHeap) IsEmpty() bool      { return len(d.items) == 0 }
 func (d DistHeap) Len() int           { return len(d.items) }
 func (d DistHeap) Less(i, j int) bool { return d.items[i].dist < d.items[j].dist }

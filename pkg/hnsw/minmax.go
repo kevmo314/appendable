@@ -12,8 +12,6 @@ import (
 	"math/bits"
 )
 
-type Interface = HeapInterface
-
 func level(i int) int {
 	// floor(log2(i + 1))
 	return bits.Len(uint(i)+1) - 1
@@ -47,7 +45,7 @@ func grandparent(i int) int {
 	return parent(parent(i))
 }
 
-func down(h Interface, i, n int) bool {
+func (d *DistHeap) down(i, n int) bool {
 	min := isMinLevel(i)
 	i0 := i
 	for {
@@ -57,18 +55,18 @@ func down(h Interface, i, n int) bool {
 		if l >= n || l < 0 /* overflow */ {
 			break
 		}
-		if h.Less(l, m) == min {
+		if d.Less(l, m) == min {
 			m = l
 		}
 
 		r := rchild(i)
-		if r < n && h.Less(r, m) == min {
+		if r < n && d.Less(r, m) == min {
 			m = r
 		}
 
 		// grandchildren are contiguous i*4+3+{0,1,2,3}
 		for g := lchild(l); g < n && g <= rchild(r); g++ {
-			if h.Less(g, m) == min {
+			if d.Less(g, m) == min {
 				m = g
 			}
 		}
@@ -77,7 +75,7 @@ func down(h Interface, i, n int) bool {
 			break
 		}
 
-		h.Swap(i, m)
+		d.Swap(i, m)
 
 		if m == l || m == r {
 			break
@@ -85,21 +83,21 @@ func down(h Interface, i, n int) bool {
 
 		// m is grandchild
 		p := parent(m)
-		if h.Less(p, m) == min {
-			h.Swap(m, p)
+		if d.Less(p, m) == min {
+			d.Swap(m, p)
 		}
 		i = m
 	}
 	return i > i0
 }
 
-func up(h Interface, i int) {
+func (d *DistHeap) up(i int) {
 	min := isMinLevel(i)
 
 	if hasParent(i) {
 		p := parent(i)
-		if h.Less(p, i) == min {
-			h.Swap(i, p)
+		if d.Less(p, i) == min {
+			d.Swap(i, p)
 			min = !min
 			i = p
 		}
@@ -107,83 +105,11 @@ func up(h Interface, i int) {
 
 	for hasGrandparent(i) {
 		g := grandparent(i)
-		if h.Less(i, g) != min {
+		if d.Less(i, g) != min {
 			return
 		}
 
-		h.Swap(i, g)
+		d.Swap(i, g)
 		i = g
-	}
-}
-
-// Init establishes the heap invariants required by the other routines in this
-// package. Init may be called whenever the heap invariants may have been
-// invalidated.
-// The complexity is O(n) where n = h.Len().
-func Init(h Interface) {
-	n := h.Len()
-	for i := n/2 - 1; i >= 0; i-- {
-		down(h, i, n)
-	}
-}
-
-// Push pushes the element x onto the heap.
-// The complexity is O(log n) where n = h.Len().
-func Push(h Interface, x *Item) {
-	h.Push(x)
-	up(h, h.Len()-1)
-}
-
-// Pop removes and returns the minimum element (according to Less) from the heap.
-// The complexity is O(log n) where n = h.Len().
-func Pop(h Interface) *Item {
-	n := h.Len() - 1
-	h.Swap(0, n)
-	down(h, 0, n)
-	return h.Pop()
-}
-
-// PopMax removes and returns the maximum element (according to Less) from the heap.
-// The complexity is O(log n) where n = h.Len().
-func PopMax(h Interface) *Item {
-	n := h.Len()
-
-	i := 0
-	l := lchild(0)
-	if l < n && !h.Less(l, i) {
-		i = l
-	}
-
-	r := rchild(0)
-	if r < n && !h.Less(r, i) {
-		i = r
-	}
-
-	h.Swap(i, n-1)
-	down(h, i, n-1)
-	return h.Pop()
-}
-
-// Remove removes and returns the element at index i from the heap.
-// The complexity is O(log n) where n = h.Len().
-func Remove(h Interface, i int) interface{} {
-	n := h.Len() - 1
-	if n != i {
-		h.Swap(i, n)
-		if !down(h, i, n) {
-			up(h, i)
-		}
-	}
-	return h.Pop()
-}
-
-// Fix re-establishes the heap ordering after the element at index i has
-// changed its value. Changing the value of the element at index i and then
-// calling Fix is equivalent to, but less expensive than, calling Remove(h, i)
-// followed by a Push of the new value.
-// The complexity is O(log n) where n = h.Len().
-func Fix(h Interface, i int) {
-	if !down(h, i, h.Len()) {
-		up(h, i)
 	}
 }
