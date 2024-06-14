@@ -136,7 +136,7 @@ func Push(h Interface, x *Item) {
 
 // Pop removes and returns the minimum element (according to Less) from the heap.
 // The complexity is O(log n) where n = h.Len().
-func Pop(h Interface) interface{} {
+func Pop(h Interface) *Item {
 	n := h.Len() - 1
 	h.Swap(0, n)
 	down(h, 0, n)
@@ -145,7 +145,7 @@ func Pop(h Interface) interface{} {
 
 // PopMax removes and returns the maximum element (according to Less) from the heap.
 // The complexity is O(log n) where n = h.Len().
-func PopMax(h Interface) interface{} {
+func PopMax(h Interface) *Item {
 	n := h.Len()
 
 	i := 0

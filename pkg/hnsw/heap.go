@@ -76,14 +76,14 @@ func (d *DistHeap) PopMinItem() (*Item, error) {
 		return nil, EmptyHeapError
 	}
 
-	return Pop(d).(*Item), nil
+	return Pop(d), nil
 }
 func (d *DistHeap) PopMaxItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
 	}
 
-	return PopMax(d).(*Item), nil
+	return PopMax(d), nil
 }
 func (d *DistHeap) Insert(id Id, dist float32) {
 	if d.visited[id] {
