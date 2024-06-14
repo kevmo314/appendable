@@ -9,13 +9,10 @@
 package hnsw
 
 import (
-	"container/heap"
 	"math/bits"
 )
 
-// Interface copied from the heap package, so code that imports minmaxheap does
-// not also have to import "container/heap".
-type Interface = heap.Interface
+type Interface = HeapInterface
 
 func level(i int) int {
 	// floor(log2(i + 1))
@@ -132,7 +129,7 @@ func Init(h Interface) {
 
 // Push pushes the element x onto the heap.
 // The complexity is O(log n) where n = h.Len().
-func Push(h Interface, x interface{}) {
+func Push(h Interface, x *Item) {
 	h.Push(x)
 	up(h, h.Len()-1)
 }

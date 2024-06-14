@@ -11,6 +11,20 @@ type Item struct {
 
 var EmptyHeapError = fmt.Errorf("Empty Heap")
 
+type HeapInterface interface {
+	PeekMinItem() (*Item, error)
+	PeekMaxItem() (*Item, error)
+	PopMinItem() (*Item, error)
+	PopMaxItem() (*Item, error)
+	Insert(id Id, dist float32)
+	IsEmpty() bool
+	Len() int
+	Less(i, j int) bool
+	Swap(i, j int)
+	Push(x *Item)
+	Pop() *Item
+}
+
 type DistHeap struct {
 	items   []*Item
 	visited map[Id]bool
@@ -24,13 +38,11 @@ func NewDistHeap() *DistHeap {
 	Init(d)
 	return d
 }
-
 func FromItems(items []*Item) *DistHeap {
 	d := &DistHeap{items: items, visited: make(map[Id]bool)}
 	Init(d)
 	return d
 }
-
 func (d *DistHeap) PeekMinItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
@@ -38,7 +50,6 @@ func (d *DistHeap) PeekMinItem() (*Item, error) {
 
 	return (*d).items[0], nil
 }
-
 func (d *DistHeap) PeekMaxItem() (*Item, error) {
 	if d.Len() == 0 {
 		return nil, EmptyHeapError
@@ -60,7 +71,6 @@ func (d *DistHeap) PeekMaxItem() (*Item, error) {
 
 	return (*d).items[i], nil
 }
-
 func (d *DistHeap) PopMinItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
@@ -68,7 +78,6 @@ func (d *DistHeap) PopMinItem() (*Item, error) {
 
 	return Pop(d).(*Item), nil
 }
-
 func (d *DistHeap) PopMaxItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
@@ -76,7 +85,6 @@ func (d *DistHeap) PopMaxItem() (*Item, error) {
 
 	return PopMax(d).(*Item), nil
 }
-
 func (d *DistHeap) Insert(id Id, dist float32) {
 	if d.visited[id] {
 		for idx, item := range d.items {
@@ -91,16 +99,14 @@ func (d *DistHeap) Insert(id Id, dist float32) {
 		d.visited[id] = true
 	}
 }
-
 func (d DistHeap) IsEmpty() bool      { return len(d.items) == 0 }
 func (d DistHeap) Len() int           { return len(d.items) }
 func (d DistHeap) Less(i, j int) bool { return d.items[i].dist < d.items[j].dist }
 func (d DistHeap) Swap(i, j int)      { d.items[i], d.items[j] = d.items[j], d.items[i] }
-func (d *DistHeap) Push(x interface{}) {
-	(*d).items = append((*d).items, x.(*Item))
+func (d *DistHeap) Push(x *Item) {
+	(*d).items = append((*d).items, x)
 }
-
-func (d *DistHeap) Pop() interface{} {
+func (d *DistHeap) Pop() *Item {
 	old := (*d).items
 	n := len(old)
 	x := old[n-1]
