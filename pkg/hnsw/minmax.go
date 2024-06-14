@@ -91,7 +91,7 @@ func (d *DistHeap) down(i, n int) bool {
 	return i > i0
 }
 
-func (d *DistHeap) up(i int) {
+func (d *DistHeap) up(i int) int {
 	min := isMinLevel(i)
 
 	if hasParent(i) {
@@ -106,10 +106,12 @@ func (d *DistHeap) up(i int) {
 	for hasGrandparent(i) {
 		g := grandparent(i)
 		if d.Less(i, g) != min {
-			return
+			return i
 		}
 
 		d.Swap(i, g)
 		i = g
 	}
+
+	return i
 }
