@@ -106,7 +106,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -151,7 +151,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -190,7 +190,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor)
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 
 		if err != nil {
 			t.Fatal(err)
@@ -220,7 +220,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatalf("expected # of neighbors to return to be 1, got %v", closestNeighbor.Len())
 		}
 
-		closestItem, err := closestNeighbor.PopItem()
+		closestItem, err := closestNeighbor.PopMinItem()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -255,7 +255,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 		var closestIds []Id
 
 		for !closestNeighbor.IsEmpty() {
-			closestItem, err := closestNeighbor.PopItem()
+			closestItem, err := closestNeighbor.PopMinItem()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -332,7 +332,7 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 func TestHnsw_SelectNeighbors(t *testing.T) {
 
 	t.Run("selects neighbors given overflow", func(t *testing.T) {
-		nearestNeighbors := NewBaseQueue(MinComparator{})
+		nearestNeighbors := NewDistHeap()
 
 		M := 4
 
@@ -354,7 +354,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 		}
 
 		// for the sake of testing, let's rebuild the pq and assert ids are correct
-		reneighbors := NewBaseQueue(MinComparator{})
+		reneighbors := NewDistHeap()
 
 		for _, item := range neighbors {
 			reneighbors.Insert(item.id, item.dist)
@@ -362,7 +362,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 
 		expectedId := Id(0)
 		for !reneighbors.IsEmpty() {
-			nn, err := reneighbors.PopItem()
+			nn, err := reneighbors.PopMinItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -380,7 +380,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 		M := 10
 		h := NewHnsw(2, 10, M, Point{0, 0})
 
-		nnQueue := NewBaseQueue(MinComparator{})
+		nnQueue := NewDistHeap()
 
 		for i := 0; i < 3; i++ {
 			nnQueue.Insert(Id(i), float32(i))
@@ -396,7 +396,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 			t.Fatalf("select neighbors should have at least 3 neighbors, got: %v", len(neighbors))
 		}
 
-		reneighbors := NewBaseQueue(MinComparator{})
+		reneighbors := NewDistHeap()
 
 		for _, item := range neighbors {
 			reneighbors.Insert(item.id, item.dist)
@@ -404,7 +404,7 @@ func TestHnsw_SelectNeighbors(t *testing.T) {
 
 		expectedId := Id(0)
 		for !reneighbors.IsEmpty() {
-			nn, err := reneighbors.PopItem()
+			nn, err := reneighbors.PopMinItem()
 
 			if err != nil {
 				t.Fatal(err)
@@ -438,7 +438,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 	t.Run("bulk insert", func(t *testing.T) {
 		items := 1
 
-		h := NewHnsw(3, 4, 4, Point{0, 0, 0})
+		h := NewHnsw(3, 4, 10, Point{0, 0, 0})
 
 		for i := 100; i >= 1; i-- {
 			j := float32(i)
@@ -466,6 +466,34 @@ func TestHnsw_InsertVector(t *testing.T) {
 			}
 
 			items += 1
+		}
+
+		// ensure every friend pq is of max length 4
+		var allNodeIds []Id
+		for id := range h.friends {
+			allNodeIds = append(allNodeIds, id)
+		}
+
+		for _, nodeId := range allNodeIds {
+			nodeFriends, ok := h.friends[nodeId]
+			if !ok {
+				t.Fatalf("expected to find point for node %v", nodeId)
+			}
+
+			for level, friendsAtLevel := range nodeFriends.friends {
+				if level == 0 {
+					if friendsAtLevel.Len() > h.Mmax0 {
+						t.Fatalf("node id %v, num friends at level 0 cannot be greater than max number of connections M = %v. Got %v", nodeId, h.M, friendsAtLevel.Len())
+					}
+
+					continue
+				}
+
+				if friendsAtLevel.Len() > h.M {
+					t.Fatalf("num friends at level %v cannot be greater than max number of connections M: %v. Got: %v", level, h.M, friendsAtLevel.Len())
+				}
+			}
+
 		}
 	})
 
@@ -512,7 +540,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		expectedId := Id(3)
 
 		for !nearestNeighbors.IsEmpty() {
-			nearestNeighbor, err := nearestNeighbors.PopItem()
+			nearestNeighbor, err := nearestNeighbors.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", nearestNeighbors, err)
 			}
@@ -548,7 +576,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		var gotIds []Id
 
 		for !closestToQ.IsEmpty() {
-			closest, err := closestToQ.PopItem()
+			closest, err := closestToQ.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", closestToQ, err)
 			}
@@ -589,7 +617,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		var got []Id
 
 		for !closestNeighbors.IsEmpty() {
-			closest, err := closestNeighbors.PopItem()
+			closest, err := closestNeighbors.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", closestNeighbors, err)
 			}
@@ -623,7 +651,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		expectedId := Id(0)
 
 		for found.IsEmpty() {
-			nnItem, err := found.PopItem()
+			nnItem, err := found.PopMinItem()
 			if err != nil {
 				t.Fatalf("failed to pop item: %v, err: %v", found, err)
 			}
