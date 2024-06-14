@@ -60,23 +60,26 @@ func (h *Hnsw) GenerateId() Id {
 	return Id(len(h.points))
 }
 
-func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, level int) (*BaseQueue, error) {
+func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, level int) (*DistHeap, error) {
 	visited := make([]bool, len(h.friends)+1)
 
-	candidatesForQ := NewBaseQueue(MinComparator{})
-	foundNNToQ := NewBaseQueue(MaxComparator{})
+	candidatesForQ := NewDistHeap()
+	foundNNToQ := NewDistHeap() // this is a max
 
 	// note entryItem.dist should be the distance to Q
 	candidatesForQ.Insert(entryItem.id, entryItem.dist)
 	foundNNToQ.Insert(entryItem.id, entryItem.dist)
 
 	for !candidatesForQ.IsEmpty() {
-		closestCandidate, err := candidatesForQ.PopItem()
+		closestCandidate, err := candidatesForQ.PopMinItem()
 		if err != nil {
 			return nil, fmt.Errorf("error during searching level %d: %w", level, err)
 		}
 
-		furthestFoundNN := foundNNToQ.Top()
+		furthestFoundNN, err := foundNNToQ.PeekMaxItem()
+		if err != nil {
+			return nil, fmt.Errorf("error during searching level %d: %w", level, err)
+		}
 
 		// if distance(c, q) > distance(f, q)
 		if closestCandidate.dist > furthestFoundNN.dist {
@@ -94,7 +97,10 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 			if !visited[ccFriendId] {
 				visited[ccFriendId] = true
 
-				furthestFoundNN = foundNNToQ.Top()
+				furthestFoundNN, err = foundNNToQ.PeekMaxItem()
+				if err != nil {
+					return nil, fmt.Errorf("error during searching level %d: %w", level, err)
+				}
 
 				ccFriendPoint, ok := h.points[ccFriendId]
 				if !ok {
@@ -108,7 +114,7 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 					foundNNToQ.Insert(ccFriendId, ccFriendDistToQ)
 
 					if foundNNToQ.Len() > numNearestToQToReturn {
-						if _, err = foundNNToQ.PopItem(); err != nil {
+						if _, err = foundNNToQ.PopMaxItem(); err != nil {
 							return nil, fmt.Errorf("error during searching level %d: %w", level, err)
 						}
 					}
@@ -118,7 +124,7 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 
 	}
 
-	return FromBaseQueue(foundNNToQ, MinComparator{}), nil
+	return foundNNToQ, nil
 }
 
 func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
@@ -141,7 +147,7 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 			return epItem
 		}
 
-		newEpItem, err := closestNeighborsToQ.PopItem()
+		newEpItem, err := closestNeighborsToQ.PopMinItem()
 		if err != nil {
 			panic(err)
 		}
@@ -152,7 +158,7 @@ func (h *Hnsw) findCloserEntryPoint(q *Point, qFriends *Friends) *Item {
 	return epItem
 }
 
-func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) ([]*Item, error) {
+func (h *Hnsw) selectNeighbors(nearestNeighbors *DistHeap) ([]*Item, error) {
 	if nearestNeighbors.Len() <= h.M {
 		return nearestNeighbors.items, nil
 	}
@@ -160,7 +166,7 @@ func (h *Hnsw) selectNeighbors(nearestNeighbors *BaseQueue) ([]*Item, error) {
 	nearestItems := make([]*Item, h.M)
 
 	for i := 0; i < h.M; i++ {
-		nearestItem, err := nearestNeighbors.PopItem()
+		nearestItem, err := nearestNeighbors.PopMinItem()
 
 		if err != nil {
 			return nil, err
@@ -218,31 +224,19 @@ func (h *Hnsw) InsertVector(q Point) error {
 				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
 
-			maxNumberOfNeighbors := h.M
-			if level == 0 {
-				maxNumberOfNeighbors = h.Mmax0
-			}
-
-			eConnections := neighborFriendsAtLevel
-			if eConnections.Len() > maxNumberOfNeighbors {
-				var items []*Item
-
-				for !neighborFriendsAtLevel.IsEmpty() {
-					nearestNeighborFriendAtLevelItem, err := neighborFriendsAtLevel.PopItem()
-					if err != nil {
-						return fmt.Errorf("failed to pop from neighborFriendsAtLevel: %w", err)
-					}
-
-					items = append(items, nearestNeighborFriendAtLevelItem)
+			for neighborFriendsAtLevel.Len() > h.M {
+				_, err := neighborFriendsAtLevel.PopMaxItem()
+				if err != nil {
+					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 				}
 
 				eConnections = FromItems(items, MinComparator{})
 			}
 
-			h.friends[neighbor.id].friends[level] = eConnections
+			h.friends[neighbor.id].friends[level] = neighborFriendsAtLevel
 		}
 
-		newEntryItem, err := nnToQAtLevel.PopItem()
+		newEntryItem, err := nnToQAtLevel.PopMinItem()
 		if err != nil {
 			return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 		}
@@ -261,7 +255,7 @@ func (h *Hnsw) isValidPoint(point Point) bool {
 	return len(point) == h.vectorDimensionality
 }
 
-func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*BaseQueue, error) {
+func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*DistHeap, error) {
 	entryPoint, ok := h.points[h.entryPointId]
 
 	if !ok {
@@ -287,7 +281,10 @@ func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*BaseQueue, error) 
 			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 		}
 
-		entryItem = nearestNeighborQueueAtLevel.Top()
+		entryItem, err = nearestNeighborQueueAtLevel.PeekMinItem()
+		if err != nil {
+			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+		}
 	}
 
 	// level 0
@@ -296,24 +293,12 @@ func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*BaseQueue, error) 
 		return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %d", h.entryPointId, 0)
 	}
 
-	if nearestNeighborQueueAtLevel0.Len() <= numNeighborsToReturn {
-		return nearestNeighborQueueAtLevel0, nil
-	}
-
-	var items []*Item
-
-	for !nearestNeighborQueueAtLevel0.IsEmpty() {
-		if len(items) == numNeighborsToReturn {
-			return FromItems(items, MinComparator{}), nil
-		}
-
-		nearestNeighborAtLevel0Item, err := nearestNeighborQueueAtLevel0.PopItem()
+	for nearestNeighborQueueAtLevel0.Len() > numNeighborsToReturn {
+		_, err := nearestNeighborQueueAtLevel0.PopMaxItem()
 		if err != nil {
-			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %d", h.entryPointId, 0)
+			return nil, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", h.entryPointId, err)
 		}
-
-		items = append(items, nearestNeighborAtLevel0Item)
 	}
 
-	return FromItems(items, MinComparator{}), nil
+	return nearestNeighborQueueAtLevel0, nil
 }

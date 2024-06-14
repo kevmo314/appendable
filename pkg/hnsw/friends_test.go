@@ -69,12 +69,18 @@ func TestVector_LevelManagement(t *testing.T) {
 				t.Fatalf("expected hex and oct friends list at level %v to be 1, got: %v || %v", i, hexFriends.Len(), octFriends.Len())
 			}
 
-			top := hexFriends.Top()
+			top, err := hexFriends.PeekMinItem()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if top.id != octId {
 				t.Fatalf("expected %v, got %v", octId, top.id)
 			}
 
-			top = octFriends.Top()
+			top, err = octFriends.PeekMinItem()
+			if err != nil {
+				t.Fatal(err)
+			}
 			if top.id != hexId {
 				t.Fatalf("expected %v, got %v", hexId, top.id)
 			}
