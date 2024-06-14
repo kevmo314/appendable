@@ -2,6 +2,8 @@ package hnsw
 
 import (
 	"errors"
+	"fmt"
+	"math"
 	"reflect"
 	"testing"
 )
@@ -436,7 +438,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 	t.Run("bulk insert", func(t *testing.T) {
 		items := 1
 
-		h := NewHnsw(3, 4, 4, Point{0, 0, 0})
+		h := NewHnsw(3, 4, 10, Point{0, 0, 0})
 
 		for i := 100; i >= 1; i-- {
 			j := float32(i)
@@ -464,6 +466,34 @@ func TestHnsw_InsertVector(t *testing.T) {
 			}
 
 			items += 1
+		}
+
+		// ensure every friend pq is of max length 4
+		var allNodeIds []Id
+		for id := range h.friends {
+			allNodeIds = append(allNodeIds, id)
+		}
+
+		for _, nodeId := range allNodeIds {
+			nodeFriends, ok := h.friends[nodeId]
+			if !ok {
+				t.Fatalf("expected to find point for node %v", nodeId)
+			}
+
+			for level, friendsAtLevel := range nodeFriends.friends {
+				if level == 0 {
+					if friendsAtLevel.Len() > h.Mmax0 {
+						t.Fatalf("node id %v, num friends at level 0 cannot be greater than max number of connections M = %v. Got %v", nodeId, h.M, friendsAtLevel.Len())
+					}
+
+					continue
+				}
+
+				if friendsAtLevel.Len() > h.M {
+					t.Fatalf("num friends at level %v cannot be greater than max number of connections M: %v. Got: %v", level, h.M, friendsAtLevel.Len())
+				}
+			}
+
 		}
 	})
 
@@ -632,4 +662,47 @@ func TestHnsw_KnnSearch(t *testing.T) {
 			expectedId += 1
 		}
 	})
+}
+
+func generatePoints(numPoints int) []Point {
+	points := make([]Point, numPoints)
+
+	for i := 0; i < numPoints; i++ {
+		points[i] = Point{float32(i), float32(i), float32(i)}
+	}
+
+	return points
+}
+
+func BenchmarkHnsw_KnnSearch(b *testing.B) {
+
+	for i := 0; i <= 20; i++ {
+		numPoints := int(math.Pow(2, float64(i)))
+		b.Run(fmt.Sprintf("knnsearch %d_points", numPoints), func(b *testing.B) {
+			h := NewHnsw(3, 10, 12, Point{0, 0, 0})
+
+			points := generatePoints(numPoints)
+
+			for _, point := range points {
+				if len(point) != 3 {
+					b.Fatalf("expected point of dim 3, got dim: %v", len(point))
+				}
+
+				if err := h.InsertVector(point); err != nil {
+					b.Fatalf("failed to insert point: %v, err: %v", point, err)
+				}
+			}
+
+			q := Point{float32(numPoints / 2), float32(numPoints / 2), float32(numPoints / 2)}
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				_, err := h.KnnSearch(q, 5)
+				if err != nil {
+					b.Fatalf("failed to perform knnsearch: %v", err)
+				}
+			}
+
+		})
+	}
 }
