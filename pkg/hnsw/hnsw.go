@@ -229,8 +229,6 @@ func (h *Hnsw) InsertVector(q Point) error {
 				if err != nil {
 					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 				}
-
-				eConnections = FromItems(items, MinComparator{})
 			}
 
 			h.friends[neighbor.id].friends[level] = neighborFriendsAtLevel
