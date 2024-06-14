@@ -8,15 +8,15 @@ import (
 type Point []float32
 
 type Friends struct {
-	friends []*BaseQueue
+	friends []*DistHeap
 }
 
 // NewFriends creates a new vector, note the max level is inclusive.
 func NewFriends(topLevel int) *Friends {
-	friends := make([]*BaseQueue, topLevel+1)
+	friends := make([]*DistHeap, topLevel+1)
 
 	for i := 0; i <= topLevel; i++ {
-		friends[i] = NewBaseQueue(MinComparator{})
+		friends[i] = NewDistHeap()
 	}
 
 	return &Friends{
@@ -51,7 +51,7 @@ func (v *Friends) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	}
 }
 
-func (v *Friends) GetFriendsAtLevel(level int) (*BaseQueue, error) {
+func (v *Friends) GetFriendsAtLevel(level int) (*DistHeap, error) {
 	if !v.HasLevel(level) {
 		return nil, errors.New("failed to get friends at level")
 	}
