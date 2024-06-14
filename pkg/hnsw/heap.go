@@ -23,24 +23,6 @@ func NewDistHeap() *DistHeap {
 	}
 	return d
 }
-func FromItems(items []*Item) *DistHeap {
-	visited := make(map[Id]bool)
-	for _, item := range items {
-		visited[item.id] = true
-	}
-
-	d := &DistHeap{items: items, visited: visited}
-	d.Init()
-
-	return d
-}
-
-func (d *DistHeap) Init() {
-	n := d.Len()
-	for i := n/2 - 1; i >= 0; i-- {
-		d.down(i, n)
-	}
-}
 
 func (d *DistHeap) PeekMinItem() (*Item, error) {
 	if d.IsEmpty() {
