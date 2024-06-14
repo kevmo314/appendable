@@ -213,16 +213,13 @@ func (h *Hnsw) InsertVector(q Point) error {
 		// add bidirectional connections from neighbors to q at layer c
 		for _, neighbor := range neighbors {
 			neighborPoint := h.points[neighbor.id]
-
 			distNeighToQ := EuclidDistance(*neighborPoint, q)
-
 			h.friends[neighbor.id].InsertFriendsAtLevel(level, qId, distNeighToQ)
 			h.friends[qId].InsertFriendsAtLevel(level, neighbor.id, distNeighToQ)
 		}
 
 		for _, neighbor := range neighbors {
 			neighborFriendsAtLevel, err := h.friends[neighbor.id].GetFriendsAtLevel(level)
-
 			if err != nil {
 				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
