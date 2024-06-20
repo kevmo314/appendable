@@ -216,6 +216,44 @@ func TestBTree(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+
+	t.Run("contains", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tree := &BTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(2)}
+		if err := tree.Insert(ReferencedValue{Value: []byte{byte(1)}}, pointer.MemoryPointer{Offset: 5}); err != nil {
+			t.Fatal(err)
+		}
+		if err := tree.Insert(ReferencedValue{Value: []byte{byte(2)}}, pointer.MemoryPointer{Offset: 10}); err != nil {
+			t.Fatal(err)
+		}
+
+		for _, byteVal := range []byte{1, 2} {
+			res, err := tree.Contains(ReferencedValue{Value: []byte{byteVal}})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !res {
+				t.Fatal("expected to find key")
+			}
+		}
+
+		res, err := tree.Contains(ReferencedValue{Value: []byte{byte(3)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if res {
+			t.Fatal("expected to not find key")
+		}
+
+	})
+
 }
 
 func TestBTree_SequentialInsertionTest(t *testing.T) {
