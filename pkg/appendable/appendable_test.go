@@ -2,7 +2,7 @@ package appendable
 
 import (
 	"github.com/kevmo314/appendable/pkg/buftest"
-	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/linkedpage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"reflect"
 	"testing"
@@ -16,7 +16,7 @@ func TestMarshalMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree, err := metapage.NewMultiBPTree(p, 0)
+		tree, err := linkedpage.NewMultiBPTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestMarshalMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree, err := metapage.NewMultiBPTree(p, 0)
+		tree, err := linkedpage.NewMultiBPTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

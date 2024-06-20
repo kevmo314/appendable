@@ -1,4 +1,4 @@
-package metapage
+package linkedpage
 
 import (
 	"encoding"
@@ -16,7 +16,7 @@ import (
 var errNotAPage = errors.New("this is not a page, did you forget to call .Next() on a tree?")
 
 /**
- * LinkedMetaPage is a linked list of meta pages. Each page contains
+ * LinkedPage is a linked list of meta pages. Each page contains
  * a pointer to the root of the B+ tree, a pointer to the next meta page,
  * and the remainder of the page is allocated as free space for metadata.
  *
@@ -25,7 +25,7 @@ var errNotAPage = errors.New("this is not a page, did you forget to call .Next()
  * page in the linked list will have a next pointer with offset
  * math.MaxUint64.
  */
-type LinkedMetaPage struct {
+type LinkedPage struct {
 	rws pagefile.ReadWriteSeekPager
 
 	// offset is the byte offset of the page in the page file.
@@ -59,7 +59,7 @@ The SLOT_WIDTH is 12 + 1 + 256 for a given slot.
 0th index slot => 12 + 1
 ith index slot => 12 + 1 + <width of the ith slot> => 12 + 1 + i * SLOT_WIDTH
 i+1th index slot = > 12 + 1 + <width of the i+1th slot> => 12 + 1 + (i + 1) + SLOT_WIDTH);
-NewBPTree( page num ) => LinkedMetaPage
+NewBPTree( page num ) => LinkedPage
 */
 
 const numSlots = 15
@@ -79,7 +79,7 @@ type memoryLayout struct {
 var pointerBytes = uint64(binary.Size(uint64(0)))
 var countByte = uint64(binary.Size(uint8(1)))
 
-func (m *LinkedMetaPage) Root() (pointer.MemoryPointer, error) {
+func (m *LinkedPage) Root() (pointer.MemoryPointer, error) {
 	if m.index == ^uint8(0) {
 		return pointer.MemoryPointer{}, errNotAPage
 	}
@@ -90,7 +90,7 @@ func (m *LinkedMetaPage) Root() (pointer.MemoryPointer, error) {
 	return mp, binary.Read(m.rws, binary.LittleEndian, &mp)
 }
 
-func (m *LinkedMetaPage) SetRoot(mp pointer.MemoryPointer) error {
+func (m *LinkedPage) SetRoot(mp pointer.MemoryPointer) error {
 	if m.index == ^uint8(0) {
 		return errNotAPage
 	}
@@ -106,13 +106,13 @@ func (m *LinkedMetaPage) SetRoot(mp pointer.MemoryPointer) error {
 //
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
-func (m *LinkedMetaPage) BPTree(t *bptree.BPTree) *bptree.BPTree {
+func (m *LinkedPage) BPTree(t *bptree.BPTree) *bptree.BPTree {
 	t.PageFile = m.rws
 	t.MetaPage = m
 	return t
 }
 
-func (m *LinkedMetaPage) Metadata() ([]byte, error) {
+func (m *LinkedPage) Metadata() ([]byte, error) {
 	if m.index == ^uint8(0) {
 		return nil, errNotAPage
 	}
@@ -128,7 +128,7 @@ func (m *LinkedMetaPage) Metadata() ([]byte, error) {
 	return buf[1 : 1+length], nil
 }
 
-func (m *LinkedMetaPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
+func (m *LinkedPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error {
 	md, err := m.Metadata()
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func (m *LinkedMetaPage) UnmarshalMetadata(bu encoding.BinaryUnmarshaler) error 
 	return bu.UnmarshalBinary(md)
 }
 
-func (m *LinkedMetaPage) SetMetadata(data []byte) error {
+func (m *LinkedPage) SetMetadata(data []byte) error {
 	if m.index == ^uint8(0) {
 		return errNotAPage
 	}
@@ -154,7 +154,7 @@ func (m *LinkedMetaPage) SetMetadata(data []byte) error {
 	return nil
 }
 
-func (m *LinkedMetaPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
+func (m *LinkedPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
 	buf, err := bm.MarshalBinary()
 	if err != nil {
 		return err
@@ -162,7 +162,7 @@ func (m *LinkedMetaPage) MarshalMetadata(bm encoding.BinaryMarshaler) error {
 	return m.SetMetadata(buf)
 }
 
-func (m *LinkedMetaPage) nextPageOffset() (uint64, error) {
+func (m *LinkedPage) nextPageOffset() (uint64, error) {
 	if _, err := m.rws.Seek(int64(m.offset), io.SeekStart); err != nil {
 		return 0, err
 	}
@@ -170,7 +170,7 @@ func (m *LinkedMetaPage) nextPageOffset() (uint64, error) {
 	return next, binary.Read(m.rws, binary.LittleEndian, &next)
 }
 
-func (m *LinkedMetaPage) count() (uint8, error) {
+func (m *LinkedPage) count() (uint8, error) {
 	if _, err := m.rws.Seek(int64(m.offset)+int64(pointerBytes), io.SeekStart); err != nil {
 		return 0, err
 	}
@@ -178,18 +178,18 @@ func (m *LinkedMetaPage) count() (uint8, error) {
 	return count, binary.Read(m.rws, binary.LittleEndian, &count)
 }
 
-func (m *LinkedMetaPage) rootMemoryPointerPageOffset() uint64 {
+func (m *LinkedPage) rootMemoryPointerPageOffset() uint64 {
 	return m.offset + pointerBytes + countByte + uint64(m.index)*(uint64(m.rws.SlotSize())+pointerBytes+countByte)
 }
 
-func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
+func (m *LinkedPage) Next() (*LinkedPage, error) {
 	// if the current index is less than the count, increment the index.
 	count, err := m.count()
 	if err != nil {
 		return nil, err
 	}
 	if m.index+1 < count {
-		return &LinkedMetaPage{rws: m.rws, offset: m.offset, index: m.index + 1}, nil
+		return &LinkedPage{rws: m.rws, offset: m.offset, index: m.index + 1}, nil
 	}
 	// otherwise, read the next page
 	nextOffset, err := m.nextPageOffset()
@@ -200,10 +200,10 @@ func (m *LinkedMetaPage) Next() (*LinkedMetaPage, error) {
 		// we've reached the end of the linked list
 		return nil, io.EOF
 	}
-	return &LinkedMetaPage{rws: m.rws, offset: nextOffset}, nil
+	return &LinkedPage{rws: m.rws, offset: nextOffset}, nil
 }
 
-func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
+func (m *LinkedPage) AddNext() (*LinkedPage, error) {
 	count, err := m.count()
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 		if err := binary.Write(m.rws, binary.LittleEndian, count+1); err != nil {
 			return nil, err
 		}
-		return &LinkedMetaPage{rws: m.rws, offset: m.offset, index: m.index + 1}, nil
+		return &LinkedPage{rws: m.rws, offset: m.offset, index: m.index + 1}, nil
 	} else {
 		// otherwise, read the next page
 		nextOffset, err := m.nextPageOffset()
@@ -233,7 +233,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 		if err != nil {
 			return nil, err
 		}
-		next := &LinkedMetaPage{rws: m.rws, offset: uint64(offset)}
+		next := &LinkedPage{rws: m.rws, offset: uint64(offset)}
 		if err := next.reset(1); err != nil {
 			return nil, err
 		}
@@ -248,7 +248,7 @@ func (m *LinkedMetaPage) AddNext() (*LinkedMetaPage, error) {
 	}
 }
 
-func (m *LinkedMetaPage) reset(count uint8) error {
+func (m *LinkedPage) reset(count uint8) error {
 	// write a full page of zeros
 	emptyPage := make([]byte, m.rws.PageSize())
 	binary.LittleEndian.PutUint64(emptyPage[0:pointerBytes], ^uint64(0))
@@ -265,8 +265,8 @@ func (m *LinkedMetaPage) reset(count uint8) error {
 // Collect returns a slice of all linked meta pages from this page to the end.
 // This function is useful for debugging and testing, however generally it should
 // not be used for functional code.
-func (m *LinkedMetaPage) Collect() ([]*LinkedMetaPage, error) {
-	var pages []*LinkedMetaPage
+func (m *LinkedPage) Collect() ([]*LinkedPage, error) {
+	var pages []*LinkedPage
 	node := m
 	for {
 		if node.index != ^uint8(0) {
@@ -283,7 +283,7 @@ func (m *LinkedMetaPage) Collect() ([]*LinkedMetaPage, error) {
 	}
 }
 
-func (m *LinkedMetaPage) String() string {
+func (m *LinkedPage) String() string {
 	nm, err := m.nextPageOffset()
 	if err != nil {
 		panic(err)
@@ -292,15 +292,15 @@ func (m *LinkedMetaPage) String() string {
 	if err != nil {
 		panic(err)
 	}
-	return fmt.Sprintf("LinkedMetaPage{offset: %x, index: %d,\tnext: %x,\troot: %x}", m.offset, m.index, nm, root.Offset)
+	return fmt.Sprintf("LinkedPage{offset: %x, index: %d,\tnext: %x,\troot: %x}", m.offset, m.index, nm, root.Offset)
 }
 
-func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
+func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedPage, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err
 	}
-	lmp := &LinkedMetaPage{rws: t, offset: uint64(offset), index: ^uint8(0)}
+	lmp := &LinkedPage{rws: t, offset: uint64(offset), index: ^uint8(0)}
 	// attempt to read the page and initialize it if it doesn't already exist
 	if _, err := t.Seek(offset, io.SeekStart); err != nil {
 		return nil, err

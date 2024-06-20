@@ -3,7 +3,7 @@ package appendable
 import (
 	"errors"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/linkedpage"
 	"io"
 	"time"
 
@@ -21,7 +21,7 @@ type DataHandler interface {
 
 // IndexFile is a representation of the entire index file.
 type IndexFile struct {
-	tree        *metapage.LinkedMetaPage
+	tree        *linkedpage.LinkedPage
 	dataHandler DataHandler
 
 	pf                *pagefile.PageFile
@@ -36,7 +36,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
 
-	tree, err := metapage.NewMultiBPTree(pf, 0)
+	tree, err := linkedpage.NewMultiBPTree(pf, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}
@@ -101,7 +101,7 @@ func (i *IndexFile) SetMetadata(metadata *FileMeta) error {
 	return i.tree.SetMetadata(buf)
 }
 
-func (i *IndexFile) Indexes() (*metapage.LinkedMetaPage, error) {
+func (i *IndexFile) Indexes() (*linkedpage.LinkedPage, error) {
 	return i.tree.Next()
 }
 
@@ -146,7 +146,7 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 	return fieldNames, nil
 }
 
-func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*metapage.LinkedMetaPage, *IndexMeta, error) {
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*linkedpage.LinkedPage, *IndexMeta, error) {
 	mp := i.tree
 	for {
 		next, err := mp.Next()
