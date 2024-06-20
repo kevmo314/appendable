@@ -1,4 +1,4 @@
-import { BTree, ReferencedValue } from "../btree/btree";
+import { BPTree, ReferencedValue } from "../bptree/bptree";
 import { LinkedMetaPage, maxUint64 } from "../file/multi";
 import { DataFile } from "../file/data-file";
 import { VersionedIndexFile } from "../file/index-file";
@@ -15,7 +15,7 @@ import {
 } from "./query-lang";
 import { NgramTokenizer } from "../ngram/tokenizer";
 import { PriorityTable } from "../ngram/table";
-import { DataPointer } from "../btree/node";
+import { DataPointer } from "../bptree/node";
 export enum FieldType {
   String = 0,
   Int64 = 1,
@@ -123,7 +123,7 @@ export class Database<T extends Schema> {
       const table = new PriorityTable<DataPointer>();
       const metaPageCache = new Map<FieldType, LinkedMetaPage>();
 
-      const btreeMap = new Map<FieldType, BTree>();
+      const btreeMap = new Map<FieldType, BPTree>();
 
       for (const token of likeToks) {
         const { type: fieldType, valueBuf } = token;
@@ -148,7 +148,7 @@ export class Database<T extends Schema> {
         } = readIndexMeta(await mp.metadata());
 
         if (!btreeMap.has(mpFieldType)) {
-          const btree = new BTree(
+          const btree = new BPTree(
             this.indexFile.getResolver(),
             mp,
             dfResolver,
@@ -212,7 +212,7 @@ export class Database<T extends Schema> {
           ord = query.orderBy[0].direction;
         }
 
-        const btree = new BTree(
+        const btree = new BPTree(
           this.indexFile.getResolver(),
           mp,
           dfResolver,

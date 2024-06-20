@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 	"github.com/kevmo314/appendable/pkg/pointer"
 
 	"github.com/kevmo314/appendable/pkg/pagefile"
@@ -59,7 +59,7 @@ The SLOT_WIDTH is 12 + 1 + 256 for a given slot.
 0th index slot => 12 + 1
 ith index slot => 12 + 1 + <width of the ith slot> => 12 + 1 + i * SLOT_WIDTH
 i+1th index slot = > 12 + 1 + <width of the i+1th slot> => 12 + 1 + (i + 1) + SLOT_WIDTH);
-NewBTree( page num ) => LinkedMetaPage
+NewBPTree( page num ) => LinkedMetaPage
 */
 
 const numSlots = 15
@@ -100,13 +100,13 @@ func (m *LinkedMetaPage) SetRoot(mp pointer.MemoryPointer) error {
 	return binary.Write(m.rws, binary.LittleEndian, mp)
 }
 
-// btree.BTree returns a B+ tree that uses this meta page as the root
+// bptree.BPTree returns a B+ tree that uses this meta page as the root
 // of the tree. If data is not nil, then it will be used as the
 // data source for the tree.
 //
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
-func (m *LinkedMetaPage) BTree(t *btree.BTree) *btree.BTree {
+func (m *LinkedMetaPage) BPTree(t *bptree.BPTree) *bptree.BPTree {
 	t.PageFile = m.rws
 	t.MetaPage = m
 	return t
@@ -295,7 +295,7 @@ func (m *LinkedMetaPage) String() string {
 	return fmt.Sprintf("LinkedMetaPage{offset: %x, index: %d,\tnext: %x,\troot: %x}", m.offset, m.index, nm, root.Offset)
 }
 
-func NewMultiBTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
+func NewMultiBPTree(t pagefile.ReadWriteSeekPager, page int) (*LinkedMetaPage, error) {
 	offset, err := t.Page(0)
 	if err != nil {
 		return nil, err

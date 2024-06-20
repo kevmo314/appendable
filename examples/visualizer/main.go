@@ -7,7 +7,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 	"github.com/kevmo314/appendable/pkg/handlers"
 	"github.com/kevmo314/appendable/pkg/mmap"
 	"github.com/kevmo314/appendable/pkg/pagefile"
@@ -82,7 +82,7 @@ func main() {
 			// this is a linked meta page
 			lmps = lmps[1:]
 
-			// metaPage, err := metapage.NewMultiBTree(pf, int(i))
+			// metaPage, err := metapage.NewMultiBPTree(pf, int(i))
 			// if err != nil {
 			// 	panic(err)
 			// }
@@ -114,8 +114,8 @@ func main() {
 			// fmt.Printf("<pre>%x</pre>", md)
 			// fmt.Printf("</details></li>")
 		} else {
-			// try to read the page as a btree node
-			node := &btree.BTreeNode{}
+			// try to read the page as a bptree node
+			node := &bptree.BPTreeNode{}
 			node.Data = mmdf.Bytes()
 			node.DataParser = &handlers.JSONLHandler{}
 

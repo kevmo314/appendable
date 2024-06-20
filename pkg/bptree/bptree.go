@@ -1,4 +1,4 @@
-package btree
+package bptree
 
 import (
 	"bytes"
@@ -10,7 +10,7 @@ import (
 	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
-// MetaPage is an abstract interface over the root page of a btree
+// MetaPage is an abstract interface over the root page of a bptree
 // This allows the caller to control the memory location of the meta
 // pointer
 type MetaPage interface {
@@ -18,7 +18,7 @@ type MetaPage interface {
 	SetRoot(pointer.MemoryPointer) error
 }
 
-type BTree struct {
+type BPTree struct {
 	MetaPage MetaPage
 	PageFile pagefile.ReadWriteSeekPager
 
@@ -28,7 +28,7 @@ type BTree struct {
 	Width uint16
 }
 
-func (t *BTree) root() (*BTreeNode, pointer.MemoryPointer, error) {
+func (t *BPTree) root() (*BPTreeNode, pointer.MemoryPointer, error) {
 	mp, err := t.MetaPage.Root()
 	if err != nil || mp.Length == 0 {
 		return nil, mp, nil
@@ -41,14 +41,14 @@ func (t *BTree) root() (*BTreeNode, pointer.MemoryPointer, error) {
 }
 
 type TraversalRecord struct {
-	node  *BTreeNode
+	node  *BPTreeNode
 	index int
 	// the offset is useful so we know which page to free when we split
 	ptr pointer.MemoryPointer
 }
 
 type TraversalIterator struct {
-	tree    *BTree
+	tree    *BPTree
 	key     ReferencedValue
 	records []TraversalRecord
 	err     error
@@ -140,11 +140,11 @@ func (p *TraversalIterator) Err() error {
 	return p.err
 }
 
-func (t *BTree) Iter(key ReferencedValue) (*TraversalIterator, error) {
+func (t *BPTree) Iter(key ReferencedValue) (*TraversalIterator, error) {
 	return &TraversalIterator{tree: t, key: key}, nil
 }
 
-func (t *BTree) Find(key ReferencedValue) (ReferencedValue, pointer.MemoryPointer, error) {
+func (t *BPTree) Find(key ReferencedValue) (ReferencedValue, pointer.MemoryPointer, error) {
 	p, err := t.Iter(key)
 	if err != nil {
 		return ReferencedValue{}, pointer.MemoryPointer{}, err
@@ -155,7 +155,7 @@ func (t *BTree) Find(key ReferencedValue) (ReferencedValue, pointer.MemoryPointe
 	return p.Key(), p.Pointer(), nil
 }
 
-func (t *BTree) Contains(key ReferencedValue) (bool, error) {
+func (t *BPTree) Contains(key ReferencedValue) (bool, error) {
 	k, _, err := t.Find(key)
 	if err != nil {
 		return false, err
@@ -164,11 +164,11 @@ func (t *BTree) Contains(key ReferencedValue) (bool, error) {
 	return bytes.Equal(k.Value, key.Value), nil
 }
 
-func (t *BTree) readNode(ptr pointer.MemoryPointer) (*BTreeNode, error) {
+func (t *BPTree) readNode(ptr pointer.MemoryPointer) (*BPTreeNode, error) {
 	if _, err := t.PageFile.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
 	}
-	node := &BTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
+	node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 	buf := make([]byte, t.PageFile.PageSize())
 	if _, err := t.PageFile.Read(buf); err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (t *BTree) readNode(ptr pointer.MemoryPointer) (*BTreeNode, error) {
 	return node, nil
 }
 
-func (t *BTree) first() (ReferencedValue, error) {
+func (t *BPTree) first() (ReferencedValue, error) {
 	rootNode, _, err := t.root()
 
 	if err != nil {
@@ -203,7 +203,7 @@ func (t *BTree) first() (ReferencedValue, error) {
 	return currNode.Keys[0], nil
 }
 
-func (t *BTree) last() (ReferencedValue, error) {
+func (t *BPTree) last() (ReferencedValue, error) {
 	rootNode, _, err := t.root()
 
 	if err != nil {
@@ -229,7 +229,7 @@ func (t *BTree) last() (ReferencedValue, error) {
 
 // traverse returns the path from root to leaf in reverse order (leaf first)
 // the last element is always the node passed in
-func (t *BTree) traverse(key ReferencedValue, node *BTreeNode, ptr pointer.MemoryPointer) ([]TraversalRecord, error) {
+func (t *BPTree) traverse(key ReferencedValue, node *BPTreeNode, ptr pointer.MemoryPointer) ([]TraversalRecord, error) {
 	// binary search node.Keys to find the first key greater than key
 	index, found := slices.BinarySearchFunc(node.Keys, key, CompareReferencedValues)
 
@@ -256,11 +256,11 @@ func (t *BTree) traverse(key ReferencedValue, node *BTreeNode, ptr pointer.Memor
 	return append(path, TraversalRecord{node: node, index: index, ptr: ptr}), nil
 }
 
-func (t *BTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
+func (t *BPTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
 
 	if t.Width != uint16(0) {
 		if uint16(len(key.Value)) != t.Width-1 {
-			return fmt.Errorf("key |%v| to insert does not match with BTree width. Expected width: %v, got: %v", string(key.Value), t.Width-1, len(key.Value))
+			return fmt.Errorf("key |%v| to insert does not match with BPTree width. Expected width: %v, got: %v", string(key.Value), t.Width-1, len(key.Value))
 		}
 	}
 
@@ -270,7 +270,7 @@ func (t *BTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
 	}
 	if root == nil {
 		// special case, create the root as the first node
-		node := &BTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
+		node := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 		node.Keys = []ReferencedValue{key}
 		node.LeafPointers = []pointer.MemoryPointer{value}
 		buf, err := node.MarshalBinary()
@@ -317,7 +317,7 @@ func (t *BTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
 			midKey := n.Keys[mid]
 
 			// n is the left node, m the right node
-			m := &BTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
+			m := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 			if n.Leaf() {
 				m.LeafPointers = n.LeafPointers[mid:]
 				m.Keys = n.Keys[mid:]
@@ -367,7 +367,7 @@ func (t *BTree) Insert(key ReferencedValue, value pointer.MemoryPointer) error {
 				// the parent will be written to disk in the next iteration
 			} else {
 				// the root split, so create a new root
-				p := &BTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
+				p := &BPTreeNode{Data: t.Data, DataParser: t.DataParser, Width: t.Width}
 				p.Keys = []ReferencedValue{midKey}
 				p.InternalPointers = []uint64{
 					noffset, uint64(moffset),
@@ -435,7 +435,7 @@ type Entry struct {
 // 		chunk := entries[i:min(i+t.maxPageSize, len(entries))]
 
 // 		// write the chunk to disk
-// 		node := &BTreeNode{}
+// 		node := &BPTreeNode{}
 // 		node.Keys = make([][]byte, len(chunk))
 // 		node.Pointers = make([]MemoryPointer, len(chunk))
 // 		for i, e := range chunk {
@@ -463,7 +463,7 @@ type Entry struct {
 // 			chunk := parents[i:min(i+t.maxPageSize, len(parents))]
 
 // 			// write the chunk to disk
-// 			node := &BTreeNode{}
+// 			node := &BPTreeNode{}
 // 			node.Keys = make([][]byte, len(chunk)-1)
 // 			node.Pointers = make([]MemoryPointer, len(chunk))
 // 			for j, e := range chunk {
@@ -490,7 +490,7 @@ type Entry struct {
 // 	}
 // }
 
-func (t *BTree) recursiveString(n *BTreeNode, indent int) string {
+func (t *BPTree) recursiveString(n *BPTreeNode, indent int) string {
 	// print the node itself
 	var buf bytes.Buffer
 	if !n.Leaf() {
@@ -518,7 +518,7 @@ func (t *BTree) recursiveString(n *BTreeNode, indent int) string {
 	return buf.String()
 }
 
-func (t *BTree) String() string {
+func (t *BPTree) String() string {
 	root, _, err := t.root()
 	if err != nil {
 		return fmt.Sprintf("error: failed to read root node: %v", err)

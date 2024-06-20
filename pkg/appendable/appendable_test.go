@@ -16,7 +16,7 @@ func TestMarshalMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree, err := metapage.NewMultiBTree(p, 0)
+		tree, err := metapage.NewMultiBPTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,7 +69,7 @@ func TestMarshalMetadata(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		tree, err := metapage.NewMultiBTree(p, 0)
+		tree, err := metapage.NewMultiBPTree(p, 0)
 		if err != nil {
 			t.Fatal(err)
 		}

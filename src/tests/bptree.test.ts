@@ -1,5 +1,5 @@
-import { BTree, MetaPage, ReferencedValue } from "../btree/btree";
-import { MemoryPointer } from "../btree/node";
+import { BPTree, MetaPage, ReferencedValue } from "../bptree/bptree";
+import { MemoryPointer } from "../bptree/node";
 import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
@@ -18,10 +18,10 @@ class testMetaPage implements MetaPage {
   }
 }
 
-describe("test BTree", () => {
+describe("test BPTree", () => {
   let mockRangeResolver: RangeResolver;
   let mockDataFileResolver: RangeResolver;
-  let btree: BTree;
+  let btree: BPTree;
 
   beforeEach(() => {
     mockDataFileResolver = async ([]) => {
@@ -51,7 +51,7 @@ describe("test BTree", () => {
     };
 
     const page = new testMetaPage({ offset: 8192n, length: 88 });
-    btree = new BTree(
+    btree = new BPTree(
       mockRangeResolver,
       page,
       mockDataFileResolver,
@@ -62,7 +62,7 @@ describe("test BTree", () => {
     );
   });
 
-  it("should read a btree and find items", async () => {
+  it("should read a bptree and find items", async () => {
     let idx = 1;
     for (const value of ["hello", "world", "moooo", "cooow"]) {
       const keyBuf = new TextEncoder().encode(value).buffer;
@@ -77,10 +77,10 @@ describe("test BTree", () => {
   });
 });
 
-describe("test BTree iterator count", () => {
+describe("test BPTree iterator count", () => {
   let mockRangeResolver: RangeResolver;
   let mockDataFileResolver: RangeResolver;
-  let btree: BTree;
+  let btree: BPTree;
 
   beforeEach(() => {
     mockDataFileResolver = async ([]) => {
@@ -110,7 +110,7 @@ describe("test BTree iterator count", () => {
     };
 
     const page = new testMetaPage({ offset: 8192n, length: 88 });
-    btree = new BTree(
+    btree = new BPTree(
       mockRangeResolver,
       page,
       mockDataFileResolver,

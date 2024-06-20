@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 )
 
 /*
@@ -190,19 +190,19 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 		if i == 0 {
 
 			for _, val := range h1 {
-				rv1, mp1, err := collected1.BTree(&btree.BTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
+				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(bptree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
-					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
+					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
 				}
 				if mp1 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
-				rv2, mp2, err := collected2.BTree(&btree.BTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte(val)})
+				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
-					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
+					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
 				}
 				if mp2 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for reader", val)
@@ -219,19 +219,19 @@ func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, s
 
 				v2 := make([]byte, 8)
 				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
-				rv1, mp1, err := collected1.BTree(&btree.BTree{Data: jr, DataParser: JSONLHandler{}}).Find(btree.ReferencedValue{Value: v2})
+				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(bptree.ReferencedValue{Value: v2})
 
 				if err != nil {
-					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
+					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
 				}
 				if mp1 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				rv2, mp2, err := collected2.BTree(&btree.BTree{Data: cr, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: v2})
+				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: v2})
 
 				if err != nil {
-					return false, fmt.Sprintf("failed to find btree for jsonl reader %v", val)
+					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
 				}
 				if mp2 == (pointer.MemoryPointer{}) {
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)

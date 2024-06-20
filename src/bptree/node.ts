@@ -2,7 +2,7 @@ import { FieldType } from "../db/database";
 import { FileFormat } from "../file/meta";
 import { RangeResolver } from "../resolver/resolver";
 import { decodeUvarint } from "../util/uvarint";
-import { ReferencedValue } from "./btree";
+import { ReferencedValue } from "./bptree";
 
 export const pageSizeBytes = 4096;
 
@@ -13,7 +13,7 @@ export type DataPointer = {
   end: number;
 };
 
-export class BTreeNode {
+export class BPTreeNode {
   public keys: ReferencedValue[];
   public leafPointers: MemoryPointer[];
   public internalPointers: bigint[];
@@ -23,7 +23,7 @@ export class BTreeNode {
   private readonly tree: RangeResolver;
   private readonly pageFieldWidth: number;
 
-  private readonly childrenCache: (Promise<BTreeNode> | null)[];
+  private readonly childrenCache: (Promise<BPTreeNode> | null)[];
 
   constructor(
     keys: ReferencedValue[],
@@ -65,11 +65,11 @@ export class BTreeNode {
     return this.internalPointers.length + this.leafPointers.length;
   }
 
-  async child(index: number): Promise<BTreeNode> {
+  async child(index: number): Promise<BPTreeNode> {
     if (!this.childrenCache[index]) {
       const childPointer = this.pointer(index);
 
-      this.childrenCache[index] = BTreeNode.fromMemoryPointer(
+      this.childrenCache[index] = BPTreeNode.fromMemoryPointer(
         childPointer,
         this.tree,
         this.dataFileResolver,
@@ -247,7 +247,7 @@ export class BTreeNode {
     fileFormat: FileFormat,
     pageFieldType: FieldType,
     pageFieldWidth: number,
-  ): Promise<{ node: BTreeNode; bytesRead: number }> {
+  ): Promise<{ node: BPTreeNode; bytesRead: number }> {
     const res = await resolver([
       {
         start: Number(mp.offset),
@@ -255,7 +255,7 @@ export class BTreeNode {
       },
     ]);
     const { data: bufferData } = res[0];
-    const node = new BTreeNode(
+    const node = new BPTreeNode(
       [],
       [],
       [],
