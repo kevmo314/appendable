@@ -15,7 +15,7 @@ type Hnsw struct {
 
 	entryPointId Id
 
-	points  map[Id]*Point
+	points  []*Point
 	friends map[Id]*Friends
 
 	levelMultiplier float64
@@ -37,8 +37,8 @@ func NewHnsw(d int, efConstruction int, M int, entryPoint Point) *Hnsw {
 	friends := make(map[Id]*Friends)
 	friends[defaultEntryPointId] = NewFriends(0)
 
-	points := make(map[Id]*Point)
-	points[defaultEntryPointId] = &entryPoint
+	points := make([]*Point, 0)
+	points = append(points, &entryPoint)
 
 	return &Hnsw{
 		entryPointId:         defaultEntryPointId,
@@ -102,10 +102,7 @@ func (h *Hnsw) searchLevel(q *Point, entryItem *Item, numNearestToQToReturn, lev
 					return nil, fmt.Errorf("error during searching level %d: %w", level, err)
 				}
 
-				ccFriendPoint, ok := h.points[ccFriendId]
-				if !ok {
-					return nil, ErrNodeNotFound
-				}
+				ccFriendPoint := h.points[ccFriendId]
 
 				// if distance(ccFriend, q) < distance(f, q)
 				ccFriendDistToQ := EuclidDistance(*ccFriendPoint, *q)
@@ -194,7 +191,7 @@ func (h *Hnsw) InsertVector(q Point) error {
 
 	qFriends := NewFriends(qTopLevel)
 	h.friends[qId] = qFriends
-	h.points[qId] = &q
+	h.points = append(h.points, &q)
 
 	entryItem := h.findCloserEntryPoint(&q, qFriends)
 
@@ -254,11 +251,7 @@ func (h *Hnsw) isValidPoint(point Point) bool {
 }
 
 func (h *Hnsw) KnnSearch(q Point, numNeighborsToReturn int) (*DistHeap, error) {
-	entryPoint, ok := h.points[h.entryPointId]
-
-	if !ok {
-		return nil, fmt.Errorf("no point found for entry point %v", h.entryPointId)
-	}
+	entryPoint := h.points[h.entryPointId]
 
 	entryPointFriends, ok := h.friends[h.entryPointId]
 	if !ok {
