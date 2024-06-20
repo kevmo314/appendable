@@ -1,4 +1,4 @@
-package btree
+package bptree
 
 import (
 	"bytes"
@@ -45,7 +45,7 @@ type DataParser interface {
 	Parse([]byte) []byte
 }
 
-type BTreeNode struct {
+type BPTreeNode struct {
 	Data       []byte
 	DataParser DataParser
 	// contains the offset of the child node or the offset of the record for leaf
@@ -54,26 +54,26 @@ type BTreeNode struct {
 	InternalPointers []uint64
 	Keys             []ReferencedValue
 
-	// the expected width for the BTree's type
+	// the expected width for the BPTree's type
 	Width uint16
 }
 
-func (n *BTreeNode) Leaf() bool {
+func (n *BPTreeNode) Leaf() bool {
 	return len(n.LeafPointers) > 0
 }
 
-func (n *BTreeNode) Pointer(i int) pointer.MemoryPointer {
+func (n *BPTreeNode) Pointer(i int) pointer.MemoryPointer {
 	if n.Leaf() {
 		return n.LeafPointers[i]
 	}
 	return pointer.MemoryPointer{Offset: n.InternalPointers[i]}
 }
 
-func (n *BTreeNode) NumPointers() int {
+func (n *BPTreeNode) NumPointers() int {
 	return len(n.InternalPointers) + len(n.LeafPointers)
 }
 
-func (n *BTreeNode) Size() int64 {
+func (n *BPTreeNode) Size() int64 {
 
 	size := 4 // number of keys
 	for _, k := range n.Keys {
@@ -97,7 +97,7 @@ func (n *BTreeNode) Size() int64 {
 	return int64(size)
 }
 
-func (n *BTreeNode) MarshalBinary() ([]byte, error) {
+func (n *BPTreeNode) MarshalBinary() ([]byte, error) {
 	size := int32(len(n.Keys))
 
 	if size == 0 {
@@ -139,7 +139,7 @@ func (n *BTreeNode) MarshalBinary() ([]byte, error) {
 	return buf, nil
 }
 
-func (n *BTreeNode) WriteTo(w io.Writer) (int64, error) {
+func (n *BPTreeNode) WriteTo(w io.Writer) (int64, error) {
 	buf, err := n.MarshalBinary()
 	if err != nil {
 		return 0, err
@@ -148,7 +148,7 @@ func (n *BTreeNode) WriteTo(w io.Writer) (int64, error) {
 	return int64(m), err
 }
 
-func (n *BTreeNode) UnmarshalBinary(buf []byte) error {
+func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	size := int32(binary.LittleEndian.Uint32(buf[:4]))
 	leaf := size < 0
 	if leaf {

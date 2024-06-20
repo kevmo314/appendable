@@ -11,7 +11,7 @@ import (
 	"github.com/kevmo314/appendable/pkg/pointer"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 	"github.com/kevmo314/appendable/pkg/buftest"
 )
 
@@ -92,7 +92,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BTree(&btree.BTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -109,7 +109,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got i.Indexes[0].Btree().Find(\"test1\") = %+v, want {%d, %d}", mp1, len("test\n"), len("test1"))
 		}
 
-		rv2, mp2, err := collected[0].BTree(&btree.BTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test2")})
+		rv2, mp2, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: []byte("test2")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -162,7 +162,7 @@ func TestCSV(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 1", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BTree(&btree.BTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -192,7 +192,7 @@ func TestCSV(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		rv2, mp2, err := collected[1].BTree(&btree.BTree{Data: r2, DataParser: CSVHandler{}}).Find(btree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(&bptree.BPTree{Data: r2, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -265,7 +265,7 @@ func TestCSV(t *testing.T) {
 		}
 	})
 
-	t.Run("correctly iterates through btree", func(t *testing.T) {
+	t.Run("correctly iterates through bptree", func(t *testing.T) {
 		f := buftest.NewSeekableBuffer()
 		var em []string
 		i, err := appendable.NewIndexFile(f, CSVHandler{}, em)
@@ -295,7 +295,7 @@ func TestCSV(t *testing.T) {
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(1234))
 
-		iter, err := collected[0].BTree(&btree.BTree{Data: r2, DataParser: JSONLHandler{}}).Iter(btree.ReferencedValue{Value: v2})
+		iter, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}}).Iter(bptree.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -7,14 +7,14 @@ import (
 	"io"
 	"time"
 
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
 const CurrentVersion = 1
 
 type DataHandler interface {
-	btree.DataParser
+	bptree.DataParser
 	Synchronize(f *IndexFile, df []byte) error
 	Format() Format
 }
@@ -36,7 +36,7 @@ func NewIndexFile(f io.ReadWriteSeeker, dataHandler DataHandler, searchHeaders [
 		return nil, fmt.Errorf("failed to create page file: %w", err)
 	}
 
-	tree, err := metapage.NewMultiBTree(pf, 0)
+	tree, err := metapage.NewMultiBPTree(pf, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create multi b+ tree: %w", err)
 	}

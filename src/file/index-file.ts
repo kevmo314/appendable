@@ -1,4 +1,4 @@
-import { LinkedMetaPage, PAGE_SIZE_BYTES, ReadMultiBTree } from "./multi";
+import { LinkedMetaPage, PAGE_SIZE_BYTES, ReadMultiBPTree } from "./multi";
 import { RangeResolver } from "../resolver/resolver";
 import {
   IndexHeader,
@@ -56,7 +56,7 @@ export class IndexFileV1<T> implements VersionedIndexFile<T> {
       return this._tree;
     }
 
-    const tree = ReadMultiBTree(this.resolver, 0);
+    const tree = ReadMultiBPTree(this.resolver, 0);
 
     this._tree = tree;
     return tree;

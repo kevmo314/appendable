@@ -1,5 +1,5 @@
 import { RangeResolver } from "../resolver/resolver";
-import { MemoryPointer } from "../btree/node";
+import { MemoryPointer } from "../bptree/node";
 
 export const PAGE_SIZE_BYTES = 4096;
 export const SLOT_SIZE_BYTES = 256;
@@ -105,7 +105,7 @@ export class LinkedMetaPage {
   }
 }
 
-export function ReadMultiBTree(
+export function ReadMultiBPTree(
   resolver: RangeResolver,
   idx: number,
 ): LinkedMetaPage {

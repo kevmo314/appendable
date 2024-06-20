@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/kevmo314/appendable/pkg/appendable"
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 )
 
 type CSVHandler struct {
@@ -143,7 +143,7 @@ func (c CSVHandler) Parse(value []byte) []byte {
 	case appendable.FieldTypeString:
 		return []byte(parsed.(string))
 	case appendable.FieldTypeNull:
-		// nil values are a bit of a degenerate case, we are essentially using the btree
+		// nil values are a bit of a degenerate case, we are essentially using the bptree
 		// as a set. we store the value as an empty byte slice.
 		return []byte{}
 	}
@@ -184,7 +184,7 @@ func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.R
 			Length: fieldLength,
 		}
 
-		if err := page.BTree(&btree.BTree{Data: df, DataParser: CSVHandler{}, Width: uint16(0)}).Insert(btree.ReferencedValue{Value: c.Parse([]byte(fieldValue)), DataPointer: mp}, data); err != nil {
+		if err := page.BPTree(&bptree.BPTree{Data: df, DataParser: CSVHandler{}, Width: uint16(0)}).Insert(bptree.ReferencedValue{Value: c.Parse([]byte(fieldValue)), DataPointer: mp}, data); err != nil {
 			return fmt.Errorf("failed to insert into b+tree: %w", err)
 		}
 

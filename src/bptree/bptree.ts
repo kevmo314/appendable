@@ -1,4 +1,4 @@
-import { BTreeNode, DataPointer, MemoryPointer } from "./node";
+import { BPTreeNode, DataPointer, MemoryPointer } from "./node";
 import { RangeResolver } from "../resolver/resolver";
 import { TraversalIterator, TraversalRecord } from "./traversal";
 import { FileFormat } from "../file/meta";
@@ -9,11 +9,11 @@ export interface MetaPage {
 }
 
 type RootResponse = {
-  rootNode: BTreeNode | null;
+  rootNode: BPTreeNode | null;
   pointer: MemoryPointer;
 };
 
-export class BTree {
+export class BPTree {
   private readonly tree: RangeResolver;
   private meta: MetaPage;
   private readonly dataFileResolver: RangeResolver;
@@ -21,7 +21,7 @@ export class BTree {
   private readonly pageFieldType: FieldType;
   private readonly pageFieldWidth: number;
 
-  private rootNodeCache: Promise<BTreeNode> | null = null;
+  private rootNodeCache: Promise<BPTreeNode> | null = null;
   private rootPointerCache: Promise<MemoryPointer> | null = null;
 
   // insight attributes below
@@ -74,9 +74,9 @@ export class BTree {
     };
   }
 
-  async readNode(ptr: MemoryPointer): Promise<BTreeNode> {
+  async readNode(ptr: MemoryPointer): Promise<BPTreeNode> {
     try {
-      const { node, bytesRead } = await BTreeNode.fromMemoryPointer(
+      const { node, bytesRead } = await BPTreeNode.fromMemoryPointer(
         ptr,
         this.tree,
         this.dataFileResolver,
@@ -135,7 +135,7 @@ export class BTree {
 
   async traverse(
     key: ReferencedValue,
-    node: BTreeNode,
+    node: BPTreeNode,
     pointer: MemoryPointer,
   ): Promise<TraversalRecord[]> {
     let [index, found] = binarySearchReferencedValues(node.keys, key);

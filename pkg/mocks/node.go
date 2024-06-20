@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/bptree"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"log"
 	"os"
@@ -18,14 +18,14 @@ func writeBufferToFile(buf *bytes.Buffer, filename string) error {
 }
 
 func generateLeafNode() {
-	// Create a test BTreeNode
-	node1 := &btree.BTreeNode{
+	// Create a test BPTreeNode
+	node1 := &bptree.BPTreeNode{
 		LeafPointers: []pointer.MemoryPointer{
 			{Offset: 0, Length: 3},
 			{Offset: 3, Length: 3},
 			{Offset: 6, Length: 3},
 		},
-		Keys: []btree.ReferencedValue{
+		Keys: []bptree.ReferencedValue{
 			{Value: []byte{0, 1, 2}},
 			{Value: []byte{1, 2, 3}},
 			{Value: []byte{3, 4, 5}},
@@ -42,10 +42,10 @@ func generateLeafNode() {
 }
 
 func generateInternalNode() {
-	// Create a test BTreeNode
-	node1 := &btree.BTreeNode{
+	// Create a test BPTreeNode
+	node1 := &bptree.BPTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
-		Keys: []btree.ReferencedValue{
+		Keys: []bptree.ReferencedValue{
 			{Value: []byte{0, 1}},
 			{Value: []byte{1, 2}},
 			{Value: []byte{3, 4}},

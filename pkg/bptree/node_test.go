@@ -1,4 +1,4 @@
-package btree
+package bptree
 
 import (
 	"bytes"
@@ -7,9 +7,9 @@ import (
 	"testing"
 )
 
-func TestBTreeNode_ReadWriteLeaf(t *testing.T) {
-	// Create a test BTreeNode
-	node1 := &BTreeNode{
+func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
+	// Create a test BPTreeNode
+	node1 := &BPTreeNode{
 		LeafPointers: []pointer.MemoryPointer{
 			{Offset: 0, Length: 3},
 			{Offset: 3, Length: 3},
@@ -28,7 +28,7 @@ func TestBTreeNode_ReadWriteLeaf(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	node2 := &BTreeNode{Width: uint16(4)}
+	node2 := &BPTreeNode{Width: uint16(4)}
 	if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
 		t.Fatal(err)
 	}
@@ -42,9 +42,9 @@ func TestBTreeNode_ReadWriteLeaf(t *testing.T) {
 	}
 }
 
-func TestBTreeNode_ReadWriteIntermediate(t *testing.T) {
-	// Create a test BTreeNode
-	node1 := &BTreeNode{
+func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
+	// Create a test BPTreeNode
+	node1 := &BPTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
 		Keys: []ReferencedValue{
 			{Value: []byte{0, 1}},
@@ -59,7 +59,7 @@ func TestBTreeNode_ReadWriteIntermediate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	node2 := &BTreeNode{Width: uint16(3)}
+	node2 := &BPTreeNode{Width: uint16(3)}
 	if err := node2.UnmarshalBinary(buf.Bytes()); err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestBTreeNode_ReadWriteIntermediate(t *testing.T) {
 	}
 }
 
-func TestBTreeNode_CompareReferencedValues(t *testing.T) {
+func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 	rv := []ReferencedValue{
 		{
 			Value: []byte{0},
