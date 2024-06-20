@@ -155,6 +155,15 @@ func (t *BTree) Find(key ReferencedValue) (ReferencedValue, pointer.MemoryPointe
 	return p.Key(), p.Pointer(), nil
 }
 
+func (t *BTree) Contains(key ReferencedValue) (bool, error) {
+	k, _, err := t.Find(key)
+	if err != nil {
+		return false, err
+	}
+
+	return bytes.Equal(k.Value, key.Value), nil
+}
+
 func (t *BTree) readNode(ptr pointer.MemoryPointer) (*BTreeNode, error) {
 	if _, err := t.PageFile.Seek(int64(ptr.Offset), io.SeekStart); err != nil {
 		return nil, err
