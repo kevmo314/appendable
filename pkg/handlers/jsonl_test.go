@@ -144,7 +144,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		var strIndexes []*linkedpage.LinkedMetaPage
+		var strIndexes []*linkedpage.LinkedPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -490,7 +490,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 5", len(collected))
 		}
 
-		var vanillaIndexes []*linkedpage.LinkedMetaPage
+		var vanillaIndexes []*linkedpage.LinkedPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -567,7 +567,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
-		var vanillaIndexes []*linkedpage.LinkedMetaPage
+		var vanillaIndexes []*linkedpage.LinkedPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -765,7 +765,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected 4 pages, got: %v", len(collected))
 		}
 
-		var tripage []*linkedpage.LinkedMetaPage
+		var tripage []*linkedpage.LinkedPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()
@@ -833,7 +833,7 @@ func TestJSONL(t *testing.T) {
 			t.Fatalf("expected 4 pages, got: %v", len(collected))
 		}
 
-		var tripages []*linkedpage.LinkedMetaPage
+		var tripages []*linkedpage.LinkedPage
 
 		for _, ms := range collected {
 			buf, err := ms.Metadata()

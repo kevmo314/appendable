@@ -21,7 +21,7 @@ type DataHandler interface {
 
 // IndexFile is a representation of the entire index file.
 type IndexFile struct {
-	tree        *linkedpage.LinkedMetaPage
+	tree        *linkedpage.LinkedPage
 	dataHandler DataHandler
 
 	pf                *pagefile.PageFile
@@ -101,7 +101,7 @@ func (i *IndexFile) SetMetadata(metadata *FileMeta) error {
 	return i.tree.SetMetadata(buf)
 }
 
-func (i *IndexFile) Indexes() (*linkedpage.LinkedMetaPage, error) {
+func (i *IndexFile) Indexes() (*linkedpage.LinkedPage, error) {
 	return i.tree.Next()
 }
 
@@ -146,7 +146,7 @@ func (i *IndexFile) IndexFieldNames() ([]string, error) {
 	return fieldNames, nil
 }
 
-func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*linkedpage.LinkedMetaPage, *IndexMeta, error) {
+func (i *IndexFile) FindOrCreateIndex(name string, fieldType FieldType) (*linkedpage.LinkedPage, *IndexMeta, error) {
 	mp := i.tree
 	for {
 		next, err := mp.Next()
