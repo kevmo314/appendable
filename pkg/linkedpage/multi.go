@@ -1,4 +1,4 @@
-package metapage
+package linkedpage
 
 import (
 	"encoding"

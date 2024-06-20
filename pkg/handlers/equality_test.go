@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/linkedpage"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"log/slog"
 	"math"
@@ -133,7 +133,7 @@ func compareFieldNames(i1, i2 []string) (bool, string) {
 	return true, ""
 }
 
-func compareIndexMeta(i1, i2 []*metapage.LinkedMetaPage) (bool, string) {
+func compareIndexMeta(i1, i2 []*linkedpage.LinkedMetaPage) (bool, string) {
 
 	for i, collected1 := range i1 {
 		buf1, err := collected1.Metadata()
@@ -180,7 +180,7 @@ func compareIndexMeta(i1, i2 []*metapage.LinkedMetaPage) (bool, string) {
 	return true, ""
 }
 
-func compareMetaPages(i1, i2 []*metapage.LinkedMetaPage, jr, cr []byte) (bool, string) {
+func compareMetaPages(i1, i2 []*linkedpage.LinkedMetaPage, jr, cr []byte) (bool, string) {
 	h1 := [2]string{"test1", "test3"}
 	h2 := [2]float64{37.3, 4}
 

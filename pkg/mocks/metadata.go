@@ -6,7 +6,7 @@ import (
 
 	"github.com/kevmo314/appendable/pkg/appendable"
 	"github.com/kevmo314/appendable/pkg/buftest"
-	"github.com/kevmo314/appendable/pkg/metapage"
+	"github.com/kevmo314/appendable/pkg/linkedpage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 )
 
@@ -16,7 +16,7 @@ func generateFilledMetadata() {
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	tree, err := metapage.NewMultiBPTree(p, 0)
+	tree, err := linkedpage.NewMultiBPTree(p, 0)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}

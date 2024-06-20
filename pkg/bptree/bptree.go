@@ -3,6 +3,7 @@ package bptree
 import (
 	"bytes"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/metapage"
 	"io"
 	"slices"
 
@@ -10,16 +11,8 @@ import (
 	"github.com/kevmo314/appendable/pkg/pointer"
 )
 
-// MetaPage is an abstract interface over the root page of a bptree
-// This allows the caller to control the memory location of the meta
-// pointer
-type MetaPage interface {
-	Root() (pointer.MemoryPointer, error)
-	SetRoot(pointer.MemoryPointer) error
-}
-
 type BPTree struct {
-	MetaPage MetaPage
+	MetaPage metapage.MetaPage
 	PageFile pagefile.ReadWriteSeekPager
 
 	Data       []byte
