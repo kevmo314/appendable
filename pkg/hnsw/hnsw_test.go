@@ -43,7 +43,7 @@ func SetupClusterHnsw(cluster []Point, efc, maxConnections int) (*Hnsw, error) {
 
 	for idx, point := range cluster {
 		pointId := Id(idx + 1)
-		g.points[pointId] = &point
+		g.points = append(g.points, &point)
 		g.friends[pointId] = NewFriends(0)
 
 		distEntryToClusterPoint := EuclidDistance(entryPoint, point)
@@ -90,7 +90,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 		entryPoint := Point{0, 0}
 		g := NewHnsw(2, 4, 4, entryPoint)
 		mPoint := Point{2, 2}
-		g.points[Id(1)] = &mPoint
+		g.points = append(g.points, &mPoint)
 
 		g.friends[g.entryPointId].InsertFriendsAtLevel(0, 1, EuclidDistance(mPoint, entryPoint))
 		g.friends[Id(1)] = NewFriends(0)
@@ -124,10 +124,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		entryPoint, ok := g.points[g.entryPointId]
-		if !ok {
-			t.Fatal(ErrNodeNotFound)
-		}
+		entryPoint := g.points[g.entryPointId]
 
 		qPoint := clusterA[3]
 		expectedId := Id(4)
@@ -169,10 +166,7 @@ func TestHnsw_SearchLevel(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		entryPoint, ok := g.points[g.entryPointId]
-		if !ok {
-			t.Fatal(ErrNodeNotFound)
-		}
+		entryPoint := g.points[g.entryPointId]
 
 		qPoint := Point{0.3, 0.81}
 		expectedId := Id(3) // point3 is (0.3, 0.8)
@@ -285,7 +279,7 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 		closerPointId := Id(1)
 		closerPoint := Point{2, 2}
 
-		h.points[closerPointId] = &closerPoint
+		h.points = append(h.points, &closerPoint)
 		h.friends[closerPointId] = NewFriends(4)
 
 		distToEntry := EuclidDistance(Point{0, 0}, closerPoint)
@@ -312,7 +306,7 @@ func TestHnsw_FindCloserEntryPoint(t *testing.T) {
 		closerPointId := Id(1)
 		closerPoint := Point{2, 2}
 
-		h.points[closerPointId] = &closerPoint
+		h.points = append(h.points, &closerPoint)
 		h.friends[closerPointId] = NewFriends(4)
 
 		distToEntry := EuclidDistance(Point{0, 0}, closerPoint)
