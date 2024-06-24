@@ -190,7 +190,7 @@ func compareMetaPages(i1, i2 []*linkedpage.LinkedPage, jr, cr []byte) (bool, str
 		if i == 0 {
 
 			for _, val := range h1 {
-				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(bptree.ReferencedValue{Value: []byte(val)})
+				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(pointer.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
@@ -199,7 +199,7 @@ func compareMetaPages(i1, i2 []*linkedpage.LinkedPage, jr, cr []byte) (bool, str
 					return false, fmt.Sprintf("failed to find %v for reader", val)
 				}
 
-				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: []byte(val)})
+				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(pointer.ReferencedValue{Value: []byte(val)})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
@@ -219,7 +219,7 @@ func compareMetaPages(i1, i2 []*linkedpage.LinkedPage, jr, cr []byte) (bool, str
 
 				v2 := make([]byte, 8)
 				binary.BigEndian.PutUint64(v2, math.Float64bits(val))
-				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(bptree.ReferencedValue{Value: v2})
+				rv1, mp1, err := collected1.BPTree(&bptree.BPTree{Data: jr, DataParser: JSONLHandler{}}).Find(pointer.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
@@ -228,7 +228,7 @@ func compareMetaPages(i1, i2 []*linkedpage.LinkedPage, jr, cr []byte) (bool, str
 					return false, fmt.Sprintf("failed to find %v for josnl reader", val)
 				}
 
-				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(bptree.ReferencedValue{Value: v2})
+				rv2, mp2, err := collected2.BPTree(&bptree.BPTree{Data: cr, DataParser: CSVHandler{}}).Find(pointer.ReferencedValue{Value: v2})
 
 				if err != nil {
 					return false, fmt.Sprintf("failed to find bptree for jsonl reader %v", val)
