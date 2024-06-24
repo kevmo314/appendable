@@ -134,6 +134,15 @@ func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTr
 		Width:    t.Width,
 	}
 
+	rbuf, err := rightChild.MarshalBinary()
+	if err != nil {
+		return nil, pointer.ReferencedValue{}, err
+	}
+	roffset, err := t.PageFile.NewPage(rbuf)
+	if err != nil {
+		return err
+	}
+
 	// now that right child has been properly copied, shrink leftChild
 	leftChild.Keys = leftChild.Keys[:mid]
 	leftChild.Vectors = leftChild.Vectors[:mid]
@@ -142,7 +151,7 @@ func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTr
 	// Insert the middle key into the parent node at leftChildIndex
 	parent.Keys = append(parent.Keys[:leftChildIndex], append([]pointer.ReferencedValue{midKey}, parent.Keys[leftChildIndex:]...)...)
 	parent.Vectors = append(parent.Vectors[:leftChildIndex], append([]hnsw.Point{midVector}, parent.Vectors[leftChildIndex:]...)...)
-	parent.Pointers = append(parent.Pointers[:leftChildIndex+1], append([]uint64{midPointer}, parent.Pointers[leftChildIndex+1:]...)...)
+	parent.Pointers = append(parent.Pointers[:leftChildIndex+1], append([]uint64{uint64(roffset)}, parent.Pointers[leftChildIndex+1:]...)...)
 
 	return rightChild, midKey, nil
 }
