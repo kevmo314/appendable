@@ -1,10 +1,14 @@
 package btree
 
 import (
+	"encoding/binary"
+	"fmt"
+	"github.com/kevmo314/appendable/pkg/hnsw"
 	"github.com/kevmo314/appendable/pkg/metapage"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
+	"slices"
 )
 
 type BTree struct {
@@ -45,4 +49,100 @@ func (t *BTree) readNode(offset uint64) (*BTreeNode, error) {
 	}
 
 	return node, nil
+}
+
+// Insert has the following assumptions:
+// key.Value represents the Node Id. It is written to []bytes in LittleEndian.
+func (t *BTree) Insert(key pointer.ReferencedValue, value hnsw.Point) error {
+	id := hnsw.Id(binary.LittleEndian.Uint64(key.Value))
+
+	root, rootOffset, err := t.root()
+	if err != nil {
+		return fmt.Errorf("read root node: %w, err")
+	}
+
+	if root == nil {
+		node := &BTreeNode{
+			Keys:    []pointer.ReferencedValue{key},
+			Vectors: []hnsw.Point{value},
+			Width:   t.Width,
+		}
+		buf, err := node.MarshalBinary()
+		if err != nil {
+			return err
+		}
+
+		offset, err := t.PageFile.NewPage(buf)
+		if err != nil {
+			return err
+		}
+
+		return t.MetaPage.SetRoot(pointer.MemoryPointer{
+			Offset: uint64(offset),
+			Length: uint32(len(buf)),
+		})
+	}
+
+	parent := root
+	for !parent.Leaf() {
+		index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedValues)
+		if found {
+			index++
+		}
+
+		if len(parent.Pointers) > index {
+			return fmt.Errorf("found index %d, but node.Pointers length is %d", index, len(parent.Pointers))
+		}
+
+		childPointer := parent.Pointers[index]
+		child, err := t.readNode(childPointer)
+		if err != nil {
+			return err
+		}
+
+		if int(child.Size()) > t.PageFile.PageSize() {
+			rightChild, midKey, err := t.SplitChild(parent, index, child)
+			if err != nil {
+				return err
+			}
+
+			switch pointer.CompareReferencedValues(midKey, key) {
+			case 1:
+				// key < midKey
+				parent = child
+			default:
+				// right child
+				parent = rightChild
+			}
+		} else {
+			parent = child
+		}
+	}
+
+	return nil
+}
+
+func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTreeNode) (*BTreeNode, pointer.ReferencedValue, error) {
+	mid := len(leftChild.Keys) / 2
+
+	midKey, midVector, midPointer := leftChild.Keys[mid], leftChild.Vectors[mid], leftChild.Pointers[mid]
+
+	rightChild := &BTreeNode{
+		Keys:     append([]pointer.ReferencedValue(nil), leftChild.Keys[mid+1:]...),
+		Vectors:  append([]hnsw.Point(nil), leftChild.Vectors[mid+1:]...),
+		Pointers: append([]uint64(nil), leftChild.Pointers[mid+1:]...),
+		Width:    t.Width,
+	}
+
+	// now that right child has been properly copied, shrink leftChild
+	leftChild.Keys = leftChild.Keys[:mid]
+	leftChild.Vectors = leftChild.Vectors[:mid]
+	leftChild.Pointers = leftChild.Pointers[:mid]
+
+	// Insert the middle key into the parent node at leftChildIndex
+	parent.Keys = append(parent.Keys[:leftChildIndex], append([]pointer.ReferencedValue{midKey}, parent.Keys[leftChildIndex:]...)...)
+	parent.Vectors = append(parent.Vectors[:leftChildIndex], append([]hnsw.Point{midVector}, parent.Vectors[leftChildIndex:]...)...)
+	parent.Pointers = append(parent.Pointers[:leftChildIndex+1], append([]uint64{midPointer}, parent.Pointers[leftChildIndex+1:]...)...)
+
+	return rightChild, midKey, nil
 }

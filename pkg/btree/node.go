@@ -2,15 +2,20 @@ package btree
 
 import (
 	"github.com/kevmo314/appendable/pkg/hnsw"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
 
 type BTreeNode struct {
-	Ids     []hnsw.Id
+	Keys    []pointer.ReferencedValue
 	Vectors []hnsw.Point
 
 	Pointers []uint64
 	Width    uint16
+}
+
+func (n *BTreeNode) Leaf() bool {
+	return len(n.Pointers) == 0
 }
 
 func (n *BTreeNode) Size() int64 {
