@@ -15,7 +15,7 @@ func TestBPTreeNode_ReadWriteLeaf(t *testing.T) {
 			{Offset: 3, Length: 3},
 			{Offset: 6, Length: 3},
 		},
-		Keys: []ReferencedValue{
+		Keys: []pointer.ReferencedValue{
 			{Value: []byte{0, 1, 2}},
 			{Value: []byte{1, 2, 3}},
 			{Value: []byte{3, 4, 5}},
@@ -46,7 +46,7 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 	// Create a test BPTreeNode
 	node1 := &BPTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
-		Keys: []ReferencedValue{
+		Keys: []pointer.ReferencedValue{
 			{Value: []byte{0, 1}},
 			{Value: []byte{1, 2}},
 			{Value: []byte{3, 4}},
@@ -74,7 +74,7 @@ func TestBPTreeNode_ReadWriteIntermediate(t *testing.T) {
 }
 
 func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
-	rv := []ReferencedValue{
+	rv := []pointer.ReferencedValue{
 		{
 			Value: []byte{0},
 		},
@@ -91,7 +91,7 @@ func TestBPTreeNode_CompareReferencedValues(t *testing.T) {
 	}
 	for i := 0; i < len(rv); i++ {
 		for j := 0; j < len(rv); j++ {
-			cmp := CompareReferencedValues(rv[i], rv[j])
+			cmp := pointer.CompareReferencedValues(rv[i], rv[j])
 			if i < j && cmp >= 0 {
 				t.Fatalf("expected %d < %d", i, j)
 			}

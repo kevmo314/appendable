@@ -1,45 +1,12 @@
 package bptree
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
-
-type ReferencedValue struct {
-	// it is generally optional to set the DataPointer. if it is not set, the
-	// value is taken to be unreferenced and is stored directly in the node.
-	// if it is set, the value is used for comparison but the value is stored
-	// as a reference to the DataPointer.
-	//
-	// caveat: DataPointer is used as a disambiguator for the value. the b+ tree
-	// implementation does not support duplicate keys and uses the DataPointer
-	// to disambiguate between keys that compare as equal.
-	DataPointer pointer.MemoryPointer
-	Value       []byte
-}
-
-func (rv ReferencedValue) String() string {
-	return fmt.Sprintf("ReferencedValue@%s{%s}", rv.DataPointer, rv.Value)
-}
-
-func CompareReferencedValues(a, b ReferencedValue) int {
-	if cmp := bytes.Compare(a.Value, b.Value); cmp != 0 {
-		return cmp
-	} else if a.DataPointer.Offset < b.DataPointer.Offset {
-		return -1
-	} else if a.DataPointer.Offset > b.DataPointer.Offset {
-		return 1
-	} else if a.DataPointer.Length < b.DataPointer.Length {
-		return -1
-	} else if a.DataPointer.Length > b.DataPointer.Length {
-		return 1
-	}
-	return 0
-}
 
 type DataParser interface {
 	Parse([]byte) []byte
@@ -52,7 +19,7 @@ type BPTreeNode struct {
 	// if the node is a leaf, the last pointer is the offset of the next leaf
 	LeafPointers     []pointer.MemoryPointer
 	InternalPointers []uint64
-	Keys             []ReferencedValue
+	Keys             []pointer.ReferencedValue
 
 	// the expected width for the BPTree's type
 	Width uint16
@@ -153,10 +120,10 @@ func (n *BPTreeNode) UnmarshalBinary(buf []byte) error {
 	leaf := size < 0
 	if leaf {
 		n.LeafPointers = make([]pointer.MemoryPointer, -size)
-		n.Keys = make([]ReferencedValue, -size)
+		n.Keys = make([]pointer.ReferencedValue, -size)
 	} else {
 		n.InternalPointers = make([]uint64, size+1)
-		n.Keys = make([]ReferencedValue, size)
+		n.Keys = make([]pointer.ReferencedValue, size)
 	}
 	if size == 0 {
 		panic("empty node")

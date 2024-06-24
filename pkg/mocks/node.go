@@ -25,7 +25,7 @@ func generateLeafNode() {
 			{Offset: 3, Length: 3},
 			{Offset: 6, Length: 3},
 		},
-		Keys: []bptree.ReferencedValue{
+		Keys: []pointer.ReferencedValue{
 			{Value: []byte{0, 1, 2}},
 			{Value: []byte{1, 2, 3}},
 			{Value: []byte{3, 4, 5}},
@@ -45,7 +45,7 @@ func generateInternalNode() {
 	// Create a test BPTreeNode
 	node1 := &bptree.BPTreeNode{
 		InternalPointers: []uint64{0, 1, 2, 3},
-		Keys: []bptree.ReferencedValue{
+		Keys: []pointer.ReferencedValue{
 			{Value: []byte{0, 1}},
 			{Value: []byte{1, 2}},
 			{Value: []byte{3, 4}},

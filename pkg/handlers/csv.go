@@ -184,7 +184,7 @@ func (c CSVHandler) handleCSVLine(f *appendable.IndexFile, df []byte, dec *csv.R
 			Length: fieldLength,
 		}
 
-		if err := page.BPTree(&bptree.BPTree{Data: df, DataParser: CSVHandler{}, Width: uint16(0)}).Insert(bptree.ReferencedValue{Value: c.Parse([]byte(fieldValue)), DataPointer: mp}, data); err != nil {
+		if err := page.BPTree(&bptree.BPTree{Data: df, DataParser: CSVHandler{}, Width: uint16(0)}).Insert(pointer.ReferencedValue{Value: c.Parse([]byte(fieldValue)), DataPointer: mp}, data); err != nil {
 			return fmt.Errorf("failed to insert into b+tree: %w", err)
 		}
 
