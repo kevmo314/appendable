@@ -1,7 +1,6 @@
 package btree
 
 import (
-	"encoding/binary"
 	"fmt"
 	"github.com/kevmo314/appendable/pkg/hnsw"
 	"github.com/kevmo314/appendable/pkg/metapage"
@@ -54,11 +53,9 @@ func (t *BTree) readNode(offset uint64) (*BTreeNode, error) {
 // Insert has the following assumptions:
 // key.Value represents the Node Id. It is written to []bytes in LittleEndian.
 func (t *BTree) Insert(key pointer.ReferencedValue, value hnsw.Point) error {
-	id := hnsw.Id(binary.LittleEndian.Uint64(key.Value))
-
-	root, rootOffset, err := t.root()
+	root, _, err := t.root()
 	if err != nil {
-		return fmt.Errorf("read root node: %w, err")
+		return fmt.Errorf("read root node: %d", err)
 	}
 
 	if root == nil {
@@ -125,7 +122,7 @@ func (t *BTree) Insert(key pointer.ReferencedValue, value hnsw.Point) error {
 func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTreeNode) (*BTreeNode, pointer.ReferencedValue, error) {
 	mid := len(leftChild.Keys) / 2
 
-	midKey, midVector, midPointer := leftChild.Keys[mid], leftChild.Vectors[mid], leftChild.Pointers[mid]
+	midKey, midVector := leftChild.Keys[mid], leftChild.Vectors[mid]
 
 	rightChild := &BTreeNode{
 		Keys:     append([]pointer.ReferencedValue(nil), leftChild.Keys[mid+1:]...),
@@ -140,15 +137,13 @@ func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTr
 	}
 	roffset, err := t.PageFile.NewPage(rbuf)
 	if err != nil {
-		return err
+		return nil, pointer.ReferencedValue{}, err
 	}
 
-	// now that right child has been properly copied, shrink leftChild
 	leftChild.Keys = leftChild.Keys[:mid]
 	leftChild.Vectors = leftChild.Vectors[:mid]
 	leftChild.Pointers = leftChild.Pointers[:mid]
 
-	// Insert the middle key into the parent node at leftChildIndex
 	parent.Keys = append(parent.Keys[:leftChildIndex], append([]pointer.ReferencedValue{midKey}, parent.Keys[leftChildIndex:]...)...)
 	parent.Vectors = append(parent.Vectors[:leftChildIndex], append([]hnsw.Point{midVector}, parent.Vectors[leftChildIndex:]...)...)
 	parent.Pointers = append(parent.Pointers[:leftChildIndex+1], append([]uint64{uint64(roffset)}, parent.Pointers[leftChildIndex+1:]...)...)
