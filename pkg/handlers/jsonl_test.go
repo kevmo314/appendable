@@ -78,7 +78,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 4", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(bptree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(pointer.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -94,7 +94,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].Btree().Find(\"test1\") = %+v, want {0, %d}", mp1, len("{\"test\":\"test1\"}"))
 		}
 
-		rv2, mp2, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(bptree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(pointer.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,7 +161,7 @@ func TestJSONL(t *testing.T) {
 			}
 		}
 
-		rv1, mp1, err := strIndexes[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(bptree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := strIndexes[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(pointer.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,7 +190,7 @@ func TestJSONL(t *testing.T) {
 		}
 
 		bp2 := strIndexes[1].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)})
-		rv2, mp2, err := bp2.Find(bptree.ReferencedValue{Value: []byte("test3")})
+		rv2, mp2, err := bp2.Find(pointer.ReferencedValue{Value: []byte("test3")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -247,7 +247,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got len(i.Indexes) = %d, want 2", len(collected))
 		}
 
-		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(bptree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(pointer.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -277,7 +277,7 @@ func TestJSONL(t *testing.T) {
 
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(123))
-		rv2, mp2, err := collected[1].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Find(bptree.ReferencedValue{Value: v2})
+		rv2, mp2, err := collected[1].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Find(pointer.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -584,7 +584,7 @@ func TestJSONL(t *testing.T) {
 			}
 		}
 
-		rv1, mp1, err := vanillaIndexes[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(bptree.ReferencedValue{Value: []byte("test1")})
+		rv1, mp1, err := vanillaIndexes[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(0)}).Find(pointer.ReferencedValue{Value: []byte("test1")})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -612,7 +612,7 @@ func TestJSONL(t *testing.T) {
 			t.Errorf("got i.Indexes[0].FieldType = %#v, want FieldTypeString", md1.FieldType)
 		}
 
-		rv2, mp2, err := vanillaIndexes[1].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(1)}).Find(bptree.ReferencedValue{})
+		rv2, mp2, err := vanillaIndexes[1].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(1)}).Find(pointer.ReferencedValue{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -719,7 +719,7 @@ func TestJSONL(t *testing.T) {
 		v2 := make([]byte, 8)
 		binary.BigEndian.PutUint64(v2, math.Float64bits(1234))
 
-		iter, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Iter(bptree.ReferencedValue{Value: v2})
+		iter, err := collected[0].BPTree(&bptree.BPTree{Data: r2, DataParser: JSONLHandler{}, Width: uint16(9)}).Iter(pointer.ReferencedValue{Value: v2})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -791,7 +791,7 @@ func TestJSONL(t *testing.T) {
 		tris := ngram.BuildNgram("howdy", 3)
 
 		for _, tri := range tris {
-			rv1, mp1, err := bp.Find(bptree.ReferencedValue{Value: []byte(tri.Word)})
+			rv1, mp1, err := bp.Find(pointer.ReferencedValue{Value: []byte(tri.Word)})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -860,7 +860,7 @@ func TestJSONL(t *testing.T) {
 		trigramTable := make(map[uint64]int)
 
 		for _, tri := range tris {
-			iter, err := tree.Iter(bptree.ReferencedValue{Value: []byte(tri.Word)})
+			iter, err := tree.Iter(pointer.ReferencedValue{Value: []byte(tri.Word)})
 
 			if err != nil {
 				t.Fatal(err)

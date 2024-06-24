@@ -174,7 +174,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					}
 					valueBytes := []byte(valueStr)
 
-					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 						DataPointer: mp,
 						Value:       valueBytes,
 					}, data); err != nil {
@@ -192,7 +192,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 					for _, tri := range trigrams {
 						valueBytes := []byte(tri.Word)
 
-						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 							DataPointer: pointer.MemoryPointer{
 								Offset: mp.Offset + tri.Offset,
 								Length: uint32(len(valueStr)), // this is a degenerate case - for ngrams, we store the entire length of the valueStr. This is to help us with the ranking heuristic.
@@ -207,7 +207,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 				case appendable.FieldTypeNull:
 					// nil values are a bit of a degenerate case, we are essentially using the bptree
 					// as a set. we store the value as an empty byte slice.
-					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 						Value:       []byte{},
 						DataPointer: mp,
 					}, data); err != nil {
@@ -226,7 +226,7 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						binary.BigEndian.PutUint64(buf, math.Float64bits(value))
 					}
 
-					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+					if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 						DataPointer: mp,
 						Value:       buf,
 					},
@@ -242,14 +242,14 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 						return fmt.Errorf("expected bool type")
 					}
 					if valueBool {
-						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 							DataPointer: mp,
 							Value:       []byte{1},
 						}, data); err != nil {
 							return fmt.Errorf("failed to insert into b+tree: %w", err)
 						}
 					} else {
-						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(bptree.ReferencedValue{
+						if err := page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}).Insert(pointer.ReferencedValue{
 							DataPointer: mp,
 							Value:       []byte{0},
 						}, data); err != nil {
