@@ -14,7 +14,6 @@ type BTreeNode struct {
 	Width    uint16
 }
 
-
 func (n *BTreeNode) Leaf() bool {
 	return len(n.Pointers) == 0
 }

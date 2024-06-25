@@ -151,3 +151,34 @@ func (t *BTree) SplitChild(parent *BTreeNode, leftChildIndex int, leftChild *BTr
 	return rightChild, midKey, nil
 }
 
+func (t *BTree) Find(key pointer.ReferencedValue) (pointer.ReferencedValue, hnsw.Point, uint64, error) {
+	root, _, err := t.root()
+	if err != nil || root == nil {
+		return pointer.ReferencedValue{}, hnsw.Point{}, 0, err
+	}
+
+	node := root
+	for !node.Leaf() {
+		index, found := slices.BinarySearchFunc(node.Keys, key, pointer.CompareReferencedValues)
+
+		if found {
+			index++
+		}
+
+		childPointer := node.Pointers[index]
+		child, err := t.readNode(childPointer)
+		if err != nil {
+			return pointer.ReferencedValue{}, hnsw.Point{}, 0, err
+		}
+
+		node = child
+	}
+
+	// we reached leaf node, find key in the leaf node
+	index, found := slices.BinarySearchFunc(node.Keys, key, pointer.CompareReferencedValues)
+	if !found {
+		return pointer.ReferencedValue{}, hnsw.Point{}, 0, err
+	}
+
+	return node.Keys[index], node.Vectors[index], node.Pointers[index], nil
+}
