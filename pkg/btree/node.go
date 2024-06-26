@@ -2,15 +2,16 @@ package btree
 
 import (
 	"github.com/kevmo314/appendable/pkg/hnsw"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
 
 type BTreeNode struct {
-	Ids     []hnsw.Id
+	Keys    []pointer.ReferencedValue
 	Vectors []hnsw.Point
 
-	Pointers []uint64
-	Width    uint16
+	Offsets []uint64
+	Width   uint16
 }
 
 func (n *BTreeNode) Size() int64 {
@@ -36,4 +37,8 @@ func (n *BTreeNode) WriteTo(w io.Writer) (int64, error) {
 	}
 	m, err := w.Write(buf)
 	return int64(m), err
+}
+
+func (n *BTreeNode) Leaf() bool {
+	return len(n.Offsets) == 0
 }

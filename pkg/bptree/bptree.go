@@ -36,8 +36,7 @@ func (t *BPTree) root() (*BPTreeNode, pointer.MemoryPointer, error) {
 type TraversalRecord struct {
 	node  *BPTreeNode
 	index int
-	// the offset is useful so we know which page to free when we split
-	ptr pointer.MemoryPointer
+	ptr   pointer.MemoryPointer
 }
 
 type TraversalIterator struct {
