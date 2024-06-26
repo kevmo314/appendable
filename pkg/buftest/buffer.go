@@ -17,6 +17,10 @@ func NewSeekableBuffer() *SeekableBuffer {
 	return &SeekableBuffer{}
 }
 
+func (b *SeekableBuffer) Bytes() []byte {
+	return b.buf
+}
+
 func (b *SeekableBuffer) Write(p []byte) (int, error) {
 	n := copy(b.buf[b.pos:], p)
 	if n < len(p) {
