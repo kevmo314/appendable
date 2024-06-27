@@ -29,7 +29,7 @@ func (rv ReferencedValue) String() string {
 }
 
 func (rv ReferencedId) String() string {
-	return fmt.Sprintf("ReferencedId@%s{%s}", rv.DataPointer, rv.Value)
+	return fmt.Sprintf("ReferencedId@%s{%d}", rv.DataPointer, rv.Value)
 }
 
 func CompareReferencedValues(a, b ReferencedValue) int {
