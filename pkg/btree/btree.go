@@ -50,7 +50,7 @@ func (t *BTree) readNode(offset uint64) (*BTreeNode, error) {
 	return node, nil
 }
 
-func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
+func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 	root, rootOffset, err := t.root()
 	if err != nil {
 		return fmt.Errorf("read root node: %w", err)
@@ -58,7 +58,7 @@ func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
 
 	if root == nil {
 		node := &BTreeNode{Width: t.Width}
-		node.Keys = []pointer.ReferencedValue{key}
+		node.Keys = []pointer.ReferencedId{key}
 		node.Vectors = []hnsw.Point{vector}
 
 		buf, err := node.MarshalBinary()
@@ -73,12 +73,11 @@ func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
 	}
 
 	parent, parentOffset := root, rootOffset.Offset
-	for len(parent.Offsets) != 0 {
-		index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedValues)
+	for !parent.Leaf() {
+		index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedIds)
 
 		if found {
 			panic("cannot insert duplicate key")
-
 		}
 
 		loffset := parent.Offsets[index]
@@ -137,7 +136,7 @@ func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
 				return err
 			}
 
-			if pointer.CompareReferencedValues(midKey, key) == 1 {
+			if pointer.CompareReferencedIds(midKey, key) == 1 {
 				parent, parentOffset = child, loffset
 			} else {
 				parent, parentOffset = rightChild, uint64(roffset)
@@ -153,7 +152,7 @@ func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
 		}
 	}
 
-	index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedValues)
+	index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedIds)
 	if found {
 		panic("cannot insert duplicate key")
 	}
@@ -174,32 +173,32 @@ func (t *BTree) Insert(key pointer.ReferencedValue, vector hnsw.Point) error {
 	return nil
 }
 
-func (t *BTree) Find(key pointer.ReferencedValue) (pointer.ReferencedValue, pointer.MemoryPointer, error) {
+func (t *BTree) Find(key pointer.ReferencedId) (pointer.ReferencedId, pointer.MemoryPointer, error) {
 	node, _, err := t.root()
 	if err != nil {
-		return pointer.ReferencedValue{}, pointer.MemoryPointer{}, err
+		return pointer.ReferencedId{}, pointer.MemoryPointer{}, err
 	}
 
 	for {
 		if node == nil {
-			return pointer.ReferencedValue{}, pointer.MemoryPointer{}, nil
+			return pointer.ReferencedId{}, pointer.MemoryPointer{}, nil
 		}
 
-		index, found := slices.BinarySearchFunc(node.Keys, key, pointer.CompareReferencedValues)
+		index, found := slices.BinarySearchFunc(node.Keys, key, pointer.CompareReferencedIds)
 
 		if found {
-			return node.Keys[index], pointer.MemoryPointer{Offset: node.Offsets[index]}, nil
+			return node.Keys[index-1], pointer.MemoryPointer{Offset: node.Offsets[index]}, nil
 		}
 
 		// no key found
 		if node.Leaf() {
-			return pointer.ReferencedValue{}, pointer.MemoryPointer{}, nil
+			return pointer.ReferencedId{}, pointer.MemoryPointer{}, nil
 		}
 
 		newOffset := node.Offsets[index]
 		newNode, err := t.readNode(newOffset)
 		if err != nil {
-			return pointer.ReferencedValue{}, pointer.MemoryPointer{}, err
+			return pointer.ReferencedId{}, pointer.MemoryPointer{}, err
 		}
 
 		node = newNode

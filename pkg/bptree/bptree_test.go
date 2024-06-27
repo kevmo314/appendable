@@ -82,6 +82,9 @@ func TestBPTree(t *testing.T) {
 		if err := tree.Insert(pointer.ReferencedValue{Value: []byte("hello")}, pointer.MemoryPointer{Offset: 1, Length: 5}); err != nil {
 			t.Fatal(err)
 		}
+
+		fmt.Printf("buffer: %v", b.Bytes()[4096*2:])
+
 		k, v, err := tree.Find(pointer.ReferencedValue{Value: []byte("hello")})
 		if err != nil {
 			t.Fatal(err)

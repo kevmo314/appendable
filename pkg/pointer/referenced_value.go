@@ -3,6 +3,7 @@ package pointer
 import (
 	"bytes"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/hnsw"
 )
 
 type ReferencedValue struct {
@@ -18,8 +19,17 @@ type ReferencedValue struct {
 	Value       []byte
 }
 
+type ReferencedId struct {
+	DataPointer MemoryPointer
+	Id          hnsw.Id
+}
+
 func (rv ReferencedValue) String() string {
 	return fmt.Sprintf("ReferencedValue@%s{%s}", rv.DataPointer, rv.Value)
+}
+
+func (ri ReferencedId) String() string {
+	return fmt.Sprintf("ReferencedValue@%d{%d}", ri.Id, ri.Id)
 }
 
 func CompareReferencedValues(a, b ReferencedValue) int {
@@ -34,5 +44,15 @@ func CompareReferencedValues(a, b ReferencedValue) int {
 	} else if a.DataPointer.Length > b.DataPointer.Length {
 		return 1
 	}
+	return 0
+}
+
+func CompareReferencedIds(a, b ReferencedId) int {
+	if a.Id > b.Id {
+		return 1
+	} else if a.Id < b.Id {
+		return -1
+	}
+
 	return 0
 }
