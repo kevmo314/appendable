@@ -47,7 +47,7 @@ func CompareReferencedValues(a, b ReferencedValue) int {
 	return 0
 }
 
-func CompareReferencedId(a, b ReferencedId) int {
+func CompareReferencedIds(a, b ReferencedId) int {
 	if a.Value > b.Value {
 		return 1
 	} else if a.Value < b.Value {

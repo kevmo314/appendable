@@ -2,19 +2,24 @@ package btree
 
 import (
 	"github.com/kevmo314/appendable/pkg/hnsw"
+	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
 )
 
 type BTreeNode struct {
-	Ids     []hnsw.Id
+	Ids     []pointer.ReferencedId
 	Vectors []hnsw.Point
 
-	Pointers []uint64
-	Width    uint16
+	Offsets []uint64
+	Width   uint16
 }
 
 func (n *BTreeNode) Size() int64 {
 	return 0
+}
+
+func (n *BTreeNode) Leaf() bool {
+	return len(n.Offsets) == 0
 }
 
 // MarshalBinary TODO!
