@@ -125,4 +125,33 @@ func TestBTree(t *testing.T) {
 		}
 	})
 
+	t.Run("split root", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		mp := newTestMetaPage(t, p)
+		tree := &BTree{PageFile: p, MetaPage: mp, Width: uint16(0), VectorDim: 1}
+
+		for i := 0; i <= 5; i++ {
+			if err := tree.Insert(pointer.ReferencedId{Value: hnsw.Id(i)}, hnsw.Point{float32(i)}); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		for i := 0; i < 5; i++ {
+			k, _, err := tree.Find(pointer.ReferencedId{Value: hnsw.Id(i)})
+
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if k.Value != hnsw.Id(i) {
+				t.Fatalf("expected id %d, got %d", k, k)
+			}
+		}
+	})
+
 }
