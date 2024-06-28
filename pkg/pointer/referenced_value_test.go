@@ -7,23 +7,23 @@ import (
 
 func TestReferencedValue(t *testing.T) {
 	t.Run("compare referenced value", func(t *testing.T) {
-		keys := []ReferencedValue{
+		keys := []ReferencedId{
 			{
-				Value: []byte{1},
+				Value: 1,
 				DataPointer: MemoryPointer{
 					Offset: 100,
 					Length: 0,
 				},
 			},
 			{
-				Value: []byte{2},
+				Value: 2,
 				DataPointer: MemoryPointer{
 					Offset: 200,
 					Length: 0,
 				},
 			},
 			{
-				Value: []byte{3},
+				Value: 3,
 				DataPointer: MemoryPointer{
 					Offset: 300,
 					Length: 0,
@@ -31,10 +31,10 @@ func TestReferencedValue(t *testing.T) {
 			},
 		}
 
-		index, found := slices.BinarySearchFunc(keys, ReferencedValue{
+		index, found := slices.BinarySearchFunc(keys, ReferencedId{
 			DataPointer: MemoryPointer{},
-			Value:       []byte{1},
-		}, CompareUniqueReferencedValues)
+			Value:       1,
+		}, CompareReferencedIds)
 
 		if !found {
 			t.Fatal("expected to find key 1")

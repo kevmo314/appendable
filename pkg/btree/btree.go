@@ -59,9 +59,10 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 	}
 
 	if root == nil {
-		node := &BTreeNode{Width: t.Width}
-		node.Keys = []pointer.ReferencedId{key}
+		node := &BTreeNode{Width: t.Width, VectorDim: t.VectorDim}
+		node.Ids = []pointer.ReferencedId{key}
 		node.Vectors = []hnsw.Point{vector}
+		node.Offsets = make([]uint64, 0)
 
 		buf, err := node.MarshalBinary()
 		if err != nil {
@@ -76,7 +77,7 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 
 	parent, parentOffset := root, rootOffset.Offset
 	for !parent.Leaf() {
-		index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedIds)
+		index, found := slices.BinarySearchFunc(parent.Ids, key, pointer.CompareReferencedIds)
 
 		if found {
 			panic("cannot insert duplicate key")
@@ -90,16 +91,16 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 
 		if int(child.Size()) > t.PageFile.PageSize() {
 			// split node here
-			mid := len(child.Keys) / 2
-			midKey := child.Keys[mid]
+			mid := len(child.Ids) / 2
+			midKey := child.Ids[mid]
 
-			rightChild := &BTreeNode{Width: t.Width}
+			rightChild := &BTreeNode{Width: t.Width, VectorDim: t.VectorDim}
 			if !child.Leaf() {
 				rightChild.Offsets = child.Offsets[mid+1:]
 				child.Offsets = child.Offsets[:mid]
 			}
 			rightChild.Vectors = child.Vectors[mid+1:]
-			rightChild.Keys = child.Keys[mid+1:]
+			rightChild.Ids = child.Ids[mid+1:]
 
 			rbuf, err := rightChild.MarshalBinary()
 			if err != nil {
@@ -111,7 +112,7 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 			}
 
 			// shrink left child (child)
-			child.Keys = child.Keys[:mid]
+			child.Ids = child.Ids[:mid]
 			child.Vectors = child.Vectors[:mid]
 			if _, err := t.PageFile.Seek(int64(loffset), io.SeekStart); err != nil {
 				return err
@@ -122,11 +123,11 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 			}
 
 			// update parent to include new key and store left right offsets
-			if index == len(parent.Keys) {
-				parent.Keys = append(parent.Keys, midKey)
+			if index == len(parent.Ids) {
+				parent.Ids = append(parent.Ids, midKey)
 			} else {
-				parent.Keys = append(parent.Keys[:index+1], parent.Keys[index:]...)
-				parent.Keys[index] = midKey
+				parent.Ids = append(parent.Ids[:index+1], parent.Ids[index:]...)
+				parent.Ids[index] = midKey
 			}
 
 			parent.Offsets = append(parent.Offsets[:index+2], parent.Offsets[:index+1]...)
@@ -154,13 +155,13 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 		}
 	}
 
-	index, found := slices.BinarySearchFunc(parent.Keys, key, pointer.CompareReferencedIds)
+	index, found := slices.BinarySearchFunc(parent.Ids, key, pointer.CompareReferencedIds)
 	if found {
 		panic("cannot insert duplicate key")
 	}
 
-	parent.Keys = append(parent.Keys[:index+1], parent.Keys[index:]...)
-	parent.Keys[index] = key
+	parent.Ids = append(parent.Ids[:index+1], parent.Ids[index:]...)
+	parent.Ids[index] = key
 
 	parent.Vectors = append(parent.Vectors[:index+1], parent.Vectors[index:]...)
 	parent.Vectors[index] = vector
@@ -186,10 +187,10 @@ func (t *BTree) Find(key pointer.ReferencedId) (pointer.ReferencedId, pointer.Me
 			return pointer.ReferencedId{}, pointer.MemoryPointer{}, nil
 		}
 
-		index, found := slices.BinarySearchFunc(node.Keys, key, pointer.CompareReferencedIds)
+		index, found := slices.BinarySearchFunc(node.Ids, key, pointer.CompareReferencedIds)
 
 		if found {
-			return node.Keys[index-1], pointer.MemoryPointer{Offset: node.Offsets[index]}, nil
+			return node.Ids[index], pointer.MemoryPointer{Offset: node.Ids[index].DataPointer.Offset}, nil
 		}
 
 		// no key found
