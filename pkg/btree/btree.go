@@ -14,6 +14,8 @@ type BTree struct {
 	MetaPage metapage.MetaPage
 	PageFile pagefile.ReadWriteSeekPager
 
+	VectorDim uint64
+
 	Width uint16
 }
 
@@ -36,7 +38,7 @@ func (t *BTree) readNode(offset uint64) (*BTreeNode, error) {
 		return nil, err
 	}
 
-	node := &BTreeNode{Width: t.Width}
+	node := &BTreeNode{Width: t.Width, VectorDim: t.VectorDim}
 	buf := make([]byte, t.PageFile.PageSize())
 
 	if _, err := t.PageFile.Read(buf); err != nil {

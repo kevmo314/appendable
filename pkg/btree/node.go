@@ -2,42 +2,51 @@ package btree
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/kevmo314/appendable/pkg/encoding"
 	"github.com/kevmo314/appendable/pkg/hnsw"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
+	"math"
 )
 
 type BTreeNode struct {
-	Keys    []pointer.ReferencedId
+	Ids     []pointer.ReferencedId
 	Vectors []hnsw.Point
 
-	Offsets []uint64
-
-	// Width should be 0 for varint
-	Width uint16
+	Offsets   []uint64
+	Width     uint16
+	VectorDim uint64
 }
 
 func (n *BTreeNode) Size() int64 {
 	size := 4
 
-	for _, k := range n.Keys {
+	for _, k := range n.Ids {
 		size += encoding.SizeVarint(k.DataPointer.Offset)
-		size += encoding.SizeVarint(uint64(k.Id))
+		size += encoding.SizeVarint(uint64(k.DataPointer.Length))
+		size += encoding.SizeVarint(uint64(k.Value))
 	}
 
 	for _, n := range n.Offsets {
 		size += encoding.SizeVarint(n)
 	}
 
+	size += encoding.SizeVarint(n.VectorDim)
+	size += len(n.Vectors) * (4 * int(n.VectorDim))
+
 	return int64(size)
 }
 
+func (n *BTreeNode) Leaf() bool {
+	return n.Offsets == nil || len(n.Offsets) == 0
+}
+
 func (n *BTreeNode) MarshalBinary() ([]byte, error) {
-	size := int32(len(n.Keys))
+	size := int32(len(n.Ids))
 
 	if size == 0 {
-		panic("writing empty node")
+		panic("writing empty node, no ids found!")
 	}
 
 	buf := make([]byte, n.Size())
@@ -49,20 +58,30 @@ func (n *BTreeNode) MarshalBinary() ([]byte, error) {
 	}
 
 	ct := 4
-	for _, k := range n.Keys {
+	for _, k := range n.Ids {
 		on := binary.PutUvarint(buf[ct:], k.DataPointer.Offset)
-		vn := binary.PutUvarint(buf[ct+on:], uint64(k.Id))
-		ct += on + vn
-
+		ln := binary.PutUvarint(buf[ct+on:], uint64(k.DataPointer.Length))
+		vn := binary.PutUvarint(buf[ct+on+ln:], uint64(k.Value))
+		ct += on + ln + vn
 	}
 
-	for _, o := range n.Offsets {
-		on := binary.PutUvarint(buf[ct:], o)
+	for _, n := range n.Offsets {
+		on := binary.PutUvarint(buf[ct:], n)
 		ct += on
 	}
 
+	vdn := binary.PutUvarint(buf[ct:], n.VectorDim)
+	ct += vdn
+
+	for _, v := range n.Vectors {
+		for _, elem := range v {
+			binary.LittleEndian.PutUint32(buf[ct:], math.Float32bits(elem))
+			ct += 4
+		}
+	}
+
 	if ct != int(n.Size()) {
-		panic("size mismatch")
+		panic(fmt.Sprintf("size mismatch. ct: %v, size: %v", ct, n.Size()))
 	}
 
 	return buf, nil
@@ -73,12 +92,13 @@ func (n *BTreeNode) UnmarshalBinary(buf []byte) error {
 	leaf := size < 0
 
 	if leaf {
-		n.Offsets = make([]uint64, (-size)+1)
-		n.Keys = make([]pointer.ReferencedId, -size)
+		n.Ids = make([]pointer.ReferencedId, -size)
 		n.Vectors = make([]hnsw.Point, -size)
+		n.Offsets = make([]uint64, 0)
 	} else {
-		n.Keys = make([]pointer.ReferencedId, size)
+		n.Ids = make([]pointer.ReferencedId, size)
 		n.Vectors = make([]hnsw.Point, size)
+		n.Offsets = make([]uint64, size+1)
 	}
 
 	if size == 0 {
@@ -86,20 +106,42 @@ func (n *BTreeNode) UnmarshalBinary(buf []byte) error {
 	}
 
 	m := 4
-	for i := range n.Keys {
+	for i := range n.Ids {
 		o, on := binary.Uvarint(buf[m:])
-		v, vn := binary.Uvarint(buf[m+on:])
+		l, ln := binary.Uvarint(buf[m+on:])
 
-		n.Keys[i].Id = hnsw.Id(v)
-		n.Keys[i].DataPointer.Offset = o
+		n.Ids[i].DataPointer.Offset = o
+		n.Ids[i].DataPointer.Length = uint32(l)
 
-		m += on + vn
+		m += on + ln
+
+		v, vn := binary.Uvarint(buf[m:])
+		n.Ids[i].Value = hnsw.Id(v)
+
+		m += vn
 	}
 
-	for i := range n.Offsets {
-		o, on := binary.Uvarint(buf[m:])
-		n.Offsets[i] = o
-		m += on
+	if !leaf {
+		for i := range n.Offsets {
+			o, on := binary.Uvarint(buf[m:])
+			n.Offsets[i] = o
+			m += on
+		}
+	}
+
+	vecdim, vdn := binary.Uvarint(buf[m:])
+	n.VectorDim = vecdim
+	m += vdn
+
+	for i := range n.Vectors {
+		vector := make(hnsw.Point, vecdim)
+
+		for vi := range vector {
+			vector[vi] = float32(binary.LittleEndian.Uint32(buf[m:]))
+			m += 4
+		}
+
+		n.Vectors[i] = vector
 	}
 
 	return nil

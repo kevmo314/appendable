@@ -41,7 +41,6 @@ func (n *BPTreeNode) NumPointers() int {
 }
 
 func (n *BPTreeNode) Size() int64 {
-
 	size := 4 // number of keys
 	for _, k := range n.Keys {
 		o := encoding.SizeVarint(k.DataPointer.Offset)

@@ -21,15 +21,15 @@ type ReferencedValue struct {
 
 type ReferencedId struct {
 	DataPointer MemoryPointer
-	Id          hnsw.Id
+	Value       hnsw.Id
 }
 
 func (rv ReferencedValue) String() string {
 	return fmt.Sprintf("ReferencedValue@%s{%s}", rv.DataPointer, rv.Value)
 }
 
-func (ri ReferencedId) String() string {
-	return fmt.Sprintf("ReferencedValue@%d{%d}", ri.Id, ri.Id)
+func (rv ReferencedId) String() string {
+	return fmt.Sprintf("ReferencedId@%s{%d}", rv.DataPointer, rv.Value)
 }
 
 func CompareReferencedValues(a, b ReferencedValue) int {
@@ -48,9 +48,9 @@ func CompareReferencedValues(a, b ReferencedValue) int {
 }
 
 func CompareReferencedIds(a, b ReferencedId) int {
-	if a.Id > b.Id {
+	if a.Value > b.Value {
 		return 1
-	} else if a.Id < b.Id {
+	} else if a.Value < b.Value {
 		return -1
 	}
 
