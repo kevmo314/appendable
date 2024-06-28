@@ -160,11 +160,17 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 		panic("cannot insert duplicate key")
 	}
 
-	parent.Ids = append(parent.Ids[:index+1], parent.Ids[index:]...)
-	parent.Ids[index] = key
+	if index == len(parent.Ids) {
+		parent.Ids = append(parent.Ids, key)
 
-	parent.Vectors = append(parent.Vectors[:index+1], parent.Vectors[index:]...)
-	parent.Vectors[index] = vector
+		parent.Vectors = append(parent.Vectors, vector)
+	} else {
+		parent.Ids = append(parent.Ids[:index+1], parent.Ids[index:]...)
+		parent.Ids[index] = key
+
+		parent.Vectors = append(parent.Vectors[:index+1], parent.Vectors[index:]...)
+		parent.Vectors[index] = vector
+	}
 
 	if _, err := t.PageFile.Seek(int64(parentOffset), io.SeekStart); err != nil {
 		return err

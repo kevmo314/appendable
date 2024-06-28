@@ -90,4 +90,39 @@ func TestBTree(t *testing.T) {
 		}
 	})
 
+	t.Run("insert into root", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		tree := &BTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(0), VectorDim: 1}
+		if err := tree.Insert(pointer.ReferencedId{Value: 2}, hnsw.Point{2}); err != nil {
+			t.Fatal(err)
+		}
+
+		if err := tree.Insert(pointer.ReferencedId{Value: 3}, hnsw.Point{3}); err != nil {
+			t.Fatal(err)
+		}
+
+		k1, _, err := tree.Find(pointer.ReferencedId{Value: 2})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if k1.Value != hnsw.Id(2) {
+			t.Fatalf("expected id 2, got %d", k1)
+		}
+
+		k2, _, err := tree.Find(pointer.ReferencedId{Value: 3})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if k2.Value != hnsw.Id(3) {
+			t.Fatalf("expected id 3, got %d", k2)
+		}
+	})
+
 }
