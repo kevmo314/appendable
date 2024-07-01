@@ -32,6 +32,10 @@ func (n *BTreeNode) Size() int64 {
 		size += encoding.SizeVarint(n)
 	}
 
+	if n.VectorDim == 0 {
+		panic("VectorDim cannot be zero")
+	}
+
 	size += encoding.SizeVarint(n.VectorDim)
 	size += len(n.Vectors) * (4 * int(n.VectorDim))
 
