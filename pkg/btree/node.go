@@ -43,7 +43,7 @@ func (n *BTreeNode) Size() int64 {
 }
 
 func (n *BTreeNode) Leaf() bool {
-	return n.Offsets == nil || len(n.Offsets) == 0
+	return len(n.Offsets) == 0
 }
 
 func (n *BTreeNode) MarshalBinary() ([]byte, error) {
