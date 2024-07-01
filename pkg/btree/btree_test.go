@@ -155,3 +155,33 @@ func TestBTree(t *testing.T) {
 	})
 
 }
+
+func TestBPTree_RandomTests(t *testing.T) {
+	t.Run("random insertion test", func(t *testing.T) {
+		b := buftest.NewSeekableBuffer()
+		p, err := pagefile.NewPageFile(b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tree := &BTree{PageFile: p, MetaPage: newTestMetaPage(t, p), Width: uint16(9), VectorDim: 2}
+		for i := 0; i < 65536; i++ {
+			if err := tree.Insert(pointer.ReferencedId{Value: hnsw.Id(i)}, hnsw.Point{float32(i), float32(i)}); err != nil {
+				t.Fatalf("insert error for i: %v, err: %v", i, err)
+			}
+		}
+
+		for i := 0; i < 65536; i++ {
+			k, v, err := tree.Find(pointer.ReferencedId{Value: hnsw.Id(i)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if k.Value != hnsw.Id(i) {
+				t.Fatalf("expected to find key %d", i)
+			}
+
+			if v.Offset != uint64(i) {
+				t.Fatalf("expected value %d, got %d", i, v)
+			}
+		}
+	})
+}

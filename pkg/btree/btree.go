@@ -139,7 +139,12 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 				return err
 			}
 
-			if pointer.CompareReferencedIds(midKey, key) == 1 {
+			cmpRes := pointer.CompareReferencedIds(midKey, key)
+			if cmpRes == 0 {
+				panic("midKey and key should not be the same post split detection")
+			}
+
+			if cmpRes == 1 {
 				parent, parentOffset = child, loffset
 			} else {
 				parent, parentOffset = rightChild, uint64(roffset)
@@ -162,14 +167,17 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 
 	if index == len(parent.Ids) {
 		parent.Ids = append(parent.Ids, key)
-
 		parent.Vectors = append(parent.Vectors, vector)
 	} else {
 		parent.Ids = append(parent.Ids[:index+1], parent.Ids[index:]...)
 		parent.Ids[index] = key
-
 		parent.Vectors = append(parent.Vectors[:index+1], parent.Vectors[index:]...)
 		parent.Vectors[index] = vector
+	}
+
+	// this should be the leaf node
+	if int(parent.Size()) > t.PageFile.PageSize() {
+		panic("too fat!")
 	}
 
 	if _, err := t.PageFile.Seek(int64(parentOffset), io.SeekStart); err != nil {
