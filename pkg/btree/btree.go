@@ -239,7 +239,7 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 
 func (t *BTree) Find(key pointer.ReferencedId) (pointer.ReferencedId, hnsw.Point, error) {
 	root, rootOffset, err := t.root()
-	if err != nil {
+	if err != nil || root == nil {
 		return pointer.ReferencedId{}, hnsw.Point{}, err
 	}
 
