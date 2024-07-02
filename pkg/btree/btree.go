@@ -106,7 +106,7 @@ func (t *BTree) Insert(key pointer.ReferencedId, vector hnsw.Point) error {
 			return err
 		}
 
-		offset, err := t.PageFile.Write(buf)
+		offset, err := t.PageFile.NewPage(buf)
 		if err != nil {
 			return err
 		}

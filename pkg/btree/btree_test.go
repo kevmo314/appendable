@@ -123,7 +123,7 @@ func TestBTree(t *testing.T) {
 			t.Fatal(err)
 		}
 		mp := newTestMetaPage(t, p)
-		tree := &BTree{PageFile: p, MetaPage: mp, Width: uint16(6)}
+		tree := &BTree{PageFile: p, MetaPage: mp, Width: uint16(6), VectorDim: 2}
 		if err := tree.Insert(pointer.ReferencedId{Value: 1}, hnsw.Point{2, 2}); err != nil {
 			t.Fatal(err)
 		}
@@ -192,4 +192,28 @@ func TestBTree(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+}
+
+func TestBTree_SequentialInsertionTest(t *testing.T) {
+	b := buftest.NewSeekableBuffer()
+	p, err := pagefile.NewPageFile(b)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := &BTree{PageFile: p, MetaPage: newTestMetaPage(t, p), VectorDim: 2}
+	for i := 0; i < 256; i++ {
+		if err := tree.Insert(pointer.ReferencedId{Value: hnsw.Id(i)}, hnsw.Point{float32(i), float32(i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 256; i++ {
+		k, _, err := tree.Find(pointer.ReferencedId{Value: hnsw.Id(i)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if k.Value != hnsw.Id(i) {
+			t.Fatalf("expected to find key %d", i)
+		}
+	}
 }
