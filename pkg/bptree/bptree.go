@@ -274,6 +274,7 @@ func (t *BPTree) Insert(key pointer.ReferencedValue, value pointer.MemoryPointer
 		if err != nil {
 			return err
 		}
+
 		return t.MetaPage.SetRoot(pointer.MemoryPointer{Offset: uint64(offset), Length: uint32(len(buf))})
 	}
 
