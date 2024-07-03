@@ -2,11 +2,13 @@ package btree
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/kevmo314/appendable/pkg/buftest"
 	"github.com/kevmo314/appendable/pkg/hnsw"
 	"github.com/kevmo314/appendable/pkg/pagefile"
 	"github.com/kevmo314/appendable/pkg/pointer"
 	"io"
+	"math"
 	"testing"
 )
 
@@ -36,7 +38,12 @@ func (m *testMetaPage) write() error {
 	return nil
 }
 
-func newTestMetaPage(t *testing.T, pf *pagefile.PageFile) *testMetaPage {
+type Test interface {
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+}
+
+func newTestMetaPage(t Test, pf *pagefile.PageFile) *testMetaPage {
 	meta := &testMetaPage{pf: pf}
 	offset, err := pf.NewPage([]byte{0, 0, 0, 0, 0, 0, 0, 0})
 	if err != nil {
@@ -215,5 +222,40 @@ func TestBTree_SequentialInsertionTest(t *testing.T) {
 		if k.Value != hnsw.Id(i) {
 			t.Fatalf("expected to find key %d", i)
 		}
+	}
+}
+
+func BenchmarkBTree(b *testing.B) {
+	for i := 0; i <= 20; i++ {
+		numRecords := int(math.Pow(2, float64(i)))
+
+		b.Run(fmt.Sprintf("btree search %d_records", numRecords), func(b *testing.B) {
+			buf := buftest.NewSeekableBuffer()
+			p, err := pagefile.NewPageFile(buf)
+			if err != nil {
+				b.Fatal(err)
+			}
+			tree := &BTree{PageFile: p, MetaPage: newTestMetaPage(b, p), VectorDim: 2}
+
+			for rec := range numRecords {
+				if err := tree.Insert(pointer.ReferencedId{Value: hnsw.Id(rec)}, hnsw.Point{float32(rec), float32(rec)}); err != nil {
+					b.Fatalf("failed to insert record %d", rec)
+				}
+			}
+
+			q := numRecords / 2
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				k, _, err := tree.Find(pointer.ReferencedId{Value: hnsw.Id(q)})
+				if err != nil {
+					b.Fatalf("failed to find record %d", q)
+				}
+
+				if k.Value != hnsw.Id(q) {
+					b.Fatalf("expected to find key %d", q)
+				}
+			}
+		})
 	}
 }
