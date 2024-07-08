@@ -8,7 +8,8 @@ import (
 type Point []float32
 
 type Friends struct {
-	friends []*DistHeap
+	friends   []*DistHeap
+	maxLevels map[Id]int
 }
 
 // NewFriends creates a new vector, note the max level is inclusive.
@@ -20,7 +21,8 @@ func NewFriends(topLevel int) *Friends {
 	}
 
 	return &Friends{
-		friends: friends,
+		friends:   friends,
+		maxLevels: make(map[Id]int),
 	}
 }
 
@@ -49,6 +51,8 @@ func (v *Friends) InsertFriendsAtLevel(level int, friendId Id, dist float32) {
 	for i := 0; i <= level; i++ {
 		v.friends[i].Insert(friendId, dist)
 	}
+
+	v.maxLevels[friendId] = level
 }
 
 func (v *Friends) GetFriendsAtLevel(level int) (*DistHeap, error) {
