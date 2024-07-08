@@ -2,6 +2,7 @@ package hnsw
 
 import (
 	"fmt"
+	"maps"
 	"math/bits"
 )
 
@@ -125,6 +126,18 @@ func NewDistHeap() *DistHeap {
 		visited: make(map[Id]int),
 	}
 	return d
+}
+
+func (d *DistHeap) Clone() *DistHeap {
+	n := &DistHeap{
+		items:   make([]*Item, len(d.items)),
+		visited: make(map[Id]int, len(d.visited)),
+	}
+
+	copy(n.items, d.items)
+	maps.Copy(n.visited, d.visited)
+
+	return n
 }
 
 func (d *DistHeap) PeekMinItem() (*Item, error) {
