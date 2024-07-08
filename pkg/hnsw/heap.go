@@ -2,6 +2,7 @@ package hnsw
 
 import (
 	"fmt"
+	"maps"
 	"math/bits"
 )
 
@@ -133,13 +134,8 @@ func (d *DistHeap) Clone() *DistHeap {
 		visited: make(map[Id]int, len(d.visited)),
 	}
 
-	for i, item := range d.items {
-		n.items[i] = &*item
-	}
-
-	for id, index := range d.visited {
-		n.visited[id] = index
-	}
+	copy(n.items, d.items)
+	maps.Copy(n.visited, d.visited)
 
 	return n
 }
