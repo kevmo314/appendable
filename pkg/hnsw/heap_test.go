@@ -1,6 +1,9 @@
 package hnsw
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestHeap(t *testing.T) {
 
@@ -136,6 +139,34 @@ func TestHeap(t *testing.T) {
 			if res != c.expected {
 				t.Errorf("got %d, want %d", res, c.expected)
 			}
+		}
+	})
+
+	t.Run("copy", func(t *testing.T) {
+		m := NewDistHeap()
+
+		for i := 0; i <= 10; i++ {
+			m.Insert(Id(i), float32(10-i))
+		}
+
+		n := m.Clone()
+
+		reflect.DeepEqual(m.items, n.items)
+		reflect.DeepEqual(m.visited, n.visited)
+
+		expectedId := Id(10)
+
+		for !n.IsEmpty() {
+			item, err := n.PopMinItem()
+			if err != nil {
+				return
+			}
+
+			if item.id != expectedId {
+				t.Fatalf("expected id to be %v, got %v", expectedId, item.id)
+			}
+
+			expectedId -= 1
 		}
 	})
 }
