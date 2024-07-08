@@ -127,6 +127,23 @@ func NewDistHeap() *DistHeap {
 	return d
 }
 
+func (d *DistHeap) Clone() *DistHeap {
+	n := &DistHeap{
+		items:   make([]*Item, len(d.items)),
+		visited: make(map[Id]int, len(d.visited)),
+	}
+
+	for i, item := range d.items {
+		n.items[i] = &*item
+	}
+
+	for id, index := range d.visited {
+		n.visited[id] = index
+	}
+
+	return n
+}
+
 func (d *DistHeap) PeekMinItem() (*Item, error) {
 	if d.IsEmpty() {
 		return nil, EmptyHeapError
