@@ -1,7 +1,9 @@
 package hnsw
 
 import (
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"math"
 )
 
@@ -61,6 +63,45 @@ func (v *Friends) GetFriendsAtLevel(level int) (*DistHeap, error) {
 	}
 
 	return v.friends[level], nil
+}
+
+func (v *Friends) Flush(numNeighbors int) ([]byte, error) {
+	if len(v.friends) == 0 {
+		panic("no levels to be found")
+	}
+
+	// for every neighbor, we're going to serialize
+	// +-------+-------------------------+
+	// | level |      Id
+
+	buf := make([]byte, (4+1)*numNeighbors)
+
+	level0 := v.friends[0]
+	copyLevel0 := level0.Clone()
+
+	for i := 0; i < numNeighbors; i++ {
+		if copyLevel0.IsEmpty() {
+			// write out max values here
+			continue
+		}
+
+		closestItem, err := copyLevel0.PopMinItem()
+		if err != nil {
+			return []byte{}, fmt.Errorf("failed to find closest item in friends: %v", err)
+		}
+
+		closestId := closestItem.id
+		closestIdMaxLevel, ok := v.maxLevels[closestId]
+
+		if !ok {
+			return []byte{}, fmt.Errorf("failed to find id %v in maxLevels map", closestId)
+		}
+
+		buf[i*(1+4)] = byte(closestIdMaxLevel)
+		binary.BigEndian.PutUint32(buf[i*(1+4)+1:], uint32(closestId))
+	}
+
+	return buf, nil
 }
 
 func EuclidDistance(p0, p1 Point) float32 {

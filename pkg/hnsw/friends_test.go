@@ -2,6 +2,7 @@ package hnsw
 
 import (
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -136,6 +137,43 @@ func TestVector_EuclidDistance(t *testing.T) {
 			if !NearlyEqual(dist, pair.expected) {
 				t.Fatalf("iter i: %v, expected %v and %v to be equal", i, dist, pair.expected)
 			}
+		}
+	})
+}
+
+func TestFriends_Flush(t *testing.T) {
+	t.Run("flush single friend", func(t *testing.T) {
+		f := NewFriends(3)
+
+		f.InsertFriendsAtLevel(2, 1, 4)
+
+		buf, err := f.Flush(1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(buf, []byte{2, 0, 0, 0, 1}) {
+			t.Fatalf("expected %v, got %v", []byte{2, 0, 0, 0, 1}, buf)
+		}
+	})
+
+	t.Run("flushes 8 friends exactly", func(t *testing.T) {
+		f := NewFriends(4)
+		f.InsertFriendsAtLevel(2, 1, 1)
+		f.InsertFriendsAtLevel(3, 2, 2)
+		f.InsertFriendsAtLevel(1, 3, 3)
+		f.InsertFriendsAtLevel(0, 4, 4)
+		f.InsertFriendsAtLevel(4, 5, 5)
+		f.InsertFriendsAtLevel(2, 6, 6)
+		f.InsertFriendsAtLevel(0, 7, 7)
+		f.InsertFriendsAtLevel(2, 8, 8)
+
+		buf, err := f.Flush(8)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !reflect.DeepEqual(buf, []byte{2, 0, 0, 0, 1, 3, 0, 0, 0, 2, 1, 0, 0, 0, 3, 0, 0, 0, 0, 4, 4, 0, 0, 0, 5, 2, 0, 0, 0, 6, 0, 0, 0, 0, 7, 2, 0, 0, 0, 8}) {
+			t.Fatalf("expected %v, got %v", []byte{2, 0, 0, 0, 1, 3, 0, 0, 0, 2, 1, 0, 0, 0, 3, 0, 0, 0, 0, 4, 4, 0, 0, 0, 5, 2, 0, 0, 0, 6, 0, 0, 0, 0, 7, 2, 0, 0, 0, 8}, buf)
 		}
 	})
 }
