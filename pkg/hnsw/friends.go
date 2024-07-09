@@ -65,7 +65,7 @@ func (v *Friends) GetFriendsAtLevel(level int) (*DistHeap, error) {
 	return v.friends[level], nil
 }
 
-func (v *Friends) Flush(numNeighbors int) []byte {
+func (v *Friends) Flush(numNeighbors int) ([]byte, error) {
 	if len(v.friends) == 0 {
 		panic("no levels to be found")
 	}
@@ -87,21 +87,21 @@ func (v *Friends) Flush(numNeighbors int) []byte {
 
 		closestItem, err := copyLevel0.PopMinItem()
 		if err != nil {
-			panic(fmt.Sprintf("failed to find closest item in friends: %v", err))
+			return []byte{}, fmt.Errorf("failed to find closest item in friends: %v", err)
 		}
 
 		closestId := closestItem.id
 		closestIdMaxLevel, ok := v.maxLevels[closestId]
 
 		if !ok {
-			panic(fmt.Sprintf("failed to find id %v in maxLevels map", closestId))
+			return []byte{}, fmt.Errorf("failed to find id %v in maxLevels map", closestId)
 		}
 
 		buf[i*(1+4)] = byte(closestIdMaxLevel)
 		binary.BigEndian.PutUint32(buf[i*(1+4)+1:], uint32(closestId))
 	}
 
-	return buf
+	return buf, nil
 }
 
 func EuclidDistance(p0, p1 Point) float32 {

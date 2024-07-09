@@ -147,8 +147,10 @@ func TestFriends_Flush(t *testing.T) {
 
 		f.InsertFriendsAtLevel(2, 1, 4)
 
-		buf := f.Flush(1)
-
+		buf, err := f.Flush(1)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if !reflect.DeepEqual(buf, []byte{2, 0, 0, 0, 1}) {
 			t.Fatalf("expected %v, got %v", []byte{2, 0, 0, 0, 1}, buf)
 		}
@@ -165,7 +167,10 @@ func TestFriends_Flush(t *testing.T) {
 		f.InsertFriendsAtLevel(0, 7, 7)
 		f.InsertFriendsAtLevel(2, 8, 8)
 
-		buf := f.Flush(8)
+		buf, err := f.Flush(8)
+		if err != nil {
+			t.Fatal(err)
+		}
 
 		if !reflect.DeepEqual(buf, []byte{2, 0, 0, 0, 1, 3, 0, 0, 0, 2, 1, 0, 0, 0, 3, 0, 0, 0, 0, 4, 4, 0, 0, 0, 5, 2, 0, 0, 0, 6, 0, 0, 0, 0, 7, 2, 0, 0, 0, 8}) {
 			t.Fatalf("expected %v, got %v", []byte{2, 0, 0, 0, 1, 3, 0, 0, 0, 2, 1, 0, 0, 0, 3, 0, 0, 0, 0, 4, 4, 0, 0, 0, 5, 2, 0, 0, 0, 6, 0, 0, 0, 0, 7, 2, 0, 0, 0, 8}, buf)
