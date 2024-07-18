@@ -422,7 +422,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 			t.Fatal("insert vector should have 2 elements")
 		}
 
-		err := h.InsertVector(q)
+		_, err := h.InsertVector(q)
 
 		if err != nil {
 			t.Fatal(err)
@@ -446,7 +446,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 				t.Fatalf("expected friends and points map to have same length throughout insertion")
 			}
 
-			err := h.InsertVector(q)
+			_, err := h.InsertVector(q)
 			if err != nil {
 				return
 			}
@@ -495,7 +495,7 @@ func TestHnsw_InsertVector(t *testing.T) {
 		h := NewHnsw(2, 4, 4, Point{0, 0})
 
 		for _, cluster := range clusterA {
-			if err := h.InsertVector(cluster); err != nil {
+			if _, err := h.InsertVector(cluster); err != nil {
 				t.Fatalf("failed to insert vector: %v", err)
 			}
 		}
@@ -508,17 +508,17 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		h := NewHnsw(2, 4, 4, Point{0, 0})
 
 		// id: 1
-		if err := h.InsertVector(Point{3, 3}); err != nil {
+		if _, err := h.InsertVector(Point{3, 3}); err != nil {
 			t.Fatalf("failed to insert point: %v, err: %v", Point{3, 3}, err)
 		}
 
 		// id: 2
-		if err := h.InsertVector(Point{4, 4}); err != nil {
+		if _, err := h.InsertVector(Point{4, 4}); err != nil {
 			t.Fatalf("failed to insert point %v, err: %v", Point{4, 4}, err)
 		}
 
 		// id: 3
-		if err := h.InsertVector(Point{5, 5}); err != nil {
+		if _, err := h.InsertVector(Point{5, 5}); err != nil {
 			t.Fatalf("failed to insert point %v, err: %v", Point{5, 5}, err)
 		}
 
@@ -551,7 +551,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		clusterAGraph := NewHnsw(2, 4, 4, Point{0, 0})
 
 		for _, cluster := range clusterA {
-			if err := clusterAGraph.InsertVector(cluster); err != nil {
+			if _, err := clusterAGraph.InsertVector(cluster); err != nil {
 				t.Fatalf("failed to insert point: %v, err: %v", cluster, err)
 			}
 		}
@@ -591,7 +591,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 		h := NewHnsw(2, clusterCLen+1, clusterCLen+1, Point{0, 0})
 
 		for _, cluster := range clusterC {
-			if err := h.InsertVector(cluster); err != nil {
+			if _, err := h.InsertVector(cluster); err != nil {
 				t.Fatalf("failed to insert point: %v, err: %v", cluster, err)
 			}
 		}
@@ -627,7 +627,7 @@ func TestHnsw_KnnSearch(t *testing.T) {
 	t.Run("sequential search with upper bound params", func(t *testing.T) {
 		h := NewHnsw(2, 12, 12, Point{0, 0})
 		for i := 1; i <= 8; i++ {
-			if err := h.InsertVector(Point{float32(i), float32(i + 1)}); err != nil {
+			if _, err := h.InsertVector(Point{float32(i), float32(i + 1)}); err != nil {
 				t.Fatalf("failed to insert point: %v, err: %v", Point{float32(i), float32(i + 1)}, err)
 			}
 		}
@@ -682,7 +682,7 @@ func BenchmarkHnsw_KnnSearch(b *testing.B) {
 					b.Fatalf("expected point of dim 3, got dim: %v", len(point))
 				}
 
-				if err := h.InsertVector(point); err != nil {
+				if _, err := h.InsertVector(point); err != nil {
 					b.Fatalf("failed to insert point: %v, err: %v", point, err)
 				}
 			}

@@ -175,9 +175,9 @@ func (h *Hnsw) selectNeighbors(nearestNeighbors *DistHeap) ([]*Item, error) {
 	return nearestItems, nil
 }
 
-func (h *Hnsw) InsertVector(q Point) error {
+func (h *Hnsw) InsertVector(q Point) (Id, error) {
 	if !h.isValidPoint(q) {
-		return fmt.Errorf("invalid vector dimensionality")
+		return 0, fmt.Errorf("invalid vector dimensionality")
 	}
 
 	topLevel := h.friends[h.entryPointId].TopLevel()
@@ -199,12 +199,12 @@ func (h *Hnsw) InsertVector(q Point) error {
 		nnToQAtLevel, err := h.searchLevel(&q, entryItem, h.efConstruction, level)
 
 		if err != nil {
-			return fmt.Errorf("failed to search for nearest neighbors to Q at level %v: %w", level, err)
+			return 0, fmt.Errorf("failed to search for nearest neighbors to Q at level %v: %w", level, err)
 		}
 
 		neighbors, err := h.selectNeighbors(nnToQAtLevel)
 		if err != nil {
-			return fmt.Errorf("failed to select for nearest neighbors to Q at level %v: %w", level, err)
+			return 0, fmt.Errorf("failed to select for nearest neighbors to Q at level %v: %w", level, err)
 		}
 
 		// add bidirectional connections from neighbors to q at layer c
@@ -218,13 +218,13 @@ func (h *Hnsw) InsertVector(q Point) error {
 		for _, neighbor := range neighbors {
 			neighborFriendsAtLevel, err := h.friends[neighbor.id].GetFriendsAtLevel(level)
 			if err != nil {
-				return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+				return 0, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 			}
 
 			for neighborFriendsAtLevel.Len() > h.M {
 				_, err := neighborFriendsAtLevel.PopMaxItem()
 				if err != nil {
-					return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+					return 0, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 				}
 			}
 
@@ -233,7 +233,7 @@ func (h *Hnsw) InsertVector(q Point) error {
 
 		newEntryItem, err := nnToQAtLevel.PopMinItem()
 		if err != nil {
-			return fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
+			return 0, fmt.Errorf("failed to find nearest neighbor to Q at level %v: %w", level, err)
 		}
 
 		entryItem = newEntryItem
@@ -243,7 +243,7 @@ func (h *Hnsw) InsertVector(q Point) error {
 		h.entryPointId = qId
 	}
 
-	return nil
+	return qId, nil
 }
 
 func (h *Hnsw) isValidPoint(point Point) bool {
