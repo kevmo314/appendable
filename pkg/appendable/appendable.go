@@ -59,6 +59,8 @@ const (
 	FieldTypeBigram
 
 	FieldTypeUnigram
+
+	FieldTypeVector
 )
 
 func (t FieldType) TypescriptType() string {
@@ -81,6 +83,11 @@ func (t FieldType) TypescriptType() string {
 	if t&FieldTypeNull != 0 {
 		components = append(components, "null")
 	}
+
+	if t&FieldTypeVector != 0 {
+		components = append(components, "number[]")
+	}
+
 	if len(components) == 0 {
 		return "unknown"
 	}
