@@ -5,8 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/btree"
+	"github.com/kevmo314/appendable/pkg/hnsw"
 	"github.com/kevmo314/appendable/pkg/ngram"
 	"github.com/kevmo314/appendable/pkg/pointer"
+	"github.com/kevmo314/appendable/pkg/vectorpage"
 	"log/slog"
 	"math"
 	"strings"
@@ -16,6 +19,7 @@ import (
 )
 
 type JSONLHandler struct {
+	vectorPageManager *vectorpage.VectorPageManager
 }
 
 var _ appendable.DataHandler = (*JSONLHandler)(nil)
@@ -292,6 +296,24 @@ func (j JSONLHandler) handleJSONLObject(f *appendable.IndexFile, r []byte, dec *
 							if t, err := dec.Token(); err != nil || t != json.Delim('}') {
 								return fmt.Errorf("expected '}', got '%v'", t)
 							}
+						}
+					}
+
+				case appendable.FieldTypeVector:
+					vector, ok := value.(hnsw.Point)
+					if !ok {
+						return fmt.Errorf("expected hnsw.Point")
+					}
+
+					if j.vectorPageManager == nil {
+						h := hnsw.NewHnsw(2, 10, 8, vector)
+						j.vectorPageManager = vectorpage.NewVectorPageManager(
+							page.BTree(&btree.BTree{Width: width}),
+							page.BPTree(&bptree.BPTree{Data: r, DataParser: j, Width: width}),
+							h)
+					} else {
+						if err := j.vectorPageManager.AddNode(vector); err != nil {
+							return fmt.Errorf("failed to add hnsw node: %w", err)
 						}
 					}
 
