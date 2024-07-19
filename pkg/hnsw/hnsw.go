@@ -27,6 +27,15 @@ type Hnsw struct {
 	M, Mmax0 int
 }
 
+func (h *Hnsw) Neighborhood(id Id) (*Friends, error) {
+	friends, ok := h.friends[id]
+	if !ok {
+		return nil, ErrNodeNotFound
+	}
+
+	return friends, nil
+}
+
 func NewHnsw(d int, efConstruction int, M int, entryPoint Point) *Hnsw {
 	if d <= 0 || len(entryPoint) != d {
 		panic("invalid vector dimensionality")
