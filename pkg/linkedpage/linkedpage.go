@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/kevmo314/appendable/pkg/btree"
 	"io"
 
 	"github.com/kevmo314/appendable/pkg/bptree"
@@ -107,6 +108,12 @@ func (m *LinkedPage) SetRoot(mp pointer.MemoryPointer) error {
 // Generally, passing data is required, however if the tree
 // consists of only inlined values, it is not necessary.
 func (m *LinkedPage) BPTree(t *bptree.BPTree) *bptree.BPTree {
+	t.PageFile = m.rws
+	t.MetaPage = m
+	return t
+}
+
+func (m *LinkedPage) BTree(t *btree.BTree) *btree.BTree {
 	t.PageFile = m.rws
 	t.MetaPage = m
 	return t
