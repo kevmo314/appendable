@@ -11,36 +11,44 @@ import (
 type HNSWAdjacencyPage [16][8]uint32
 
 type VectorPageManager struct {
-	btree   *btree.BTree
-	vectors []*hnsw.Point
+	btree *btree.BTree
+	// vectors []*hnsw.Point
 
-	bptree       *bptree.BPTree
-	neighborhood map[hnsw.Id]*hnsw.Friends
+	bptree *bptree.BPTree
+	// neighborhood map[hnsw.Id]*hnsw.Friends
+
+	hnsw *hnsw.Hnsw
 }
 
-func NewVectorPageManager(btree *btree.BTree, bptree *bptree.BPTree, vectors []*hnsw.Point, neighborhood map[hnsw.Id]*hnsw.Friends) *VectorPageManager {
+func NewVectorPageManager(btree *btree.BTree, bptree *bptree.BPTree, hnsw *hnsw.Hnsw) *VectorPageManager {
 	if btree == nil || bptree == nil {
 		panic("btree and bptree must not be nil")
 	}
 
-	return &VectorPageManager{btree, vectors, bptree, neighborhood}
+	return &VectorPageManager{
+		btree:  btree,
+		bptree: bptree,
+		hnsw:   hnsw,
+	}
 }
 
-func (vp *VectorPageManager) AddNode(x hnsw.Id) error {
-	// we'll assume that this node id is the freshly inserted vector
-	xvector := *vp.vectors[x]
-
-	if err := vp.btree.Insert(pointer.ReferencedId{Value: x}, xvector); err != nil {
+func (vp *VectorPageManager) AddNode(x hnsw.Point) error {
+	xId, err := vp.hnsw.InsertVector(x)
+	if err != nil {
 		return err
 	}
 
-	xfriends, ok := vp.neighborhood[x]
-
-	if !ok {
-		return fmt.Errorf("vector id %v not found in hnsw neighborhood", x)
+	// write point to btree
+	if err := vp.btree.Insert(pointer.ReferencedId{Value: xId}, x); err != nil {
+		return err
 	}
 
-	xfriendsBuf, err := xfriends.Flush(8)
+	// write friends to bptree
+	xFriends, err := vp.hnsw.Neighborhood(xId)
+	if err != nil {
+		return fmt.Errorf("vector id %v not found in hnsw neighborhood", x)
+	}
+	xfriendsBuf, err := xFriends.Flush(8)
 	if err != nil {
 		return err
 	}
