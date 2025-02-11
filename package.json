@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/kevmo314/appendable#readme",
   "dependencies": {
-    "esbuild": "^0.19.7"
+    "esbuild": "^0.25.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.11",
